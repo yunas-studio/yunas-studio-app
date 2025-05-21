@@ -31,11 +31,11 @@
                                     @csrf
 
                                     <div class="mb-3">
-                                        <label class="form-label" for="email">Email</label>
-                                        <input type="text" class="form-control @error('email') is-invalid @enderror"
-                                            name="email" value="{{ old('email', 'admin@themesbrand.com') }}" id="email"
-                                            placeholder="Enter Email address">
-                                        @error('email')
+                                        <label class="form-label" for="username">Username</label>
+                                        <input type="text" class="form-control @error('username') is-invalid @enderror"
+                                            name="username" value="{{ old('username', 'sayunas') }}" id="username"
+                                            placeholder="Enter Username">
+                                        @error('username')
                                             <span class="invalid-feedback" role="alert">
                                                 <strong>{{ $message }}</strong>
                                             </span>
@@ -51,7 +51,7 @@
                                         </div>
                                         <label class="form-label" for="userpassword">Password</label>
                                         <input type="password" class="form-control @error('password') is-invalid @enderror"
-                                            value="12345678" name="password" id="userpassword" placeholder="Enter password">
+                                            value="sayunas" name="password" id="userpassword" placeholder="Enter password">
                                         @error('password')
                                             <span class="invalid-feedback" role="alert">
                                                 <strong>{{ $message }}</strong>
@@ -68,39 +68,6 @@
                                     <div class="mt-3 text-end">
                                         <button class="btn btn-primary w-sm waves-effect waves-light" type="submit">Log
                                             In</button>
-                                    </div>
-
-                                    <div class="mt-4 text-center">
-                                        <div class="signin-other-title">
-                                            <h5 class="font-size-14 mb-3 title">Sign in with</h5>
-                                        </div>
-
-
-                                        <ul class="list-inline">
-                                            <li class="list-inline-item">
-                                                <a href="javascript:void()"
-                                                    class="social-list-item bg-primary text-white border-primary">
-                                                    <i class="mdi mdi-facebook"></i>
-                                                </a>
-                                            </li>
-                                            <li class="list-inline-item">
-                                                <a href="javascript:void()"
-                                                    class="social-list-item bg-info text-white border-info">
-                                                    <i class="mdi mdi-twitter"></i>
-                                                </a>
-                                            </li>
-                                            <li class="list-inline-item">
-                                                <a href="javascript:void()"
-                                                    class="social-list-item bg-danger text-white border-danger">
-                                                    <i class="mdi mdi-google"></i>
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mt-4 text-center">
-                                        <p class="mb-0">Don't have an account ? <a href="{{ url('register') }}"
-                                                class="fw-medium text-primary"> Signup now </a> </p>
                                     </div>
                                 </form>
                             </div>
