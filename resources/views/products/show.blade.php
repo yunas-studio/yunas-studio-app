@@ -40,9 +40,19 @@
                         </div>
                         <div class="col-md-6">
                             <div class="product-detail-box">
-                                <h3 class="product-title mb-2">{{ $product->name }}</h3>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h3 class="product-title">{{ $product->name }}</h3>
+                                    <div class="status-badge">
+                                        @if($product->is_active)
+                                            <span class="badge bg-success">Active</span>
+                                        @else
+                                            <span class="badge bg-danger">Inactive</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                
                                 <div class="product-category badge bg-light text-dark mb-3">
-                                    {{ $product->category }}
+                                    {{ $product->category ? $product->category->name : 'Uncategorized' }}
                                 </div>
                                 <h4 class="product-price text-primary mb-4">
                                     Rp {{ number_format($product->price, 0, ',', '.') }}
@@ -71,13 +81,26 @@
                                 </div>
                                 
                                 <div class="product-actions mt-4">
-                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this product?');" class="d-inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger">
-                                            <i class="bx bx-trash"></i> Delete Product
-                                        </button>
-                                    </form>
+                                    <div class="d-flex">
+                                        @auth
+                                            <form action="{{ route('products.toggle-status', $product->id) }}" method="POST" class="me-2">
+                                                @csrf
+                                                @method('PUT')
+                                                <button type="submit" class="btn btn-{{ $product->is_active ? 'warning' : 'success' }}">
+                                                    <i class="bx bx-power-off me-1"></i>
+                                                    {{ $product->is_active ? 'Deactivate' : 'Activate' }} Product
+                                                </button>
+                                            </form>
+                                        @endauth
+                                        
+                                        <form action="{{ route('products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('delete this product?');" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="bx bx-trash"></i> Delete Product
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>

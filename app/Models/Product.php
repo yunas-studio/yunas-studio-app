@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model
 {
@@ -13,7 +14,16 @@ class Product extends Model
         'name',
         'description',
         'price',
-        'category',
-        'image'
+        'category_id',
+        'image',
+        'is_active'
     ];
+    
+    /**
+     * Get the category that owns the product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
 }
