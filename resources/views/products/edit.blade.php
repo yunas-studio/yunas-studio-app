@@ -51,18 +51,14 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="category" class="form-label">Category</label>
-                                            <select class="form-select" id="category" name="category" required>
+                                            <label for="category_id" class="form-label">Category</label>
+                                            <select class="form-select" id="category_id" name="category_id" required>
                                                 <option value="" disabled>Select Category</option>
-                                                <option value="Paket Personal" {{ $product->category == 'Paket Personal' ? 'selected' : '' }}>Paket Personal</option>
-                                                <option value="Paket Couple" {{ $product->category == 'Paket Couple' ? 'selected' : '' }}>Paket Couple</option>
-                                                <option value="Paket Family" {{ $product->category == 'Paket Family' ? 'selected' : '' }}>Paket Family</option>
-                                                <option value="Paket Grup" {{ $product->category == 'Paket Grup' ? 'selected' : '' }}>Paket Grup</option>
-                                                <option value="Paket Graduation" {{ $product->category == 'Paket Graduation' ? 'selected' : '' }}>Paket Graduation</option>
-                                                <option value="Paket Maternity" {{ $product->category == 'Paket Maternity' ? 'selected' : '' }}>Paket Maternity</option>
-                                                <option value="Paket Prawedding" {{ $product->category == 'Paket Prawedding' ? 'selected' : '' }}>Paket Prawedding</option>
-                                                <option value="Pas Photo" {{ $product->category == 'Pas Photo' ? 'selected' : '' }}>Pas Photo</option>
-                                                <option value="Rental Studio" {{ $product->category == 'Rental Studio' ? 'selected' : '' }}>Rental Studio</option>
+                                                @foreach($categories as $category)
+                                                    <option value="{{ $category->id }}" {{ (old('category_id', $product->category_id) == $category->id) ? 'selected' : '' }}>
+                                                        {{ $category->name }}
+                                                    </option>
+                                                @endforeach
                                             </select>
                                         </div>
                                     </div>

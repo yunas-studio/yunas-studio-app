@@ -16,9 +16,15 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
-            $table->string('category');
+            $table->unsignedBigInteger('category_id')->nullable();
             $table->string('image')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+            
+            $table->foreign('category_id')
+                  ->references('id')
+                  ->on('product_categories')
+                  ->onDelete('set null');
         });
     }
 
