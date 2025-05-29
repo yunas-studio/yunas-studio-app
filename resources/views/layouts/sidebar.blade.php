@@ -54,7 +54,18 @@
                 @endcan
 
                 <li class="menu-title">@lang('translation.Apps')</li>
-
+                <li>
+                    <a href="javascript: void(0);" class="has-arrow waves-effect">
+                        <i class="uil-store"></i>
+                        <span>Products</span>
+                    </a>
+                    <ul class="sub-menu" aria-expanded="false">
+                        <li><a href="{{ route('products.index') }}">All Products</a></li>
+                        <li><a href="{{ route('product-categories.index') }}">All Product Categories</a></li>
+                        <li><a href="{{ route('products.create') }}">Add New Product</a></li>
+                        <li><a href="{{ route('product-categories.create') }}">Add New Product Category</a></li>
+                    </ul>
+                </li>
                 <li>
                     <a href="calendar" class="waves-effect">
                         <i class="uil-calender"></i>
