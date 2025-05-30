@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\TransaksiController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -33,6 +34,13 @@ Route::resource('product-categories', ProductCategoryController::class);
     
     Route::resource('products', ProductController::class);
     Route::get('products/category/{id}', [ProductController::class, 'category'])->name('products.category');
+
+Route::resource('transaksi', TransaksiController::class);
+
+Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
+Route::get('/get-booked-slots', [TransaksiController::class, 'getBookedSlots'])->name('transaksi.getBookedSlots');
+
+
 
 Route::get('{any}', [App\Http\Controllers\HomeController::class, 'index']);
 //Language Translation

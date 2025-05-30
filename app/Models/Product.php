@@ -18,6 +18,11 @@ class Product extends Model
         'image',
         'is_active'
     ];
+
+    public function transactions()
+    {
+        return $this->belongsToMany(Transaksi::class, 'orders', 'product_id', 'transaction_id');
+    }
     
     /**
      * Get the category that owns the product.
