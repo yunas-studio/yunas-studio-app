@@ -5,11 +5,11 @@
 
 @section('content')
      @component('common-components.breadcrumb', [
-        'title' => 'Create User',
+        'title' => 'Edit User',
         'pagetitle' => 'User Management',
         'breadcrumbs' => [
             ['text' => 'User Management', 'url' => route('users.index')],
-            ['text' => 'Create User', 'url' => '']
+            ['text' => 'Edit User', 'url' => '']
         ]
     ])
     @endcomponent
@@ -21,13 +21,14 @@
                         <i class="mdi mdi-arrow-right text-primary me-1"></i> User Information
                     </h5>
 
-                    <form method="POST" action="{{ route('users.store') }}">
+                    <form method="POST" action="{{ route('users.update', $user->id) }}">
                         @csrf
+                        @method("PUT")
 
                         <div class="form-floating mb-3">
                             <input type="text" class="form-control @error('name') is-invalid @enderror" 
                                    id="floatingNameInput" name="name" placeholder="Enter Full Name" 
-                                   value="{{ old('name') }}" required>
+                                   value="{{ $user->name }}" required>
                             <label for="floatingNameInput">Full Name</label>
                             @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -37,7 +38,7 @@
                         <div class="form-floating mb-3">
                             <input type="text" class="form-control @error('username') is-invalid @enderror" 
                                    id="floatingUsernameInput" name="username" placeholder="Enter Username" 
-                                   value="{{ old('username') }}" required>
+                                   value="{{ $user->username }}" required>
                             <label for="floatingUsernameInput">Username</label>
                             @error('username')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -48,7 +49,7 @@
                                     id="floatingRoleSelect" name="role_id" required>
                                 <option value="" selected disabled>Select Role</option>
                                 @foreach($roles as $role)
-                                    <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                                    <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>
                                         {{ $role->name }}
                                     </option>
                                 @endforeach
