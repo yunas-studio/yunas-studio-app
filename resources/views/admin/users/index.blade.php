@@ -71,7 +71,7 @@
                                     </td>
                                     <td>{{ $user->username }}</td>
                                     <td>
-                                        <span class="badge bg-{{ $user->role_id == 1 ? 'primary' : 'success' }}-subtle text-{{ $user->role_id == 1 ? 'primary' : 'success' }} font-size-12">
+                                        <span class="badge bg-{{ $user->role_id == 2 ? 'primary' : 'success' }}-subtle text-{{ $user->role_id == 2 ? 'primary' : 'success' }} font-size-12">
                                             {{ $user->role->name }}
                                         </span>
                                     </td>

@@ -24,7 +24,7 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
-        // 
+        //
     ];
 
     public function role()
@@ -32,13 +32,16 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
-    public function isAdmin()
+    public function isKasir()
     {
         return $this->role_id === 2;
     }
 
-    public function isSuperAdmin()
+    public function isAdmin()
     {
         return $this->role_id === 1;
+    }
+    public function isUser(){
+        return $this->role_id === 3;
     }
 }
