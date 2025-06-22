@@ -6,7 +6,7 @@
 
 @section('content')
     @component('common-components.breadcrumb')
-        @slot('pagetitle') Products @endslot
+        @slot('pagetitle') Products & Packets @endslot
         @slot('title') Edit Product @endslot
     @endcomponent
 
@@ -14,7 +14,7 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title mb-4">Edit Product: {{ $product->name }}</h4>
+                    <h4 class="card-title mb-4">Edit Product</h4>
 
                     @if ($errors->any())
                         <div class="alert alert-danger">
@@ -29,7 +29,6 @@
                     <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
-                        
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
@@ -41,42 +40,21 @@
                                     <label for="description" class="form-label">Description</label>
                                     <textarea class="form-control" id="description" name="description" rows="4">{{ old('description', $product->description) }}</textarea>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="price" class="form-label">Price (Rp)</label>
-                                            <input type="number" class="form-control" id="price" name="price" value="{{ old('price', $product->price) }}" min="0" step="0.01" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="category_id" class="form-label">Category</label>
-                                            <select class="form-select" id="category_id" name="category_id" required>
-                                                <option value="" disabled>Select Category</option>
-                                                @foreach($categories as $category)
-                                                    <option value="{{ $category->id }}" {{ (old('category_id', $product->category_id) == $category->id) ? 'selected' : '' }}>
-                                                        {{ $category->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="image" class="form-label">Product Image</label>
+                                    @if($product->image)
+                                        <div class="mb-2 text-center">
+                                            <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}" class="img-fluid img-thumbnail rounded" style="max-height: 150px;">
+                                        </div>
+                                    @endif
                                     <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
-                                    <small class="form-text text-muted">Upload a new product image (max 2MB). Supported formats: JPEG, PNG, JPG, GIF.</small>
+                                    <small class="form-text text-muted">Upload a new product image (max 2MB). Leave empty to keep current image.</small>
                                 </div>
                                 <div class="mb-3">
                                     <div class="mt-3 text-center">
-                                        @if($product->image)
-                                            <img id="image-preview" src="{{ Storage::url($product->image) }}" alt="Current Image" class="img-fluid img-thumbnail rounded" style="max-height: 200px;">
-                                        @else
-                                            <img id="image-preview" src="#" alt="Image Preview" class="img-fluid img-thumbnail rounded" style="max-height: 200px; display: none;">
-                                        @endif
+                                        <img id="image-preview" src="#" alt="Image Preview" class="img-fluid img-thumbnail rounded" style="max-height: 150px; display: none;">
                                     </div>
                                 </div>
                             </div>
@@ -104,6 +82,8 @@
                     preview.style.display = 'block';
                 };
                 reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
             }
         }
     </script>

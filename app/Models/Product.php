@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -13,22 +13,14 @@ class Product extends Model
     protected $fillable = [
         'name',
         'description',
-        'price',
-        'category_id',
-        'image',
-        'is_active'
+        'image'
     ];
-
-    public function transactions()
-    {
-        return $this->belongsToMany(Transaksi::class, 'orders', 'product_id', 'transaction_id');
-    }
     
     /**
-     * Get the category that owns the product.
+     * Get the packets for the product.
      */
-    public function category(): BelongsTo
+    public function packets(): HasMany
     {
-        return $this->belongsTo(ProductCategory::class, 'category_id');
+        return $this->hasMany(Packet::class, 'product_id');
     }
 }
