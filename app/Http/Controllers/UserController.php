@@ -31,6 +31,8 @@ class UserController extends Controller
                     ->orWhere('username', 'like', "%$search%");
                 });
             })
+            ->orderBy('is_active', 'desc')
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
         return view('admin.users.index', compact('users'));
     }
