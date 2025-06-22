@@ -60,6 +60,15 @@
                     </li>
                 @endcan
 
+                @can('viewAny', App\Models\Additional::class)
+                    <li>
+                        <a href="{{url('additionals')}}">
+                            <i class="uil-pricetag-alt"></i>
+                            <span>Additional</span>
+                        </a>
+                    </li>
+                @endcan
+
                 <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="uil-store"></i>
@@ -300,7 +309,6 @@
                         </li>
                     </ul>
                 </li>
-
             </ul>
         </div>
         <!-- Sidebar -->
