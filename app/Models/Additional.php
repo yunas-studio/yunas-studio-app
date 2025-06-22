@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Additional extends Model
 {
@@ -15,4 +16,20 @@ class Additional extends Model
         'name',
         'price',
     ];
+
+    /**
+     * Get the default configurations for this additional item.
+     */
+    public function defaultConfigurations(): HasMany
+    {
+        return $this->hasMany(AdditionalDefault::class);
+    }
+
+    /**
+     * Get all packets that include this additional as default.
+     */
+    public function packets()
+    {
+        return $this->belongsToMany(Packet::class, 'additional_defaults');
+    }
 }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,30 +11,10 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $query = Product::with('category')->latest();
-        
-        if ($request->has('category_id') && $request->category_id) {
-            $query->where('category_id', $request->category_id);
-        }
-        
-        $products = $query->get();
-        $categories = ProductCategory::all();
-        
-        return view('products.index', compact('products', 'categories'));
-    }
-
-    /**
-     * Display products by category.
-     */
-    public function category($id)
-    {
-        $category = ProductCategory::findOrFail($id);
-        $products = Product::where('category_id', $category->id)->latest()->get();
-        $categories = ProductCategory::all();
-        
-        return view('products.index', compact('products', 'categories', 'category'));
+        $products = Product::latest()->get();
+        return view('products.index', compact('products'));
     }
 
     /**
@@ -43,8 +22,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $categories = ProductCategory::all();
-        return view('products.create', compact('categories'));
+        return view('products.create');
     }
 
     /**
@@ -55,8 +33,6 @@ class ProductController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric',
-            'category_id' => 'required|exists:product_categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -79,7 +55,6 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load('category');
         return view('products.show', compact('product'));
     }
 
@@ -88,8 +63,7 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        $categories = ProductCategory::all();
-        return view('products.edit', compact('product', 'categories'));
+        return view('products.edit', compact('product'));
     }
 
     /**
@@ -100,8 +74,6 @@ class ProductController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric',
-            'category_id' => 'required|exists:product_categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -129,6 +101,12 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // Check if product has packets
+        if ($product->packets()->count() > 0) {
+            return redirect()->route('products.index')
+                             ->with('error', 'Cannot delete product with packets :)');
+        }
+
         // Delete image if exists
         if ($product->image) {
             Storage::delete('public/' . $product->image);
@@ -153,7 +131,5 @@ class ProductController extends Controller
         
         return redirect()->back()
                          ->with('success');
-        // return redirect()->back()
-        //                  ->with('success', "Product {$product->name} has been {$status}.");
     }
 }

@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\AdditionalController;
+use App\Http\Controllers\AdditionalDefaultController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\PacketController;
 use App\Http\Controllers\TransaksiController;
 /*
 |--------------------------------------------------------------------------
@@ -29,14 +30,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('users.toggle-status');
 
     Route::resource('additionals', AdditionalController::class);
+    Route::resource('additional-defaults', AdditionalDefaultController::class);
 });
 
-Route::resource('product-categories', ProductCategoryController::class);
-Route::put('/products/{product}/toggle-status', [ProductController::class, 'toggleStatus'])
-    ->name('products.toggle-status');
-
 Route::resource('products', ProductController::class);
-Route::get('products/category/{id}', [ProductController::class, 'category'])->name('products.category');
+
+Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])
+    ->name('packets.toggle-status');
+
+Route::resource('packets', PacketController::class);
+Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
 
 Route::resource('transaksi', TransaksiController::class);
 
