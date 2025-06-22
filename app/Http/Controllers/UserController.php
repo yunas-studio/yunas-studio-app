@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -13,12 +14,12 @@ class UserController extends Controller
     {
         $this->middleware('auth');
         $this->middleware('role:Super Admin, Admin')->except(['index', 'show']);
-        
+
     }
 
     public function index()
     {
-        if (!auth()->user()->isSuperAdmin()) {
+        if (!auth()->user()->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
         $search = request('search');
@@ -30,13 +31,15 @@ class UserController extends Controller
                     ->orWhere('username', 'like', "%$search%");
                 });
             })
+            ->orderBy('is_active', 'desc')
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
         return view('admin.users.index', compact('users'));
     }
 
     public function create()
     {
-        $roles = Role::all();
+        $roles = Role::all()->where('id', '!=', 1);
         return view('admin.users.create', compact('roles'));
     }
 
@@ -59,38 +62,46 @@ class UserController extends Controller
     }
     public function edit(User $user)
     {
-        $roles = Role::all();
+        $roles = Role::all()->where('id', '!=', 1);
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users,username,'.$user->id,
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+            ],
             'password' => 'nullable|string|min:8|confirmed',
             'role_id' => 'required|exists:roles,id',
         ]);
 
         $data = [
-            'name' => $request->name,
-            'username' => $request->username,
-            'role_id' => $request->role_id,
+            'name' => $validated['name'],
+            'username' => $validated['username'],
+            'role_id' => $validated['role_id'],
         ];
 
-        if ($request->password) {
-            $data['password'] = Hash::make($request->password);
+        if (!empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
         }
 
         $user->update($data);
 
-        return redirect()->route('users.index')->with('success', 'User updated successfully.');
+        return redirect()->route('users.index')
+            ->with('success', 'User updated successfully.');
     }
 
     public function toggleStatus(User $user)
     {
+        if ($user->id === auth()->id()){
+            return redirect()->back()->with('error', "You can\'t edit yourself.");
+        }
         $user->update(['is_active' => !$user->is_active]);
-        
+
         return redirect()->back()
             ->with('success', 'User status updated successfully');
     }

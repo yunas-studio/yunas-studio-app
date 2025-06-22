@@ -5,19 +5,19 @@
     <div class="navbar-brand-box">
         <a href="{{url('index')}}" class="logo logo-dark">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/logo-sm.png') }}" alt="" height="22">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
             <span class="logo-lg">
-                <img src="{{ URL::asset('/assets/images/logo-dark.png') }}" alt="" height="20">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
         </a>
 
         <a href="{{url('index')}}" class="logo logo-light">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/logo-sm.png') }}" alt="" height="22">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
             <span class="logo-lg">
-                <img src="{{ URL::asset('/assets/images/logo-light.png') }}" alt="" height="20">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
         </a>
     </div>
@@ -41,6 +41,13 @@
                     </a>
                 </li>
 
+                <li>
+                    <a href="{{url('transaksi')}}" class="waves-effect">
+                        <i class="uil-invoice"></i>
+                        <span>Transactions</span>
+                    </a>
+                </li>
+
 
                 <li class="menu-title">@lang('translation.Management')</li>
 
@@ -53,7 +60,15 @@
                     </li>
                 @endcan
 
-                <li class="menu-title">@lang('translation.Apps')</li>
+                @can('viewAny', App\Models\Additional::class)
+                    <li>
+                        <a href="{{url('additionals')}}">
+                            <i class="uil-pricetag-alt"></i>
+                            <span>Additional</span>
+                        </a>
+                    </li>
+                @endcan
+
                 <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="uil-store"></i>
@@ -66,6 +81,8 @@
                         <li><a href="{{ route('product-categories.create') }}">Add New Product Category</a></li>
                     </ul>
                 </li>
+
+                <li class="menu-title">@lang('translation.Apps')</li>
                 <li>
                     <a href="calendar" class="waves-effect">
                         <i class="uil-calender"></i>
@@ -292,7 +309,6 @@
                         </li>
                     </ul>
                 </li>
-
             </ul>
         </div>
         <!-- Sidebar -->
