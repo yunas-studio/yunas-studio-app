@@ -5,19 +5,19 @@
     <div class="navbar-brand-box">
         <a href="{{url('index')}}" class="logo logo-dark">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/logo-sm.png') }}" alt="" height="22">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
             <span class="logo-lg">
-                <img src="{{ URL::asset('/assets/images/logo-dark.png') }}" alt="" height="20">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
         </a>
 
         <a href="{{url('index')}}" class="logo logo-light">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/logo-sm.png') }}" alt="" height="22">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
             <span class="logo-lg">
-                <img src="{{ URL::asset('/assets/images/logo-light.png') }}" alt="" height="20">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
             </span>
         </a>
     </div>
@@ -42,36 +42,42 @@
                 </li>
 
                 <li>
-                    <a href="javascript: void(0);" class="has-arrow waves-effect">
-                        <i class="uil-window-section"></i>
-                        <span>@lang('translation.Layouts')</span>
+                    <a href="{{url('transaksi')}}" class="waves-effect">
+                        <i class="uil-invoice"></i>
+                        <span>Transactions</span>
                     </a>
-                    <ul class="sub-menu" aria-expanded="true">
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">@lang('translation.Vertical')</a>
-                            <ul class="sub-menu" aria-expanded="true">
-                                <li><a href="layouts-dark-sidebar">@lang('translation.Dark_Sidebar')</a></li>
-                                <li><a href="layouts-compact-sidebar">@lang('translation.Compact_Sidebar')</a></li>
-                                <li><a href="layouts-icon-sidebar">@lang('translation.Icon_Sidebar')</a></li>
-                                <li><a href="layouts-boxed">@lang('translation.Boxed_Width')</a></li>
-                                <li><a href="layouts-preloader">@lang('translation.Preloader')</a></li>
-                                <li><a href="layouts-colored-sidebar">@lang('translation.Colored_Sidebar')</a></li>
-                            </ul>
-                        </li>
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">@lang('translation.Horizontal')</a>
-                            <ul class="sub-menu" aria-expanded="true">
-                                <li><a href="layouts-horizontal">@lang('translation.Horizontal')</a></li>
-                                <li><a href="layouts-hori-topbar-dark">@lang('translation.Dark_Topbar')</a></li>
-                                <li><a href="layouts-hori-boxed-width">@lang('translation.Boxed_Width')</a></li>
-                                <li><a href="layouts-hori-preloader">@lang('translation.Preloader')</a></li>
-                            </ul>
-                        </li>
-                    </ul>
+                </li>
+
+
+                <li class="menu-title">@lang('translation.Management')</li>
+
+                @can('viewAny', App\Models\User::class)
+                    <li>
+                        <a href="{{url('users')}}">
+                            <i class="uil-users-alt"></i>
+                            <span>@lang('translation.User')</span>
+                        </a>
+                    </li>
+                @endcan
+
+                @can('viewAny', App\Models\Additional::class)
+                    <li>
+                        <a href="{{url('additionals')}}">
+                            <i class="uil-pricetag-alt"></i>
+                            <span>Additional</span>
+                        </a>
+                    </li>
+                @endcan
+
+                <li>
+                    <a href="{{ route('packets.index') }}" >
+                        <i class="uil-store"></i>
+                        <span>Products</span>
+                    </a>
+                    
                 </li>
 
                 <li class="menu-title">@lang('translation.Apps')</li>
-
                 <li>
                     <a href="calendar" class="waves-effect">
                         <i class="uil-calender"></i>
@@ -298,7 +304,6 @@
                         </li>
                     </ul>
                 </li>
-
             </ul>
         </div>
         <!-- Sidebar -->

@@ -3,6 +3,8 @@
 return [
   "Menu"=> "Menu",
   "Dashboard"=> "Dashboard",
+  "User"=> "User Management",
+  "Management"=> "Management Data",
   "Layouts"=> "Layouts",
   "Horizontal"=> "Horizontal",
   "Dark_Sidebar"=> "Dark Sidebar",
@@ -47,6 +49,7 @@ return [
   "FAQs"=> "FAQs",
   "Pricing"=> "Pricing",
   "Error_404"=> "Error 404",
+  "Error_403"=> "Access Denied",
   "Error_500"=> "Error 500",
   "Components"=> "Components",
   "UI_Elements"=> "UI Elements",
