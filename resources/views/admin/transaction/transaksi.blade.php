@@ -3,6 +3,25 @@
     Transaction
 @endsection
 
+@section('css')
+<style>
+    .invoice-modal .modal-dialog { max-width: 800px; }
+    .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
+    .invoice-modal .invoice-logo { max-height: 60px; }
+    .invoice-modal .invoice-details-table th,
+    .invoice-modal .invoice-details-table td { border: none; }
+    .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
+    .clickable-price:hover { text-decoration: underline; color: #556ee6; }
+
+    @media print {
+        body * { visibility: hidden; }
+        .invoice-modal .modal-content, .invoice-modal .modal-content * { visibility: visible; }
+        .invoice-modal { position: absolute; left: 0; top: 0; }
+        .modal-footer { display: none; }
+    }
+</style>
+@endsection
+
 @section('content')
     @component('common-components.breadcrumb', [
         'title' => 'Transaksi',
@@ -11,9 +30,9 @@
     ])
     @endcomponent
 
-    {{-- Count Cards ... (remain the same) ... --}}
+    {{-- ... Count Cards ... --}}
     <div class="row">
-        <div class="col-md-6 col-xl-3">
+        <div class="col-md-6 col-xl-4">
             <div class="card">
                 <div class="card-body">
                     <div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-cancel"></i></div></div>
@@ -21,7 +40,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-xl-3">
+        <div class="col-md-6 col-xl-4">
             <div class="card">
                 <div class="card-body">
                     <div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-clock"></i></div></div>
@@ -29,7 +48,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-xl-3">
+        <div class="col-md-6 col-xl-4">
             <div class="card">
                 <div class="card-body">
                     <div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-check"></i></div></div>
@@ -39,89 +58,208 @@
         </div>
     </div>
 
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
                     <div class="row mb-2">
                         <div class="col-md-6"><div class="mb-3"><a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Add New Transaction</a></div></div>
-                        <div class="col-md-6"><div class="form-inline float-md-end mb-3"><div class="search-box ms-2">
-                            <form action="{{ route('transaksi.index') }}" method="GET"><div class="position-relative"><input type="text" name="search" class="form-control rounded bg-light border-0" placeholder="Search..." value="{{ request('search') }}"><i class="mdi mdi-magnify search-icon"></i></div></form>
-                        </div></div></div>
+                        <div class="col-md-6">
+                            <div class="form-inline float-md-end mb-3">
+                                <div class="search-box ms-2">
+                                    <form action="{{ route('transaksi.index') }}" method="GET">
+                                        <div class="position-relative">
+                                            <input type="text" name="search" class="form-control rounded bg-light border-0" placeholder="Search..." value="{{ request('search') }}">
+                                            <i class="mdi mdi-magnify search-icon"></i>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
                         <table class="table table-centered table-nowrap mb-0">
-                            <thead class="table-light">
+                            <thead class="table-light text-center">
                                 <tr>
-                                    <th style="width: 20px;"><div class="form-check font-size-16"><input type="checkbox" class="form-check-input" id="customCheck1"><label class="form-check-label" for="customCheck1">&nbsp;</label></div></th>
                                     <th>Receipt Code</th>
-                                    <th>Customer Name</th>
-                                    <th>Products</th>
-                                    <th>Booking DateTime</th> {{-- Changed from Transaction Date --}}
-                                    <th>Status Pembayaran</th>
-                                    <th>Status</th>
-                                    <th>Detail</th>
-                                    <th>Action</th>
+                                    <th>Customer</th>
+                                    <th>Packet</th>
+                                    <th>Total Price</th>
+                                    <th>Transaction Date</th>
+                                    <th>Payment Status</th>
+                                    <th>Process Status</th>
+                                    <th>Details</th>
+                                    <th style="width: 100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($transactions as $transaksi)
                                     <tr>
-                                        <td><div class="form-check font-size-16"><input type="checkbox" class="form-check-input" id="customCheck{{$transaksi->transaction_id}}"><label class="form-check-label" for="customCheck{{$transaksi->transaction_id}}">&nbsp;</label></div></td>
-                                        <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
-                                        <td>{{ $transaksi->customer_name }}</td>
-                                        <td>{{ $transaksi->products->isNotEmpty() ? $transaksi->products->pluck('name')->implode(', ') : 'N/A' }}</td>
-                                        <td>
-                                            @if($transaksi->booking)
-                                                {{ \Carbon\Carbon::parse($transaksi->booking->booking_datetime)->format('d M Y, H:i') }}
-                                            @else
-                                                N/A
-                                            @endif
+                                        <td class="text-center"><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
+                                        <td class="text-center">{{ $transaksi->customer_name }}</td>
+                                        <td class="text-center">{{ $transaksi->packet->name ?? 'N/A' }}</td>
+                                        <td class="fw-bold text-center">
+                                            <a href="javascript:void(0);"
+                                               class="clickable-price"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
+                                                Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
+                                            </a>
                                         </td>
-                                        <td>
-                                            @if($transaksi->status == 'belum dibayar') <span class="badge bg-warning-subtle text-warning">Belum Dibayar</span>
-                                            @elseif($transaksi->status == 'dp') <span class="badge bg-primary-subtle text-primary">DP</span>
-                                            @else <span class="badge bg-success-subtle text-success">Sudah Dibayar</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <form action="{{ route('transaksi.toggle-status', $transaksi->transaction_id) }}" method="POST" class="d-inline">
+                                        <td class="text-center">{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
+                                        <td class="text-center">
+                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
                                                 @csrf @method('PUT')
-                                                <div class="form-check form-switch"><input type="checkbox" class="form-check-input" id="statusToggle{{ $transaksi->transaction_id }}" onchange="this.form.submit()" {{ $transaksi->isActive ? 'checked' : '' }}></div>
+                                                <input type="hidden" name="field" value="status">
+                                                <select name="value" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                    @foreach (['belum dibayar', 'dp', 'sudah dibayar'] as $status)
+                                                        <option value="{{ $status }}" {{ $transaksi->status == $status ? 'selected' : '' }}>{{ ucwords($status) }}</option>
+                                                    @endforeach
+                                                </select>
                                             </form>
                                         </td>
-                                        <td>
-                                            <button type="button" class="btn btn-primary btn-sm btn-rounded waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#myModal{{ $transaksi->transaction_id }}">View Details</button>
-                                            <div id="myModal{{ $transaksi->transaction_id }}" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel{{ $transaksi->transaction_id }}" aria-hidden="true">
-                                                <div class="modal-dialog modal-lg">
+                                        <td class="text-center">
+                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
+                                                @csrf @method('PUT')
+                                                <input type="hidden" name="field" value="process_status">
+                                                <select name="value" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                     @foreach (['Siap Cetak', 'Proses Cetak', 'Selesai'] as $status)
+                                                        <option value="{{ $status }}" {{ $transaksi->process_status == $status ? 'selected' : '' }}>{{ $status }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button>
+
+                                            <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                     <div class="modal-content">
-                                                        <div class="modal-header"><h5 class="modal-title" id="myModalLabel{{ $transaksi->transaction_id }}">Detail Transaksi</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
                                                         <div class="modal-body">
-                                                            <p><strong>Receipt Code : </strong> {{ $transaksi->receipt_code }}</p>
-                                                            <p><strong>Customer Name : </strong> {{ $transaksi->customer_name }}</p>
-                                                            <p><strong>Booking Date & Time : </strong> @if($transaksi->booking) {{ \Carbon\Carbon::parse($transaksi->booking->booking_datetime)->format('d M Y, H:i A') }} @else N/A @endif</p>
-                                                            <p><strong>Status Pembayaran : </strong> <span style="text-transform: capitalize;">{{ $transaksi->status }}</span></p>
-                                                            <hr><h6>Products:</h6>
-                                                            @if($transaksi->products->isNotEmpty())<ul>@foreach($transaksi->products as $product)<li>{{ $product->name }} - Rp {{ number_format($product->price, 0, ',', '.') }}</li>@endforeach</ul>
-                                                            @else <p>No products associated.</p> @endif
-                                                            <hr>
-                                                            <p><strong>Temporary Link : </strong> @if($transaksi->temporary_link) <a href="{{ $transaksi->temporary_link }}" target="_blank">{{ $transaksi->temporary_link }}</a> @else N/A @endif</p>
-                                                            <p><strong>Selected Photos : </strong> @if($transaksi->selected_photos) <a href="{{ $transaksi->selected_photos }}" target="_blank">{{ $transaksi->selected_photos }}</a> @else N/A @endif</p>
-                                                            <p><strong>Final Link : </strong> @if($transaksi->final_link) <a href="{{ $transaksi->final_link }}" target="_blank">{{ $transaksi->final_link }}</a> @else N/A @endif</p>
-                                                            <p><strong>Status Transaksi:</strong> {{ $transaksi->isActive ? 'Active' : 'Inactive' }}</p>
+                                                            <div class="invoice-header text-center">
+                                                                <div class="mb-3">
+                                                                    <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="logo" class="invoice-logo"/>
+                                                                </div>
+                                                                <p class="text-muted mb-0">Jalan Lingkar Selatan, Sukabumi</p>
+                                                            </div>
+                                                            <div class="p-4">
+                                                                <div class="row">
+                                                                    <div class="col-md-6 text-md-start">
+                                                                        <h5 class="font-size-16">Billed To:</h5>
+                                                                        <p class="mb-1">{{ $transaksi->customer_name }}</p>
+                                                                    </div>
+                                                                    <div class="col-md-6 text-md-end">
+                                                                        <h5 class="font-size-16">Invoice Details:</h5>
+                                                                        <p class="mb-1"><strong>Invoice #:</strong> {{ $transaksi->receipt_code }}</p>
+                                                                        <p class="mb-1"><strong>Transaction Date:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p>
+                                                                        <p class="mb-1"><strong>Payment Status:</strong> {{ ucwords($transaksi->status) }}</p>
+                                                                        <p class="mb-1"><strong>Process Status:</strong> {{ $transaksi->process_status }}</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="py-2 mt-3 text-md-start"><h3 class="font-size-15 fw-bold">Order Summary</h3></div>
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-nowrap">
+                                                                        <thead class="table-light">
+                                                                            <tr>
+                                                                                <th style="width: 70px;">No.</th>
+                                                                                <th>Item</th>
+                                                                                <th class="text-end">Price</th>
+                                                                                <th class="text-center">Qty</th>
+                                                                                <th class="text-end">Total</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            @if($transaksi->packet)
+                                                                            <tr>
+                                                                                <td>1</td>
+                                                                                <td>
+                                                                                    <h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5>
+                                                                                    <span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span>
+                                                                                </td>
+                                                                                <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                                                <td class="text-center">1</td>
+                                                                                <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                                            </tr>
+                                                                            @endif
+                                                                            @foreach($transaksi->additionals as $additional)
+                                                                            <tr>
+                                                                                <td>{{ $loop->iteration + 1 }}</td>
+                                                                                <td>
+                                                                                    <h5 class="font-size-15 mb-0">{{ $additional->name }}</h5>
+                                                                                    <span class="text-muted">Additional Item</span>
+                                                                                </td>
+                                                                                <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
+                                                                                <td class="text-center">{{ $additional->pivot->quantity }}</td>
+                                                                                <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
+                                                                            </tr>
+                                                                            @endforeach
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                                
+                                                                <div class="d-flex justify-content-end">
+                                                                    <div class="w-50">
+                                                                        <table class="table table-nowrap invoice-details-table">
+                                                                            <tbody>
+                                                                                <tr>
+                                                                                    <td class="fw-bold">Subtotal</td>
+                                                                                    <td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td>
+                                                                                </tr>
+                                                                                @if ($transaksi->discount > 0)
+                                                                                <tr class="text-danger">
+                                                                                    <td class="fw-bold">Discount</td>
+                                                                                    <td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td>
+                                                                                </tr>
+                                                                                @endif
+                                                                                <tr class="fs-5 bg-light">
+                                                                                    <td class="fw-bold">Total</td>
+                                                                                    <td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td>
+                                                                                </tr>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+
+                                                                @if($transaksi->note)
+                                                                <hr>
+                                                                <div class="py-2 text-md-start">
+                                                                    <h5 class="font-size-15">Note:</h5>
+                                                                    <p class="text-muted fst-italic">{{ $transaksi->note }}</p>
+                                                                </div>
+                                                                @endif
+
+                                                            </div>
                                                         </div>
-                                                        <div class="modal-footer"><button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">Close</button></div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                            <button type="button" class="btn btn-primary" onclick="window.print()"><i class="mdi mdi-printer me-1"></i> Print</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="px-2 text-primary" title="Edit"><i class="uil uil-pen font-size-18"></i></a>
-                                            <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this transaction? This action cannot be undone.');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-link text-danger p-0" title="Delete"><i class="uil uil-trash-alt font-size-18"></i></button>
-                                            </form>
+                                            <div class="d-flex align-items-center gap-3">
+                                                {{-- I am assuming this button is for a future 'upload photo' feature --}}
+                                                <a href="#" class="text-warning" data-bs-toggle="tooltip" title="Manage Photos">
+                                                    <i class="uil uil-camera-change font-size-18"></i>
+                                                </a>
+                                                
+                                                <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction">
+                                                    <i class="uil uil-pen font-size-18"></i>
+                                                </a>
+                                                
+                                                <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this transaction?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-link text-danger p-0" data-bs-toggle="tooltip" title="Delete Transaction">
+                                                        <i class="uil uil-trash-alt font-size-18"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -138,11 +276,4 @@
             </div>
         </div>
     </div>
-@endsection
-
-@section('script')
-    {{-- <script src="{{ URL::asset('/assets/libs/apexcharts/apexcharts.min.js') }}"></script> --}}
-    {{-- <script src="{{ URL::asset('/assets/js/pages/dashboard.init.js') }}"></script> --}}
-    @if(session('success')) <script> alert("{{ session('success') }}"); </script> @endif
-    @if(session('error')) <script> alert("{{ session('error') }}"); </script> @endif
 @endsection

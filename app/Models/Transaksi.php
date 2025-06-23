@@ -14,30 +14,31 @@ class Transaksi extends Model
 
     protected $fillable = [
         'customer_name',
+        'packet_id',
         'status',
+        'process_status',
         'receipt_code',
         'temporary_link',
         'selected_photos',
         'final_link',
         // 'transaction_date', // Removed
-        'isActive'
+        'total_price',
+        'discount',
+        'note',
     ];
 
     /**
-     * Get the booking associated with the transaction.
-     * A transaction has one booking.
+     * The packets that belong to the transaction.
      */
-    public function booking()
+    public function packet()
     {
-        return $this->hasOne(Booking::class, 'transaction_id', 'transaction_id');
+        return $this->belongsTo(Packet::class);
     }
 
-    /**
-     * The products that belong to the transaction.
-     */
-    public function products()
+    public function additionals()
     {
-        return $this->belongsToMany(Product::class, 'orders', 'transaction_id', 'product_id')
+        return $this->belongsToMany(Additional::class, 'additional_transaksi', 'transaksi_id', 'additional_id')
+                    ->withPivot('quantity', 'price')
                     ->withTimestamps();
     }
 }

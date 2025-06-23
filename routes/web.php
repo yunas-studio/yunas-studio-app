@@ -40,13 +40,12 @@ Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleS
 
 Route::resource('packets', PacketController::class);
 Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
+Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
 
 Route::resource('transaksi', TransaksiController::class);
 
-Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
-Route::get('/get-booked-slots', [TransaksiController::class, 'getBookedSlots'])->name('transaksi.getBookedSlots');
-
-
+// Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
+Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
 
 Route::get('{any}', [App\Http\Controllers\HomeController::class, 'index']);
 //Language Translation

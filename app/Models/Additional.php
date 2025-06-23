@@ -32,4 +32,11 @@ class Additional extends Model
     {
         return $this->belongsToMany(Packet::class, 'additional_defaults');
     }
+
+    public function transaksis()
+    {
+        return $this->belongsToMany(Transaksi::class, 'additional_transaksi', 'additional_id', 'transaksi_id')
+                    ->withPivot('quantity', 'price')
+                    ->withTimestamps();
+    }
 }

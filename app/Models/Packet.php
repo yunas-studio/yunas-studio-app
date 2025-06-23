@@ -20,9 +20,9 @@ class Packet extends Model
         'is_active'
     ];
 
-    public function transactions()
+    public function transaksis()
     {
-        return $this->belongsToMany(Transaksi::class, 'orders', 'packet_id', 'transaction_id');
+        return $this->hasMany(Transaksi::class);
     }
     
     /**
