@@ -23,8 +23,12 @@ class TransaksiController extends Controller
         $sudahDibayarCount = Transaksi::where('status', 'sudah dibayar')->count();
         $search = request('search');
 
-        // Eager load all necessary relationships for the index page
-        $transactions = Transaksi::with(['packet.product', 'additionals'])
+        // Eager load all relationships needed for the invoice modal
+        $transactions = Transaksi::with([
+            'packet.product', 
+            'packet.additionalDefaults.additional', // Included items
+            'additionals' // Extra items
+        ])
             ->when($search, function ($query) use ($search) {
                 return $query->where('receipt_code', 'like', "%$search%")
                       ->orWhere('customer_name', 'like', "%$search%");
@@ -44,7 +48,7 @@ class TransaksiController extends Controller
             ->where('is_active', 1)
             ->get()
             ->groupBy('product.name');
-
+        
         $all_additionals = Additional::orderBy('name')->get();
 
         return view('admin.transaction.create', compact('packets', 'all_additionals'));
@@ -57,48 +61,51 @@ class TransaksiController extends Controller
     {
         $validatedData = $request->validate([
             'customer_name'   => ['required', 'string', 'max:50'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
             'status'          => ['required', 'in:belum dibayar,dp,sudah dibayar'],
             'packet_id'       => ['required', 'exists:packets,id'],
-            'additionals'     => ['nullable', 'array'],
+            'additionals'     => ['nullable', 'array'], // These are now ONLY extra additionals
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'        => ['nullable', 'numeric', 'min:0'],
+            'note'            => ['nullable', 'string'],
             'temporary_link'  => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
             'final_link'      => ['nullable', 'url', 'max:255'],
-            'note'            => ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
         try {
             $packet = Packet::findOrFail($validatedData['packet_id']);
-            $subtotal = $packet->price;
+            $extraAdditionalsPrice = 0;
             $discount = $validatedData['discount'] ?? 0;
 
-            // Calculate price from additionals
+            // Calculate price ONLY from extra additionals
             if (!empty($validatedData['additionals'])) {
                 foreach ($validatedData['additionals'] as $details) {
-                    $subtotal += $details['quantity'] * $details['price'];
+                    $extraAdditionalsPrice += $details['quantity'] * $details['price'];
                 }
             }
-
-            $totalPrice = $subtotal - $discount;
+            
+            // The total price is the base packet price + extras - discount
+            $totalPrice = $packet->price + $extraAdditionalsPrice - $discount;
 
             $transaksi = Transaksi::create([
                 'customer_name'   => $validatedData['customer_name'],
+                'phone_number'    => $validatedData['phone_number'],
                 'status'          => $validatedData['status'],
                 'packet_id'       => $validatedData['packet_id'],
                 'process_status'  => 'Siap Cetak',
                 'receipt_code'    => 'TEMP-' . uniqid(),
                 'total_price'     => $totalPrice < 0 ? 0 : $totalPrice,
                 'discount'        => $discount,
+                'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
                 'selected_photos' => $validatedData['selected_photos'],
                 'final_link'      => $validatedData['final_link'],
-                'note'            => $validatedData['note'],
             ]);
 
-            // Sync additionals
+            // Sync ONLY the extra additionals to the pivot table
             if (!empty($validatedData['additionals'])) {
                 $syncData = [];
                 foreach ($validatedData['additionals'] as $id => $details) {
@@ -107,7 +114,6 @@ class TransaksiController extends Controller
                 $transaksi->additionals()->sync($syncData);
             }
 
-            // Update receipt code
             $transaksi->receipt_code = "INV/" . Carbon::now()->format('Ymd') . "/" . $transaksi->transaction_id;
             $transaksi->save();
 
@@ -146,6 +152,7 @@ class TransaksiController extends Controller
         
         $validatedData = $request->validate([
             'customer_name' => ['required', 'string', 'max:50'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
             'status' => ['required', 'in:belum dibayar,dp,sudah dibayar'],
             'process_status' => ['required', Rule::in(['Siap Cetak', 'Proses Cetak', 'Selesai'])],
             'packet_id' => ['required', 'exists:packets,id'],
@@ -153,43 +160,47 @@ class TransaksiController extends Controller
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price' => ['required', 'numeric', 'min:0'],
             'discount' => ['nullable', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string'],
             'temporary_link' => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
             'final_link' => ['nullable', 'url', 'max:255'],
-            'note'            => ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
         try {
             $packet = Packet::findOrFail($validatedData['packet_id']);
-            $subtotal = $packet->price;
+            $extraAdditionalsPrice = 0;
             $discount = $validatedData['discount'] ?? 0;
 
-            // Sync additionals and calculate their price
-            $syncData = [];
             if (!empty($validatedData['additionals'])) {
-                foreach ($validatedData['additionals'] as $additional_id => $details) {
-                    $syncData[$additional_id] = ['quantity' => $details['quantity'], 'price' => $details['price']];
-                    $subtotal += $details['quantity'] * $details['price'];
+                foreach ($validatedData['additionals'] as $details) {
+                    $extraAdditionalsPrice += $details['quantity'] * $details['price'];
                 }
             }
-            $transaksi->additionals()->sync($syncData);
+            
+            $totalPrice = $packet->price + $extraAdditionalsPrice - $discount;
 
-            $totalPrice = $subtotal - $discount;
-
-            // Update main transaction fields
             $transaksi->update([
                 'customer_name'   => $validatedData['customer_name'],
+                'phone_number'    => $validatedData['phone_number'],
                 'status'          => $validatedData['status'],
                 'process_status'  => $validatedData['process_status'],
                 'packet_id'       => $validatedData['packet_id'],
                 'total_price'     => $totalPrice < 0 ? 0 : $totalPrice,
                 'discount'        => $discount,
+                'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
                 'selected_photos' => $validatedData['selected_photos'],
                 'final_link'      => $validatedData['final_link'],
-                'note'            => $validatedData['note'],
             ]);
+
+            $syncData = [];
+            if (!empty($validatedData['additionals'])) {
+                foreach ($validatedData['additionals'] as $additional_id => $details) {
+                    $syncData[$additional_id] = ['quantity' => $details['quantity'], 'price' => $details['price']];
+                }
+            }
+            $transaksi->additionals()->sync($syncData);
 
             DB::commit();
             return redirect()->route('transaksi.index')->with('success', 'Transaction updated successfully.');

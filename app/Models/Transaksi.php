@@ -14,6 +14,7 @@ class Transaksi extends Model
 
     protected $fillable = [
         'customer_name',
+        'phone_number',
         'packet_id',
         'status',
         'process_status',
