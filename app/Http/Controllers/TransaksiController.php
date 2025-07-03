@@ -143,7 +143,6 @@ class TransaksiController extends Controller
                     File::makeDirectory($folderPath, 0755, true, true);
                 }
             } catch (\Exception $e) {
-                // Log the error but don't stop the user. The transaction itself was successful.
                 Log::error('Failed to create photo directory for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
             }
 
