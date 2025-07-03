@@ -15,7 +15,7 @@
             @if(isset($product))
                 {{ $product->name }}
             @else
-                Packets List
+                Products List
             @endif
         @endslot
     @endcomponent
@@ -24,11 +24,11 @@
         <div class="col-lg-3">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title mb-4">Products</h4>
+                    <h4 class="card-title mb-4">Products List</h4>
                     
                     <div class="list-group">
                         <a href="{{ route('packets.index') }}" class="list-group-item list-group-item-action {{ request()->route()->getName() == 'packets.index' ? 'active' : '' }}">
-                            All Packets
+                            All Products
                         </a>
                         @foreach($products as $prod)
                             <a href="{{ route('packets.product', $prod->id) }}" class="list-group-item list-group-item-action {{ isset($product) && $product->id == $prod->id ? 'active' : '' }}">
@@ -106,7 +106,7 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Name</th>
+                                    <th>Packet</th>
                                     <th>Product</th>
                                     <th>Price</th>
                                     <th>Status</th>
@@ -160,7 +160,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="6" class="text-center">
-                                            No packets found. <a href="{{ route('packets.create') }}" class="alert-link">Add your packet</a>.
+                                            No products found. <a href="{{ route('packets.create') }}" class="alert-link">Add your product</a>.
                                         </td>
                                     </tr>
                                 @endforelse

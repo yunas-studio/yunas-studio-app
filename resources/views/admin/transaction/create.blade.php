@@ -4,201 +4,258 @@
 @endsection
 
 @section('css')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <style>
+        .price-summary-card {
+            position: sticky;
+            top: 80px; /* Adjust based on your navbar height */
+        }
+        .section-title {
+            font-size: 1.1rem;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
 @endsection
 
 @section('content')
     @component('common-components.breadcrumb', [
         'title' => 'Transaksi',
         'pagetitle' => 'Transactions',
-        'breadcrumbs' => [
-            ['text' => 'Transactions', 'url' => route('transaksi.index')],
-            ['text' => 'Create Transaction', 'url' => '']
-        ]
+        'breadcrumbs' => [['text' => 'Transactions', 'url' => route('transaksi.index')], ['text' => 'Create Transaction', 'url' => '']]
     ])
     @endcomponent
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="font-size-14 mb-4"><i class="mdi mdi-arrow-right text-primary me-1"></i> Transaction Information</h5>
+    <form method="POST" action="{{ route('transaksi.store') }}">
+        @csrf
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="section-title"><i class="mdi mdi-file-document-edit-outline text-primary me-1"></i> Transaction Details</h5>
 
-                    @if(session('error'))
-                        <div class="alert alert-danger">{{ session('error') }}</div>
-                    @endif
-
-                    <form method="POST" action="{{ route('transaksi.store') }}">
-                        @csrf
-
-                        {{-- Customer Name --}}
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control @error('customer_name') is-invalid @enderror"
-                                   id="customer_name" name="customer_name" placeholder="Enter Customer Name"
-                                   value="{{ old('customer_name') }}" required>
-                            <label for="customer_name">Customer Name</label>
-                            @error('customer_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        {{-- Status Pembayaran --}}
-                        <div class="form mb-4">
-                            <label class="form-label d-block mb-2">Status Pembayaran :</label>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status1" name="status" value="belum dibayar" class="form-check-input @error('status') is-invalid @enderror" {{ old('status', 'belum dibayar') == 'belum dibayar' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status1">Belum Dibayar</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="customer_name">Customer Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="customer_name" name="customer_name" value="{{ old('customer_name') }}" required>
+                                </div>
                             </div>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status2" name="status" value="dp" class="form-check-input @error('status') is-invalid @enderror" {{ old('status') == 'dp' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status2">DP</label>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="phone_number">Phone Number</label>
+                                    <input type="text" class="form-control form-control-sm" id="phone_number" name="phone_number" value="{{ old('phone_number') }}">
+                                </div>
                             </div>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status3" name="status" value="sudah dibayar" class="form-check-input @error('status') is-invalid @enderror" {{ old('status') == 'sudah dibayar' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status3">Sudah Dibayar</label>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label d-block mb-2">Payment Status</label>
+                                    <div class="pt-2">
+                                        @foreach(['belum dibayar', 'dp', 'sudah dibayar'] as $status)
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input" {{ old('status', 'belum dibayar') == $status ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="status_{{ $loop->iteration }}">{{ ucwords($status) }}</label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
                             </div>
-                            @error('status') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
 
-                        {{-- Receipt Code (Auto-generated display) --}}
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="receipt_code_display" value="Will be auto-generated" readonly>
-                            <label for="receipt_code_display">Receipt Code</label>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="packet_id" class="form-label">Packet</label>
+                                    <select class="form-select @error('packet_id') is-invalid @enderror" id="packet_id" name="packet_id" required>
+                                        <option value="" data-price="0" disabled selected>-- Select a Packet --</option>
+                                        @foreach($packets as $productName => $packetGroup)
+                                            <optgroup label="{{ $productName }}">
+                                                @foreach($packetGroup as $packet)
+                                                    <option value="{{ $packet->id }}" data-price="{{ $packet->price }}" {{ old('packet_id') == $packet->id ? 'selected' : '' }}>
+                                                        {{ $packet->name }} (Rp {{ number_format($packet->price, 0, ',', '.') }})
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="discount-input">Discount (Rp)</label>
+                                    <input type="number" class="form-control @error('discount') is-invalid @enderror" id="discount-input" name="discount" value="{{ old('discount', 0) }}" min="0">
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Booking Date --}}
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-check-all text-primary me-1"></i> Included Additionals</h5>
+                        <div id="included-additionals-container" class="mb-3">
+                            <p class="text-muted">Select a packet to see its included items.</p>
+                        </div>
+
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-plus-box-multiple text-primary me-1"></i> Extra Additionals</h5>
+                        <div id="extra-additionals-container" class="mb-3">
+                            {{-- JS populates this --}}
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label for="add_additional_select" class="form-label">Add Item</label>
+                                <div class="input-group">
+                                    <select id="add_additional_select" class="form-select">
+                                        <option value="">Choose an additional...</option>
+                                        @foreach($all_additionals as $additional)
+                                            <option value="{{ $additional->id }}" data-name="{{ $additional->name }}" data-price="{{ $additional->price }}">
+                                                {{ $additional->name }} (Rp {{ number_format($additional->price, 0, ',', '.') }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button class="btn btn-success" type="button" id="add-additional-btn">Add</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-link-variant text-primary me-1"></i> Delivery Links</h5>
+                        <div class="row">
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="temporary_link" placeholder="Temporary Link" value="{{ old('temporary_link') }}"><label>Temporary Link</label></div></div>
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="selected_photos" placeholder="Selected Photos Link" value="{{ old('selected_photos') }}"><label>Selected Photos Link</label></div></div>
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="final_link" placeholder="Final Link" value="{{ old('final_link') }}"><label>Final Link</label></div></div>
+                        </div>
+
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-pencil-outline text-primary me-1"></i> Transaction Note</h5>
                         <div class="mb-3">
-                            <label for="booking_date" class="form-label">Booking Date</label>
-                            <input class="form-control @error('booking_date') is-invalid @enderror" type="date"
-                                   value="{{ old('booking_date', \Carbon\Carbon::today()->format('Y-m-d')) }}" id="booking_date" name="booking_date" required>
-                            @error('booking_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <textarea class="form-control" id="note" name="note" rows="3" placeholder="Add an internal note for this transaction...">{{ old('note') }}</textarea>
                         </div>
 
-                        {{-- Booking Time --}}
-                        <div class="mb-3">
-                            <label for="booking_time" class="form-label">Booking Time</label>
-                            <select class="form-select @error('booking_time') is-invalid @enderror" id="booking_time" name="booking_time" required>
-                                <option value="">Select a time slot</option>
-                                @foreach($timeSlots as $slot)
-                                    <option value="{{ $slot }}" {{ old('booking_time') == $slot ? 'selected' : '' }}
-                                            {{ in_array($slot, $bookedSlotsToday ?? []) ? 'disabled' : '' }}>
-                                        {{ $slot }} {{ in_array($slot, $bookedSlotsToday ?? []) ? '(Booked)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('booking_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card price-summary-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Price Summary</h5>
+                        <div class="table-responsive">
+                            <table class="table mb-0">
+                                <tbody>
+                                    <tr><td>Packet Price :</td><td id="summary-packet-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td>Extra Additionals :</td><td id="summary-additionals-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td class="border-0">Subtotal :</td><td id="summary-subtotal" class="text-end fw-bold border-0">Rp 0</td></tr>
+                                    <tr><td class="border-0 pt-0">Discount :</td><td id="summary-discount" class="border-0 pt-0 text-end text-danger">- Rp 0</td></tr>
+                                    <tr class="bg-light"><th class="fs-5">Total Price :</th><th id="summary-total-price" class="text-end fs-5">Rp 0</th></tr>
+                                </tbody>
+                            </table>
                         </div>
-
-                        {{-- Product Selection --}}
-                        <div class="mb-3">
-                            <label for="product_ids" class="form-label">Products</label>
-                            <select multiple class="form-select @error('product_ids') is-invalid @enderror @error('product_ids.*') is-invalid @enderror"
-                                    id="product_ids" name="product_ids[]">
-                                @foreach($products as $product)
-                                    <option value="{{ $product->id }}" {{ (is_array(old('product_ids')) && in_array($product->id, old('product_ids'))) ? 'selected' : '' }}>
-                                        {{ $product->name }} (Rp {{ number_format($product->price, 0, ',', '.') }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('product_ids') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            @error('product_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        <div class="d-grid mt-4">
+                             <button type="submit" class="btn btn-primary btn-lg waves-effect waves-light"><i class="mdi mdi-content-save me-1"></i> Save Transaction</button>
                         </div>
-
-                        {{-- Links --}}
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('temporary_link') is-invalid @enderror" id="temporary_link" name="temporary_link" placeholder="Temporary Link" value="{{ old('temporary_link') }}">
-                            <label for="temporary_link">Temporary Link (e.g., https://...)</label>
-                            @error('temporary_link') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('selected_photos') is-invalid @enderror" id="selected_photos" name="selected_photos" placeholder="Selected Photos Link" value="{{ old('selected_photos') }}">
-                            <label for="selected_photos">Selected Photos Link (e.g., https://...)</label>
-                            @error('selected_photos') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('final_link') is-invalid @enderror" id="final_link" name="final_link" placeholder="Final Link" value="{{ old('final_link') }}">
-                            <label for="final_link">Final Link (e.g., https://...)</label>
-                            @error('final_link') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="d-flex flex-wrap gap-3 mt-4">
-                            <button type="submit" class="btn btn-primary waves-effect waves-light w-md"><i class="mdi mdi-content-save me-1"></i> Save Transaction</button>
-                            <a href="{{ route('transaksi.index') }}" class="btn btn-outline-danger waves-effect waves-light w-md"><i class="mdi mdi-close me-1"></i> Cancel</a>
-                        </div>
-                    </form>
+                         <a href="{{ route('transaksi.index') }}" class="btn btn-light d-block mt-2">Cancel</a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 @endsection
 
 @section('script')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#product_ids').select2({
-                placeholder: "Select products",
-                allowClear: true,
-                theme: "bootstrap-5"
-            });
+{{-- The JavaScript is unchanged from the previous step --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const includedContainer = document.getElementById('included-additionals-container');
+    const extraContainer = document.getElementById('extra-additionals-container');
+    const addSelect = document.getElementById('add_additional_select');
+    const packetSelect = document.getElementById('packet_id');
+    const discountInput = document.getElementById('discount-input');
+    const addBtn = document.getElementById('add-additional-btn');
 
-            const timeSlots = @json($timeSlots); // Get all possible time slots
+    const summaryPacketEl = document.getElementById('summary-packet-price');
+    const summaryAdditionalsEl = document.getElementById('summary-additionals-price');
+    const summarySubtotalEl = document.getElementById('summary-subtotal');
+    const summaryDiscountEl = document.getElementById('summary-discount');
+    const summaryTotalEl = document.getElementById('summary-total-price');
 
-            function updateBookingTimes(selectedDate) {
-                const bookingTimeSelect = $('#booking_time');
-                const originalSelectedTime = bookingTimeSelect.val(); // Preserve selection if possible
-                bookingTimeSelect.empty().append('<option value="">Select a time slot</option>'); // Clear existing options
+    const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
-                if (!selectedDate) {
-                    // If no date selected, disable time select or show all slots as available (depends on desired UX)
-                     timeSlots.forEach(function(slot) {
-                        bookingTimeSelect.append(`<option value="${slot}">${slot}</option>`);
-                    });
-                    bookingTimeSelect.val(originalSelectedTime);
-                    return;
-                }
-
-                $.ajax({
-                    url: '{{ route("transaksi.getBookedSlots") }}',
-                    type: 'GET',
-                    data: { date: selectedDate },
-                    success: function(bookedSlotsOnSelectedDate) {
-                        timeSlots.forEach(function(slot) {
-                            let isDisabled = bookedSlotsOnSelectedDate.includes(slot);
-                            let optionText = slot;
-                            if (isDisabled) {
-                                optionText += ' (Booked)';
-                            }
-                            bookingTimeSelect.append(
-                                `<option value="${slot}" ${isDisabled ? 'disabled' : ''}>${optionText}</option>`
-                            );
-                        });
-                        // Try to re-select the previously selected time if it's still available
-                        if (originalSelectedTime && !bookedSlotsOnSelectedDate.includes(originalSelectedTime)) {
-                             bookingTimeSelect.val(originalSelectedTime);
-                        } else {
-                            bookingTimeSelect.val(''); // Reset if previous selection is now booked
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error("Error fetching booked slots:", xhr.responseText);
-                        // Fallback: enable all slots or show an error
-                        timeSlots.forEach(function(slot) {
-                            bookingTimeSelect.append(`<option value="${slot}">${slot}</option>`);
-                        });
-                        alert('Could not load available time slots. Please try again.');
-                    }
-                });
-            }
-
-            $('#booking_date').on('change', function() {
-                updateBookingTimes($(this).val());
-            });
-
-            // Initial call if a date is already selected (e.g., from old input)
-            if ($('#booking_date').val()) {
-                // updateBookingTimes($('#booking_date').val()); // Already handled by controller for initial load
-            }
+    function updateSummary() {
+        const packetPrice = parseFloat(packetSelect.options[packetSelect.selectedIndex].dataset.price) || 0;
+        let extraAdditionalsPrice = 0;
+        document.querySelectorAll('.extra-additional-row').forEach(row => {
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const qty = parseInt(row.querySelector('.quantity-input').value) || 0;
+            extraAdditionalsPrice += price * qty;
         });
-    </script>
+        const subtotal = packetPrice + extraAdditionalsPrice;
+        const discount = parseFloat(discountInput.value) || 0;
+        const total = subtotal - discount;
+
+        summaryPacketEl.textContent = formatCurrency(packetPrice);
+        summaryAdditionalsEl.textContent = formatCurrency(extraAdditionalsPrice);
+        summarySubtotalEl.textContent = formatCurrency(subtotal);
+        summaryDiscountEl.textContent = `- ${formatCurrency(discount)}`;
+        summaryTotalEl.textContent = formatCurrency(total > 0 ? total : 0);
+    }
+
+    function addExtraRow(id, name, price, quantity) {
+        if (document.getElementById(`extra-additional-row-${id}`)) return;
+        const template = `
+            <div class="row align-items-center mb-2 extra-additional-row" id="extra-additional-row-${id}">
+                <div class="col-md-5"><input type="text" class="form-control" value="${name}" readonly></div>
+                <div class="col-md-3"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" name="additionals[${id}][price]" class="form-control price-input" value="${price}" readonly></div></div>
+                <div class="col-md-2"><input type="number" name="additionals[${id}][quantity]" class="form-control quantity-input" value="${quantity}" min="1"></div>
+                <div class="col-md-2"><button type="button" class="btn btn-sm btn-danger remove-additional-btn w-100">X</button></div>
+            </div>`;
+        if (extraContainer.querySelector('.text-muted')) extraContainer.innerHTML = '';
+        extraContainer.insertAdjacentHTML('beforeend', template);
+    }
+
+    packetSelect.addEventListener('change', function() {
+        const packetId = this.value;
+        includedContainer.innerHTML = '<p class="text-muted">Loading...</p>';
+        if (!packetId) return;
+
+        fetch(`/packets/${packetId}/default-additionals`)
+            .then(response => response.json())
+            .then(data => {
+                includedContainer.innerHTML = '';
+                if (data.length === 0) {
+                    includedContainer.innerHTML = '<p class="text-muted">This packet has no included additionals.</p>';
+                } else {
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'included-item d-inline-block me-2 mb-2';
+                        div.textContent = `${item.quantity}x ${item.additional.name}`;
+                        includedContainer.appendChild(div);
+                    });
+                }
+                updateSummary();
+            })
+            .catch(() => includedContainer.innerHTML = '<p class="text-danger">Could not load included items.</p>');
+    });
+
+    addBtn.addEventListener('click', () => {
+        const selected = addSelect.options[addSelect.selectedIndex];
+        if (!selected.value) return;
+        addExtraRow(selected.value, selected.dataset.name, selected.dataset.price, 1);
+        addSelect.value = '';
+        updateSummary();
+    });
+
+    extraContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-additional-btn')) {
+            e.target.closest('.extra-additional-row').remove();
+            updateSummary();
+        }
+    });
+
+    extraContainer.addEventListener('input', e => {
+        if (e.target.classList.contains('quantity-input')) updateSummary();
+    });
+
+    packetSelect.addEventListener('change', updateSummary);
+    discountInput.addEventListener('input', updateSummary);
+    updateSummary();
+});
+</script>
 @endsection

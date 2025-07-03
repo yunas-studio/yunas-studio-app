@@ -4,218 +4,278 @@
 @endsection
 
 @section('css')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <style>
+        .price-summary-card {
+            position: sticky;
+            top: 80px;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
 @endsection
 
 @section('content')
-    @component('common-components.breadcrumb', [
-        'title' => 'Transaksi',
-        'pagetitle' => 'Transactions',
-        'breadcrumbs' => [
-            ['text' => 'Transactions', 'url' => route('transaksi.index')],
-            ['text' => 'Edit Transaction #' . $transaksi->receipt_code, 'url' => '']
-        ]
-    ])
+    @component('common-components.breadcrumb', ['title' => 'Transaksi', 'pagetitle' => 'Transactions', 'breadcrumbs' => [['text' => 'Transactions', 'url' => route('transaksi.index')], ['text' => 'Edit Transaction', 'url' => '']]])
     @endcomponent
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="font-size-14 mb-4"><i class="mdi mdi-arrow-right text-primary me-1"></i> Edit Transaction Information</h5>
-
-                    @if(session('error'))
-                        <div class="alert alert-danger">{{ session('error') }}</div>
-                    @endif
-
-                    <form method="POST" action="{{ route('transaksi.update', $transaksi->transaction_id) }}">
-                        @csrf
-                        @method('PUT')
-
-                        {{-- Customer Name --}}
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control @error('customer_name') is-invalid @enderror"
-                                   id="customer_name" name="customer_name" placeholder="Enter Customer Name"
-                                   value="{{ old('customer_name', $transaksi->customer_name) }}" required>
-                            <label for="customer_name">Customer Name</label>
-                            @error('customer_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    <form method="POST" action="{{ route('transaksi.update', $transaksi->transaction_id) }}">
+        @csrf
+        @method('PUT')
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="section-title"><i class="mdi mdi-file-document-edit-outline text-primary me-1"></i> Edit Transaction ({{ $transaksi->receipt_code }})</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="customer_name">Customer Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="customer_name" name="customer_name" value="{{ old('customer_name', $transaksi->customer_name) }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="phone_number">Phone Number</label>
+                                    <input type="text" class="form-control form-control-sm" id="phone_number" name="phone_number" value="{{ old('phone_number', $transaksi->phone_number) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label d-block mb-2">Payment Status</label>
+                                    <div class="pt-2">
+                                        @foreach(['belum dibayar', 'dp', 'sudah dibayar'] as $status)
+                                            <div class="form-check form-check-inline">
+                                                <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input" {{ old('status', $transaksi->status) == $status ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="status_{{ $loop->iteration }}">{{ ucwords($status) }}</label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Status Pembayaran --}}
-                        <div class="form mb-4">
-                            <label class="form-label d-block mb-2">Status Pembayaran :</label>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status1" name="status" value="belum dibayar" class="form-check-input @error('status') is-invalid @enderror" {{ old('status', $transaksi->status) == 'belum dibayar' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status1">Belum Dibayar</label>
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label for="packet_id" class="form-label">Packet</label>
+                                    <select class="form-select" id="packet_id" name="packet_id" required>
+                                        @foreach($packets as $productName => $packetGroup)
+                                            <optgroup label="{{ $productName }}">
+                                                @foreach($packetGroup as $packet)
+                                                    <option value="{{ $packet->id }}" data-price="{{ $packet->price }}" {{ old('packet_id', $transaksi->packet_id) == $packet->id ? 'selected' : '' }}>
+                                                        {{ $packet->name }} (Rp {{ number_format($packet->price, 0, ',', '.') }})
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status2" name="status" value="dp" class="form-check-input @error('status') is-invalid @enderror" {{ old('status', $transaksi->status) == 'dp' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status2">DP</label>
+                             <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="process_status" class="form-label">Process Status</label>
+                                    <select class="form-select" id="process_status" name="process_status" required>
+                                        @foreach (['Siap Cetak', 'Proses Cetak', 'Selesai'] as $status)
+                                            <option value="{{ $status }}" {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}>{{ $status }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
-                            <div class="custom-radio form-check form-check-inline">
-                                <input type="radio" id="status3" name="status" value="sudah dibayar" class="form-check-input @error('status') is-invalid @enderror" {{ old('status', $transaksi->status) == 'sudah dibayar' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="status3">Sudah Dibayar</label>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="discount-input">Discount (Rp)</label>
+                                    <input type="number" class="form-control" id="discount-input" name="discount" value="{{ old('discount', $transaksi->discount) }}" min="0">
+                                </div>
                             </div>
-                            @error('status') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
 
-                        {{-- Receipt Code (Display, potentially readonly or carefully validated if editable) --}}
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control @error('receipt_code') is-invalid @enderror"
-                                   id="receipt_code" name="receipt_code"
-                                   value="{{ old('receipt_code', $transaksi->receipt_code) }}" required {{-- Consider 'readonly' if it should not be changed after creation --}}>
-                            <label for="receipt_code">Receipt Code</label>
-                            @error('receipt_code') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-check-all text-primary me-1"></i> Included Additionals</h5>
+                        <div id="included-additionals-container" class="mb-3"></div>
+
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-plus-box-multiple text-primary me-1"></i> Extra Additionals</h5>
+                        <div id="extra-additionals-container" class="mb-3"></div>
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label for="add_additional_select" class="form-label">Add Item</label>
+                                <div class="input-group">
+                                    <select id="add_additional_select" class="form-select">
+                                        <option value="">Choose an additional...</option>
+                                        @foreach($all_additionals as $additional)
+                                            <option value="{{ $additional->id }}" data-name="{{ $additional->name }}" data-price="{{ $additional->price }}">{{ $additional->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button class="btn btn-success" type="button" id="add-additional-btn">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-link-variant text-primary me-1"></i> Delivery Links</h5>
+                        <div class="row">
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="temporary_link" placeholder="Temporary Link" value="{{ old('temporary_link', $transaksi->temporary_link) }}"><label>Temporary Link</label></div></div>
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="selected_photos" placeholder="Selected Photos Link" value="{{ old('selected_photos', $transaksi->selected_photos) }}"><label>Selected Photos Link</label></div></div>
+                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="final_link" placeholder="Final Link" value="{{ old('final_link', $transaksi->final_link) }}"><label>Final Link</label></div></div>
                         </div>
 
-                        {{-- Booking Date --}}
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-pencil-outline text-primary me-1"></i> Transaction Note</h5>
                         <div class="mb-3">
-                            <label for="booking_date" class="form-label">Booking Date</label>
-                            <input class="form-control @error('booking_date') is-invalid @enderror" type="date"
-                                   value="{{ old('booking_date', $currentBookingDate) }}" id="booking_date" name="booking_date" required>
-                            @error('booking_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <textarea class="form-control" id="note" name="note" rows="3" placeholder="Add an internal note for this transaction...">{{ old('note', $transaksi->note) }}</textarea>
                         </div>
-
-                        {{-- Booking Time --}}
-                        <div class="mb-3">
-                            <label for="booking_time" class="form-label">Booking Time</label>
-                            <select class="form-select @error('booking_time') is-invalid @enderror" id="booking_time" name="booking_time" required>
-                                <option value="">Select a time slot</option>
-                                @foreach($timeSlots as $slot)
-                                    <option value="{{ $slot }}"
-                                            {{ old('booking_time', $currentBookingTime) == $slot ? 'selected' : '' }}
-                                            {{ in_array($slot, $bookedSlotsForDate ?? []) && $slot != $currentBookingTime ? 'disabled' : '' }}>
-                                        {{ $slot }} {{ in_array($slot, $bookedSlotsForDate ?? []) && $slot != $currentBookingTime ? '(Booked)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('booking_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                 <div class="card price-summary-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Price Summary</h5>
+                        <div class="table-responsive">
+                            <table class="table mb-0">
+                                <tbody>
+                                    <tr><td>Packet Price:</td><td id="summary-packet-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td>Extra Additionals:</td><td id="summary-additionals-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td class="border-0">Subtotal:</td><td id="summary-subtotal" class="text-end fw-bold border-0">Rp 0</td></tr>
+                                    <tr><td class="border-0 pt-0">Discount:</td><td id="summary-discount" class="border-0 pt-0 text-end text-danger">- Rp 0</td></tr>
+                                    <tr class="bg-light"><th class="fs-5">Total Price:</th><th id="summary-total-price" class="text-end fs-5">Rp 0</th></tr>
+                                </tbody>
+                            </table>
                         </div>
-
-                        {{-- Product Selection --}}
-                        <div class="mb-3">
-                            <label for="product_ids" class="form-label">Products</label>
-                            <select multiple class="form-select @error('product_ids') is-invalid @enderror @error('product_ids.*') is-invalid @enderror"
-                                    id="product_ids" name="product_ids[]">
-                                @foreach($products as $product)
-                                    <option value="{{ $product->id }}" {{ (is_array(old('product_ids')) && in_array($product->id, old('product_ids'))) || (empty(old('product_ids')) && isset($selectedProductIds) && in_array($product->id, $selectedProductIds)) ? 'selected' : '' }}>
-                                        {{ $product->name }} (Rp {{ number_format($product->price, 0, ',', '.') }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('product_ids') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            @error('product_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        <div class="d-grid mt-4">
+                             <button type="submit" class="btn btn-primary btn-lg waves-effect waves-light">Save Changes</button>
                         </div>
-
-                        {{-- Links --}}
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('temporary_link') is-invalid @enderror" id="temporary_link" name="temporary_link" placeholder="Temporary Link" value="{{ old('temporary_link', $transaksi->temporary_link) }}">
-                            <label for="temporary_link">Temporary Link</label>
-                            @error('temporary_link') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('selected_photos') is-invalid @enderror" id="selected_photos" name="selected_photos" placeholder="Selected Photos Link" value="{{ old('selected_photos', $transaksi->selected_photos) }}">
-                            <label for="selected_photos">Selected Photos Link</label>
-                            @error('selected_photos') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="url" class="form-control @error('final_link') is-invalid @enderror" id="final_link" name="final_link" placeholder="Final Link" value="{{ old('final_link', $transaksi->final_link) }}">
-                            <label for="final_link">Final Link</label>
-                            @error('final_link') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        {{-- Active Status --}}
-                        <div class="form-group mb-3">
-                            <label class="form-label d-block">Active Status</label>
-                            <div class="form-check form-switch">
-                                <input type="hidden" name="isActive" value="0">
-                                <input type="checkbox" class="form-check-input @error('isActive') is-invalid @enderror" id="isActive" name="isActive" value="1" {{ old('isActive', $transaksi->isActive) == 1 ? 'checked' : '' }}>
-                                <label class="form-check-label" for="isActive">Set as Active</label>
-                                @error('isActive') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            </div>
-                        </div>
-
-                        <div class="d-flex flex-wrap gap-3 mt-4">
-                            <button type="submit" class="btn btn-primary waves-effect waves-light w-md"><i class="mdi mdi-content-save me-1"></i> Save Changes</button>
-                            <a href="{{ route('transaksi.index') }}" class="btn btn-outline-danger waves-effect waves-light w-md"><i class="mdi mdi-close me-1"></i> Cancel</a>
-                        </div>
-                    </form>
+                         <a href="{{ route('transaksi.index') }}" class="btn btn-light d-block mt-2">Cancel</a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </form>
 @endsection
 
 @section('script')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#product_ids').select2({
-                placeholder: "Select products",
-                allowClear: true,
-                theme: "bootstrap-5"
-            });
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const includedContainer = document.getElementById('included-additionals-container');
+    const extraContainer = document.getElementById('extra-additionals-container');
+    const addSelect = document.getElementById('add_additional_select');
+    const packetSelect = document.getElementById('packet_id');
+    const discountInput = document.getElementById('discount-input');
+    const addBtn = document.getElementById('add-additional-btn');
 
-            const timeSlots = @json($timeSlots);
-            const currentTransactionId = {{ $transaksi->transaction_id }}; // For edit page context
-            const initialBookingTime = "{{ old('booking_time', $currentBookingTime) }}"; // Current or old booking time
+    const summaryPacketEl = document.getElementById('summary-packet-price');
+    const summaryAdditionalsEl = document.getElementById('summary-additionals-price');
+    const summarySubtotalEl = document.getElementById('summary-subtotal');
+    const summaryDiscountEl = document.getElementById('summary-discount');
+    const summaryTotalEl = document.getElementById('summary-total-price');
 
-            function updateBookingTimes(selectedDate) {
-                const bookingTimeSelect = $('#booking_time');
-                bookingTimeSelect.empty().append('<option value="">Select a time slot</option>');
+    const existingExtraAdditionals = @json($transaksi->additionals->mapWithKeys(function ($item) {
+        return [$item->id => ['name' => $item->name, 'price' => $item->pivot->price, 'quantity' => $item->pivot->quantity]];
+    }));
 
-                if (!selectedDate) {
-                     timeSlots.forEach(function(slot) {
-                        bookingTimeSelect.append(`<option value="${slot}">${slot}</option>`);
-                    });
-                    if(initialBookingTime) bookingTimeSelect.val(initialBookingTime);
-                    return;
-                }
+    const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
-                $.ajax({
-                    url: '{{ route("transaksi.getBookedSlots") }}', // Same AJAX endpoint
-                    type: 'GET',
-                    data: { date: selectedDate, current_transaction_id: currentTransactionId }, // Optionally send current_transaction_id if your backend needs to exclude it
-                    success: function(bookedSlotsOnSelectedDate) {
-                        timeSlots.forEach(function(slot) {
-                            // A slot is disabled if it's in bookedSlotsOnSelectedDate AND it's not the initialBookingTime for this transaction
-                            let isDisabled = bookedSlotsOnSelectedDate.includes(slot) && slot !== initialBookingTime;
-                            let optionText = slot;
-                            if (bookedSlotsOnSelectedDate.includes(slot) && slot !== initialBookingTime) {
-                                optionText += ' (Booked)';
-                            }
-                            bookingTimeSelect.append(
-                                `<option value="${slot}" ${isDisabled ? 'disabled' : ''}>${optionText}</option>`
-                            );
-                        });
-                        // Set the selected value to the initial booking time or the old input if available
-                        if (initialBookingTime) {
-                             bookingTimeSelect.val(initialBookingTime);
-                        } else {
-                            bookingTimeSelect.val('');
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error("Error fetching booked slots:", xhr.responseText);
-                        timeSlots.forEach(function(slot) {
-                            bookingTimeSelect.append(`<option value="${slot}">${slot}</option>`);
-                        });
-                        if(initialBookingTime) bookingTimeSelect.val(initialBookingTime);
-                        alert('Could not load available time slots. Please try again.');
-                    }
-                });
-            }
-
-            $('#booking_date').on('change', function() {
-                updateBookingTimes($(this).val());
-            });
-
-            // Initial call to populate time slots based on current booking date
-            if ($('#booking_date').val()) {
-                updateBookingTimes($('#booking_date').val());
-            }
+    function updateSummary() {
+        const packetPrice = parseFloat(packetSelect.options[packetSelect.selectedIndex].dataset.price) || 0;
+        let extraAdditionalsPrice = 0;
+        document.querySelectorAll('.extra-additional-row').forEach(row => {
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const qty = parseInt(row.querySelector('.quantity-input').value) || 0;
+            extraAdditionalsPrice += price * qty;
         });
-    </script>
+        const subtotal = packetPrice + extraAdditionalsPrice;
+        const discount = parseFloat(discountInput.value) || 0;
+        const total = subtotal - discount;
+
+        summaryPacketEl.textContent = formatCurrency(packetPrice);
+        summaryAdditionalsEl.textContent = formatCurrency(extraAdditionalsPrice);
+        summarySubtotalEl.textContent = formatCurrency(subtotal);
+        summaryDiscountEl.textContent = `- ${formatCurrency(discount)}`;
+        summaryTotalEl.textContent = formatCurrency(total > 0 ? total : 0);
+    }
+
+    function addExtraRow(id, name, price, quantity) {
+        if (document.getElementById(`extra-additional-row-${id}`)) return;
+        const template = `
+            <div class="row align-items-center mb-2 extra-additional-row" id="extra-additional-row-${id}">
+                <div class="col-md-5"><input type="text" class="form-control" value="${name}" readonly></div>
+                <div class="col-md-3"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" name="additionals[${id}][price]" class="form-control price-input" value="${price}" readonly></div></div>
+                <div class="col-md-2"><input type="number" name="additionals[${id}][quantity]" class="form-control quantity-input" value="${quantity}" min="1"></div>
+                <div class="col-md-2"><button type="button" class="btn btn-sm btn-danger remove-additional-btn w-100">X</button></div>
+            </div>`;
+        if (extraContainer.querySelector('.text-muted')) extraContainer.innerHTML = '';
+        extraContainer.insertAdjacentHTML('beforeend', template);
+    }
+
+    function fetchAndDisplayDefaults() {
+        const packetId = packetSelect.value;
+        includedContainer.innerHTML = '<p class="text-muted">Loading...</p>';
+        if (!packetId) {
+            includedContainer.innerHTML = '<p class="text-muted">Select a packet to see its included items.</p>';
+            return;
+        }
+
+        fetch(`/packets/${packetId}/default-additionals`)
+            .then(response => response.json())
+            .then(data => {
+                includedContainer.innerHTML = '';
+                if (data.length === 0) {
+                    includedContainer.innerHTML = '<p class="text-muted">This packet has no included additionals.</p>';
+                } else {
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'included-item d-inline-block me-2 mb-2';
+                        div.textContent = `${item.quantity}x ${item.additional.name}`;
+                        includedContainer.appendChild(div);
+                    });
+                }
+            })
+            .catch(() => includedContainer.innerHTML = '<p class="text-danger">Could not load included items.</p>');
+    }
+
+    function populateExistingExtras() {
+        extraContainer.innerHTML = '';
+        for (const id in existingExtraAdditionals) {
+            const item = existingExtraAdditionals[id];
+            addExtraRow(id, item.name, item.price, item.quantity);
+        }
+    }
+
+    packetSelect.addEventListener('change', () => {
+        fetchAndDisplayDefaults();
+        updateSummary();
+    });
+
+    addBtn.addEventListener('click', () => {
+        const selected = addSelect.options[addSelect.selectedIndex];
+        if (!selected.value) return;
+        addExtraRow(selected.value, selected.dataset.name, selected.dataset.price, 1);
+        addSelect.value = '';
+        updateSummary();
+    });
+
+    extraContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-additional-btn')) {
+            e.target.closest('.extra-additional-row').remove();
+            updateSummary();
+        }
+    });
+
+    extraContainer.addEventListener('input', e => {
+        if (e.target.classList.contains('quantity-input')) updateSummary();
+    });
+    
+    discountInput.addEventListener('input', updateSummary);
+
+    // --- Initial Load for Edit Page ---
+    fetchAndDisplayDefaults();
+    populateExistingExtras();
+    updateSummary();
+});
+</script>
 @endsection
