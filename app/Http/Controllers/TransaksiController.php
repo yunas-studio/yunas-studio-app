@@ -130,15 +130,12 @@ class TransaksiController extends Controller
             DB::commit();
 
             try {
-                // 1. Define the path for the main 'photos' directory
                 $basePhotosPath = storage_path('app/public/photos');
 
-                // 2. Check if the main 'photos' directory exists, if not, create it.
                 if (!File::isDirectory($basePhotosPath)) {
                     File::makeDirectory($basePhotosPath, 0755, true, true);
                 }
 
-                // 3. Create the specific folder for this transaction
                 $folderName = str_replace('/', '_', $transaksi->receipt_code);
                 $folderPath = $basePhotosPath . '/' . $folderName;
 
