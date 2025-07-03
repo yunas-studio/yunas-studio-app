@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Additional;
 use App\Models\Packet;
 use App\Models\Transaksi;
+use App\Models\User;
+use App\Models\Role;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\File;
 
 class TransaksiController extends Controller
 {
@@ -23,11 +27,11 @@ class TransaksiController extends Controller
         $sudahDibayarCount = Transaksi::where('status', 'sudah dibayar')->count();
         $search = request('search');
 
-        // Eager load all relationships needed for the invoice modal
         $transactions = Transaksi::with([
             'packet.product', 
-            'packet.additionalDefaults.additional', // Included items
-            'additionals' // Extra items
+            'packet.additionalDefaults.additional',
+            'additionals',
+            'user'
         ])
             ->when($search, function ($query) use ($search) {
                 return $query->where('receipt_code', 'like', "%$search%")
@@ -44,13 +48,8 @@ class TransaksiController extends Controller
      */
     public function create()
     {
-        $packets = Packet::with('product')
-            ->where('is_active', 1)
-            ->get()
-            ->groupBy('product.name');
-        
+        $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
         $all_additionals = Additional::orderBy('name')->get();
-
         return view('admin.transaction.create', compact('packets', 'all_additionals'));
     }
 
@@ -61,10 +60,10 @@ class TransaksiController extends Controller
     {
         $validatedData = $request->validate([
             'customer_name'   => ['required', 'string', 'max:50'],
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number'    => ['required', 'string', 'max:20'],
             'status'          => ['required', 'in:belum dibayar,dp,sudah dibayar'],
             'packet_id'       => ['required', 'exists:packets,id'],
-            'additionals'     => ['nullable', 'array'], // These are now ONLY extra additionals
+            'additionals'     => ['nullable', 'array'],
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'        => ['nullable', 'numeric', 'min:0'],
@@ -76,28 +75,40 @@ class TransaksiController extends Controller
 
         DB::beginTransaction();
         try {
+            // Find or Create User Logic
+            $user = User::where('username', $validatedData['phone_number'])->first();
+            
+            if (!$user) {
+                $userRole = Role::where('name', 'User')->firstOrFail();
+                $user = User::create([
+                    'name' => $validatedData['customer_name'],
+                    'username' => $validatedData['phone_number'],
+                    'password' => Hash::make($validatedData['phone_number']),
+                    'role_id' => $userRole->id,
+                ]);
+            }
+
             $packet = Packet::findOrFail($validatedData['packet_id']);
-            $extraAdditionalsPrice = 0;
+            $subtotal = $packet->price;
             $discount = $validatedData['discount'] ?? 0;
 
-            // Calculate price ONLY from extra additionals
             if (!empty($validatedData['additionals'])) {
                 foreach ($validatedData['additionals'] as $details) {
-                    $extraAdditionalsPrice += $details['quantity'] * $details['price'];
+                    $subtotal += $details['quantity'] * $details['price'];
                 }
             }
             
-            // The total price is the base packet price + extras - discount
-            $totalPrice = $packet->price + $extraAdditionalsPrice - $discount;
+            $totalPrice = $subtotal - $discount;
 
             $transaksi = Transaksi::create([
+                'user_id'         => $user->id,
                 'customer_name'   => $validatedData['customer_name'],
                 'phone_number'    => $validatedData['phone_number'],
                 'status'          => $validatedData['status'],
                 'packet_id'       => $validatedData['packet_id'],
                 'process_status'  => 'Siap Cetak',
                 'receipt_code'    => 'TEMP-' . uniqid(),
-                'total_price'     => $totalPrice < 0 ? 0 : $totalPrice,
+                'total_price'     => max(0, $totalPrice),
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
@@ -105,7 +116,6 @@ class TransaksiController extends Controller
                 'final_link'      => $validatedData['final_link'],
             ]);
 
-            // Sync ONLY the extra additionals to the pivot table
             if (!empty($validatedData['additionals'])) {
                 $syncData = [];
                 foreach ($validatedData['additionals'] as $id => $details) {
@@ -118,7 +128,19 @@ class TransaksiController extends Controller
             $transaksi->save();
 
             DB::commit();
-            return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully.');
+
+            try {
+                $folderName = str_replace('/', '_', $transaksi->receipt_code);
+                $folderPath = storage_path('app/public/photos/' . $folderName);
+
+                if (!File::isDirectory($folderPath)) {
+                    File::makeDirectory($folderPath, 0755, true, true);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to create photo directory for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+            }
+
+            return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully. Customer account linked.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Transaction store error: ' . $e->getMessage());
@@ -132,14 +154,8 @@ class TransaksiController extends Controller
     public function edit(string $id)
     {
         $transaksi = Transaksi::with(['packet', 'additionals'])->findOrFail($id);
-        
-        $packets = Packet::with('product')
-            ->where('is_active', 1)
-            ->get()
-            ->groupBy('product.name');
-
+        $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
         $all_additionals = Additional::orderBy('name')->get();
-        
         return view('admin.transaction.edit', compact('transaksi', 'packets', 'all_additionals'));
     }
 
@@ -148,37 +164,47 @@ class TransaksiController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $transaksi = Transaksi::findOrFail($id);
+        $transaksi = Transaksi::with('user')->findOrFail($id);
         
         $validatedData = $request->validate([
-            'customer_name' => ['required', 'string', 'max:50'],
-            'phone_number' => ['nullable', 'string', 'max:20'],
-            'status' => ['required', 'in:belum dibayar,dp,sudah dibayar'],
-            'process_status' => ['required', Rule::in(['Siap Cetak', 'Proses Cetak', 'Selesai'])],
-            'packet_id' => ['required', 'exists:packets,id'],
-            'additionals' => ['nullable', 'array'],
+            'customer_name'   => ['required', 'string', 'max:50'],
+            // Add validation to ensure the new phone number isn't already taken by another user
+            'phone_number'    => ['required', 'string', 'max:20', Rule::unique('users', 'username')->ignore($transaksi->user_id)],
+            'status'          => ['required', 'in:belum dibayar,dp,sudah dibayar'],
+            'process_status'  => ['required', Rule::in(['Siap Cetak', 'Proses Cetak', 'Selesai'])],
+            'packet_id'       => ['required', 'exists:packets,id'],
+            'additionals'     => ['nullable', 'array'],
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
-            'additionals.*.price' => ['required', 'numeric', 'min:0'],
-            'discount' => ['nullable', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string'],
-            'temporary_link' => ['nullable', 'url', 'max:255'],
+            'additionals.*.price'    => ['required', 'numeric', 'min:0'],
+            'discount'        => ['nullable', 'numeric', 'min:0'],
+            'note'            => ['nullable', 'string'],
+            'temporary_link'  => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
-            'final_link' => ['nullable', 'url', 'max:255'],
+            'final_link'      => ['nullable', 'url', 'max:255'],
         ]);
 
         DB::beginTransaction();
         try {
+            // --- Update Existing User Logic ---
+            if ($transaksi->user) {
+                $transaksi->user->update([
+                    'name' => $validatedData['customer_name'],
+                    'username' => $validatedData['phone_number'],
+                ]);
+            }
+            // --- End User Logic ---
+
             $packet = Packet::findOrFail($validatedData['packet_id']);
-            $extraAdditionalsPrice = 0;
+            $subtotal = $packet->price;
             $discount = $validatedData['discount'] ?? 0;
 
             if (!empty($validatedData['additionals'])) {
                 foreach ($validatedData['additionals'] as $details) {
-                    $extraAdditionalsPrice += $details['quantity'] * $details['price'];
+                    $subtotal += $details['quantity'] * $details['price'];
                 }
             }
             
-            $totalPrice = $packet->price + $extraAdditionalsPrice - $discount;
+            $totalPrice = $subtotal - $discount;
 
             $transaksi->update([
                 'customer_name'   => $validatedData['customer_name'],
@@ -186,7 +212,7 @@ class TransaksiController extends Controller
                 'status'          => $validatedData['status'],
                 'process_status'  => $validatedData['process_status'],
                 'packet_id'       => $validatedData['packet_id'],
-                'total_price'     => $totalPrice < 0 ? 0 : $totalPrice,
+                'total_price'     => max(0, $totalPrice),
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
@@ -203,7 +229,7 @@ class TransaksiController extends Controller
             $transaksi->additionals()->sync($syncData);
 
             DB::commit();
-            return redirect()->route('transaksi.index')->with('success', 'Transaction updated successfully.');
+            return redirect()->route('transaksi.index')->with('success', 'Transaction and customer details updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Transaction update error: ' . $e->getMessage());
@@ -212,13 +238,12 @@ class TransaksiController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Get the default additionals for a given packet via AJAX.
      */
-    public function destroy(string $id)
+    public function getDefaultAdditionals(Packet $packet)
     {
-        $transaksi = Transaksi::findOrFail($id);
-        $transaksi->delete();
-        return redirect()->route('transaksi.index')->with('success', 'Transaction deleted successfully.');
+        $defaults = $packet->additionalDefaults()->with('additional')->get();
+        return response()->json($defaults);
     }
 
     /**
@@ -248,11 +273,12 @@ class TransaksiController extends Controller
     }
 
     /**
-     * Get the default additionals for a given packet via AJAX.
+     * Remove the specified resource from storage.
      */
-    public function getDefaultAdditionals(Packet $packet)
+    public function destroy(string $id)
     {
-        $defaults = $packet->additionalDefaults()->with('additional')->get();
-        return response()->json($defaults);
+        $transaksi = Transaksi::findOrFail($id);
+        $transaksi->delete();
+        return redirect()->route('transaksi.index')->with('success', 'Transaction deleted successfully.');
     }
 }

@@ -13,6 +13,7 @@ class Transaksi extends Model
     protected $primaryKey = 'transaction_id';
 
     protected $fillable = [
+        'user_id',
         'customer_name',
         'phone_number',
         'packet_id',
@@ -27,6 +28,11 @@ class Transaksi extends Model
         'discount',
         'note',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * The packets that belong to the transaction.
