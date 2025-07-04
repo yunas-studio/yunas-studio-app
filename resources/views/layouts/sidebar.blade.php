@@ -48,6 +48,13 @@
                     </a>
                 </li>
 
+                <li>
+                    <a href="{{url('expenses')}}" class="waves-effect">
+                        <i class="uil-money-withdrawal"></i>
+                        <span>Expenses</span>
+                    </a>
+                </li>
+
 
                 <li class="menu-title">@lang('translation.Management')</li>
 
