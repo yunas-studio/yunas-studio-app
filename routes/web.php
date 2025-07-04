@@ -8,6 +8,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PacketController;
 use App\Http\Controllers\TransaksiController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\HomeController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -24,13 +26,14 @@ Auth::routes();
 
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/', [App\Http\Controllers\HomeController::class, 'root']);
+    Route::get('/', [HomeController::class, 'root']);
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
         ->name('users.toggle-status');
 
     Route::resource('additionals', AdditionalController::class);
     Route::resource('additional-defaults', AdditionalDefaultController::class);
+    
 });
 
 Route::resource('products', ProductController::class);
@@ -42,14 +45,18 @@ Route::resource('packets', PacketController::class);
 Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
 Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
 
+Route::resource('expenses', ExpenseController::class);
+    Route::put('/expenses/{expense}/update-status', [ExpenseController::class, 'updateStatus'])
+        ->name('expenses.update-status');
+
 Route::resource('transaksi', TransaksiController::class);
 
 // Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
 Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
 
-Route::get('{any}', [App\Http\Controllers\HomeController::class, 'index']);
+Route::get('{any}', [HomeController::class, 'index']);
 //Language Translation
 
-Route::get('index/{locale}', [App\Http\Controllers\HomeController::class, 'lang']);
+Route::get('index/{locale}', [HomeController::class, 'lang']);
 
-Route::post('/formsubmit', [App\Http\Controllers\HomeController::class, 'FormSubmit'])->name('FormSubmit');
+Route::post('/formsubmit', [HomeController::class, 'FormSubmit'])->name('FormSubmit');
