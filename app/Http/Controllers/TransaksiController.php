@@ -147,7 +147,6 @@ class TransaksiController extends Controller
             DB::commit();
 
             try {
-                // 1. Define the path for the main 'photos' directory
                 $basePhotosPath = storage_path('app/public/photos');
 
                 if (!File::isDirectory($basePhotosPath)) {
