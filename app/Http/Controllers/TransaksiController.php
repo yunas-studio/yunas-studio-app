@@ -138,6 +138,7 @@ class TransaksiController extends Controller
 
                 $folderName = str_replace('/', '_', $transaksi->receipt_code);
                 $folderPath = $basePhotosPath . '/' . $folderName;
+                $folderPath = $basePhotosPath . '/' . $folderName;
 
                 if (!File::isDirectory($folderPath)) {
                     File::makeDirectory($folderPath, 0755, true, true);
