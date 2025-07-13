@@ -20,8 +20,6 @@ class Transaksi extends Model
         'status',
         'process_status',
         'receipt_code',
-        'temporary_link',
-        'selected_photos',
         'final_link',
         // 'transaction_date', // Removed
         'total_price',
@@ -47,5 +45,9 @@ class Transaksi extends Model
         return $this->belongsToMany(Additional::class, 'additional_transaksi', 'transaksi_id', 'additional_id')
                     ->withPivot('quantity', 'price')
                     ->withTimestamps();
+    }
+
+    public function selectedPhotos(){
+        return $this->hasMany(SelectedPhoto::class);
     }
 }
