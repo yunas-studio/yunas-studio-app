@@ -62,10 +62,39 @@
                                         'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
                                     ];
                                     $processStatusConfig = [
-                                        'Siap Cetak' => ['icon' => '⚪️', 'class' => 'bg-primary-subtle text-primary-emphasis'],
-                                        'Proses Cetak' => ['icon' => '⚙️', 'class' => 'bg-secondary-subtle text-secondary-emphasis'],
-                                        'Selesai' => ['icon' => '✅', 'class' => 'bg-success-subtle text-success-emphasis'], // REVISED COLOR
-                                    ];
+                                        'Belum Foto' => [
+                                            'icon' => '📷❌',
+                                            'class' => 'bg-light text-dark'
+                                        ],
+                                        'Pilih Foto' => [
+                                            'icon' => '🖼️',
+                                            'class' => 'bg-info-subtle text-info-emphasis'
+                                        ],
+                                        'Siap Edit' => [
+                                            'icon' => '✏️',
+                                            'class' => 'bg-primary-subtle text-primary-emphasis'
+                                        ],
+                                        'Proses Edit' => [
+                                            'icon' => '✏️⚙️',
+                                            'class' => 'bg-warning-subtle text-warning-emphasis'
+                                        ],
+                                        'Selesai Editing' => [
+                                            'icon' => '✏️✅',
+                                            'class' => 'bg-success-subtle text-success-emphasis'
+                                        ],
+                                        'Siap Cetak' => [
+                                            'icon' => '🖨️⚪️',
+                                            'class' => 'bg-primary-subtle text-primary-emphasis'
+                                        ],
+                                        'Proses Cetak' => [
+                                            'icon' => '🖨️⚙️',
+                                            'class' => 'bg-secondary-subtle text-secondary-emphasis'
+                                        ],
+                                        'Selesai' => [
+                                            'icon' => '✅',
+                                            'class' => 'bg-success-subtle text-success-emphasis'
+                                        ]
+                                    ]
                                 @endphp
                                 @forelse($transactions as $transaksi)
                                     <tr>

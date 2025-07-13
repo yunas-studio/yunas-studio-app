@@ -18,8 +18,8 @@ return new class extends Migration
             }
 
             // Add the new status column
-            $table->enum('process_status', ['Siap Cetak', 'Proses Cetak', 'Selesai'])
-                  ->default('Siap Cetak')
+            $table->enum('process_status', ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'])
+                  ->default('Belum Foto')
                   ->after('status');
         });
     }

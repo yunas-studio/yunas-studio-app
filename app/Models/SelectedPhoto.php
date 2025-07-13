@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class SelectedPhoto extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'transaction_id',
+        'file_url',
+    ];
+
+    public function transaction()
+    {
+        return $this->belongsTo(Transaksi::class, 'transaction_id', 'transaction_id');
+    }
+}
