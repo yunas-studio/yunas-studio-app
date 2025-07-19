@@ -105,7 +105,7 @@
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
+                                    
                                     <th>Packet</th>
                                     <th>Product</th>
                                     <th>Price</th>
@@ -116,7 +116,7 @@
                             <tbody>
                                 @forelse($packets as $packet)
                                     <tr class="{{ $packet->is_active ? '' : 'table-secondary' }}">
-                                        <td>{{ $packet->id }}</td>
+                                        
                                         <td>{{ $packet->name }}</td>
                                         <td>{{ $packet->product ? $packet->product->name : 'Uncategorized' }}</td>
                                         <td class="text-primary fw-bold">Rp {{ number_format($packet->price, 0, ',', '.') }}</td>
@@ -160,7 +160,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="6" class="text-center">
-                                            No products found. <a href="{{ route('packets.create') }}" class="alert-link">Add your product</a>.
+                                            No packets found. <a href="{{ route('packets.create') }}" class="alert-link">Add your packet</a>.
                                         </td>
                                     </tr>
                                 @endforelse

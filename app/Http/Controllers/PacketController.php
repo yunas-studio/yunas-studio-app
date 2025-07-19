@@ -57,7 +57,7 @@ class PacketController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric',
             'product_id' => 'required|exists:products,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
         ]);
 
         $data = $request->except('image');
@@ -102,7 +102,7 @@ class PacketController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric',
             'product_id' => 'required|exists:products,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
         ]);
 
         $data = $request->except('image');

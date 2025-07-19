@@ -44,7 +44,7 @@
                                 <div class="mb-3">
                                     <label for="image" class="form-label">Product Image</label>
                                     <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
-                                    <small class="form-text text-muted">Upload a product image (max 2MB). Supported formats: JPEG, PNG, JPG, GIF.</small>
+                                    <small class="form-text text-muted">Upload a product image (max 15MB). Supported formats: JPEG, PNG, JPG, GIF.</small>
                                 </div>
                                 <div class="mb-3">
                                     <div class="mt-3 text-center">

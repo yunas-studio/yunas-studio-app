@@ -32,6 +32,11 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label for="number" class="form-label">Number</label>
+                                    <input type="text" class="form-control" id="number" value="{{ $expense->number }}" readonly disabled>
+                                </div>
+                                
+                                <div class="mb-3">
                                     <label for="name" class="form-label">Expense Name</label>
                                     <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $expense->name) }}" required>
                                 </div>
@@ -53,22 +58,19 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="statuss" class="form-label">Status</label>
-                                    <select class="form-select" id="statuss" name="statuss" required>
-                                        <option value="lunas" {{ old('statuss', $expense->status) == 'lunas' ? 'selected' : '' }}>Paid (Lunas)</option>
-                                        <option value="belum_lunas" {{ old('statuss', $expense->status) == 'belum_lunas' ? 'selected' : '' }}>Unpaid (Belum Lunas)</option>
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
                                     <label for="description" class="form-label">Description</label>
-                                    <textarea class="form-control" id="description" name="description" rows="4">{{ old('description', $expense->description) }}</textarea>
+                                    <textarea class="form-control" id="description" name="description" rows="3">{{ old('description', $expense->description) }}</textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="keterangan" class="form-label">Keterangan</label>
+                                    <textarea class="form-control" id="keterangan" name="keterangan" rows="3">{{ old('keterangan', $expense->keterangan) }}</textarea>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="receipt_image" class="form-label">Receipt Image</label>
                                     <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*" onchange="previewImage(this)">
-                                    <small class="form-text text-muted">Upload a receipt image (max 2MB). Supported formats: JPEG, PNG, JPG.</small>
+                                    <small class="form-text text-muted">Upload a receipt image (max 15MB). Supported formats: JPEG, PNG, JPG.</small>
                                 </div>
                                 <div class="mb-3">
                                     <div class="mt-3 text-center">

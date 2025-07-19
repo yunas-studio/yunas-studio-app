@@ -4,19 +4,6 @@
     Expense Details
 @endsection
 
-@section('css')
-    <style>
-        .status-badge-lunas {
-            background-color: #34c38f;
-            color: #fff;
-        }
-        .status-badge-belum_lunas {
-            background-color: #f46a6a;
-            color: #fff;
-        }
-    </style>
-@endsection
-
 @section('content')
     @component('common-components.breadcrumb')
         @slot('pagetitle') Finance @endslot
@@ -43,8 +30,8 @@
                         <div class="col-md-6">
                             <table class="table table-bordered">
                                 <tr>
-                                    <th style="width: 30%">ID</th>
-                                    <td>{{ $expense->id }}</td>
+                                    <th>Number</th>
+                                    <td>{{ $expense->number }}</td>
                                 </tr>
                                 <tr>
                                     <th>Name</th>
@@ -63,16 +50,12 @@
                                     <td>{{ $expense->category ?? '-' }}</td>
                                 </tr>
                                 <tr>
-                                    <th>Status</th>
-                                    <td>
-                                        <span class="badge status-badge-{{ $expense->status }}">
-                                            {{ $expense->status == 'lunas' ? 'Paid' : 'Unpaid' }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
                                     <th>Description</th>
                                     <td>{{ $expense->description ?? '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Keterangan</th>
+                                    <td>{{ $expense->keterangan ?? '-' }}</td>
                                 </tr>
                                 <tr>
                                     <th>Created At</th>
