@@ -11,11 +11,12 @@ class Expense extends Model
     use HasFactory;
 
     protected $fillable = [
+        'number',
         'name',
         'description',
+        'keterangan',
         'amount',
         'expense_date',
-        'status',
         'category',
         'receipt_image',
     ];
@@ -23,10 +24,15 @@ class Expense extends Model
     protected $casts = [
         'expense_date' => 'date',
     ];
-
-    public function getStatusColorAttribute()
+    
+    protected static function boot()
     {
-        return $this->status === 'lunas' ? 'success' : 'danger';
+        parent::boot();
+        
+        static::creating(function ($expense) {
+            $lastExpense = self::orderBy('number', 'desc')->first();
+            $expense->number = $lastExpense ? $lastExpense->number + 1 : 1;
+        });
     }
 
     public function getFormattedAmountAttribute()
@@ -37,17 +43,6 @@ class Expense extends Model
     public function getMonthYearAttribute()
     {
         return Carbon::parse($this->expense_date)->format('F Y');
-    }
-
-    public static function getTotalByStatus($status = null)
-    {
-        $query = self::query();
-        
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
-        return $query->sum('amount');
     }
 
     public static function getMonthlyExpenses($year = null)

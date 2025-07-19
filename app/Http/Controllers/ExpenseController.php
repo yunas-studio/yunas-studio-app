@@ -15,7 +15,6 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         // Get filter parameters from request
-        $status = $request->input('statuss'); // Changed from 'status' to 'statuss' to match form field
         $month = $request->input('month');
         $year = $request->input('year');
         
@@ -23,10 +22,6 @@ class ExpenseController extends Controller
         $query = Expense::query();
         
         // Apply filters
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
         if ($month) {
             $query->whereMonth('expense_date', $month);
         }
@@ -50,10 +45,16 @@ class ExpenseController extends Controller
             $filteredQuery->whereYear('expense_date', $year);
         }
         
-        // Calculate totals for paid and unpaid expenses
-        $totalLunas = (clone $filteredQuery)->where('status', 'lunas')->sum('amount');
-        $totalBelumLunas = (clone $filteredQuery)->where('status', 'belum_lunas')->sum('amount');
-        $totalExpenses = $totalLunas + $totalBelumLunas;
+        // Calculate total expenses
+        $totalExpenses = $filteredQuery->sum('amount');
+        
+        // Get expenses by category for the filtered data
+        $expensesByCategory = (clone $filteredQuery)
+            ->selectRaw('category, SUM(amount) as total')
+            ->whereNotNull('category')
+            ->groupBy('category')
+            ->orderBy('total', 'desc')
+            ->get();
         
         // Get all months for the dropdown
         $months = [];
@@ -66,14 +67,12 @@ class ExpenseController extends Controller
         
         return view('admin.expenses.index', compact(
             'expenses', 
-            'totalLunas', 
-            'totalBelumLunas', 
             'totalExpenses', 
-            'status', 
             'month', 
             'year', 
             'months', 
-            'years'
+            'years',
+            'expensesByCategory'
         ));
     }
 
@@ -94,14 +93,12 @@ class ExpenseController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
-            'statuss' => 'required|in:lunas,belum_lunas',
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:15360',
         ]);
         
-        $data = $request->except('receipt_image', 'statuss');
-        $data['status'] = $request->statuss;
+        $data = $request->except('receipt_image');
         
         if ($request->hasFile('receipt_image')) {
             $path = $request->file('receipt_image')->store('receipts', 'public');
@@ -139,14 +136,12 @@ class ExpenseController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
-            'statuss' => 'required|in:lunas,belum_lunas',
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:15360',
         ]);
         
-        $data = $request->except('receipt_image', 'statuss');
-        $data['status'] = $request->statuss;
+        $data = $request->except('receipt_image');
         
         if ($request->hasFile('receipt_image')) {
             // Delete old image if exists
@@ -177,22 +172,5 @@ class ExpenseController extends Controller
         
         return redirect()->route('expenses.index')
             ->with('success', 'Pengeluaran berhasil dihapus');
-    }
-    
-    /**
-     * Update expense status.
-     */
-    public function updateStatus(Request $request, Expense $expense)
-    {
-        $request->validate([
-            'status' => 'required|in:lunas,belum_lunas',
-        ]);
-        
-        $expense->update([
-            'status' => $request->status,
-        ]);
-        
-        return redirect()->back()
-            ->with('success', 'Status pengeluaran berhasil diperbarui');
     }
 }

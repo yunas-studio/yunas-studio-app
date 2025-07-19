@@ -174,16 +174,16 @@ if (RadialchartCustomersColors) {
 }
 
 // 
-// Growth Chart
+// Expenses Chart
 //
-var BarchartGrowthColors = getChartColorsArray("growth-chart");
-if (BarchartGrowthColors) {
+var BarchartExpensesColors = getChartColorsArray("expenses-chart");
+if (BarchartExpensesColors) {
   var options2 = {
     series: [{
       data: [25, 66, 41, 89, 63, 25, 44, 12, 36, 9, 54]
     }],
     fill: {
-      colors: BarchartGrowthColors
+      colors: BarchartExpensesColors
     },
     chart: {
       type: 'bar',
@@ -223,7 +223,7 @@ if (BarchartGrowthColors) {
       }
     }
   };
-  var chart2 = new ApexCharts(document.querySelector("#growth-chart"), options2);
+  var chart2 = new ApexCharts(document.querySelector("#expenses-chart"), options2);
   chart2.render();
 }
 
