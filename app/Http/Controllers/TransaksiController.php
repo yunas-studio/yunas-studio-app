@@ -74,22 +74,24 @@ class TransaksiController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+    // In app/Http/Controllers/TransaksiController.php
+
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'customer_name'   => ['required', 'string', 'max:50'],
-            'phone_number'    => ['required', 'string', 'max:20'],
-            'status'          => ['required', 'in:belum dibayar,dp,sudah dibayar'],
-            'packet_id'       => ['required', 'exists:packets,id'],
-            'additionals'     => ['nullable', 'array'],
+            'customer_name'  => ['required', 'string', 'max:50'],
+            'phone_number'   => ['required', 'string', 'max:20'],
+            'status'         => ['required', 'in:belum dibayar,dp,sudah dibayar'],
+            'packet_id'      => ['required', 'exists:packets,id'],
+            'additionals'    => ['nullable', 'array'],
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
-            'discount'        => ['nullable', 'numeric', 'min:0'],
+            'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
-            'note'            => ['nullable', 'string'],
-            'temporary_link'  => ['nullable', 'url', 'max:255'],
+            'note'           => ['nullable', 'string'],
+            'temporary_link' => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
-            'final_link'      => ['nullable', 'url', 'max:255'],
+            'final_link'     => ['nullable', 'url', 'max:255'],
         ]);
 
         DB::beginTransaction();
@@ -127,8 +129,8 @@ class TransaksiController extends Controller
                 'packet_id'       => $validatedData['packet_id'],
                 'receipt_code'    => 'TEMP-' . uniqid(),
                 'total_price'     => max(0, $totalPrice),
-                'discount'        => $discount,
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
+                'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
                 'selected_photos' => $validatedData['selected_photos'],
@@ -148,24 +150,22 @@ class TransaksiController extends Controller
 
             DB::commit();
 
+            // --- NEW FOLDER CREATION LOGIC ---
             try {
-                $basePhotosPath = storage_path('app/public/photos');
-
-                if (!File::isDirectory($basePhotosPath)) {
-                    File::makeDirectory($basePhotosPath, 0755, true, true);
-                }
-
                 $folderName = str_replace('/', '_', $transaksi->receipt_code);
-                $folderPath = $basePhotosPath . '/' . $folderName;
-                $folderPath = $basePhotosPath . '/' . $folderName;
+                $baseTransactionPath = storage_path('app/public/photos/' . $folderName);
+                $subfolders = ['RAW', 'Pilih Edit', 'Result', 'Pilih Cetak'];
 
-                if (!File::isDirectory($folderPath)) {
-                    File::makeDirectory($folderPath, 0755, true, true);
+                foreach ($subfolders as $subfolder) {
+                    $path = $baseTransactionPath . '/' . $subfolder;
+                    if (!File::isDirectory($path)) {
+                        File::makeDirectory($path, 0755, true, true);
+                    }
                 }
             } catch (\Exception $e) {
-                // Log the error but don't stop the user. The transaction itself was successful.
-                Log::error('Failed to create photo directory for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+                Log::error('Failed to create photo directories for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
             }
+            // --- END OF NEW LOGIC ---
 
             return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully. Customer account linked.');
         } catch (\Exception $e) {
@@ -278,12 +278,14 @@ class TransaksiController extends Controller
     /**
      * Handle inline status updates from the index page.
      */
+    // In app/Http/Controllers/TransaksiController.php
+
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
             'field' => ['required', Rule::in(['status', 'process_status'])],
             'value' => ['required', 'string'],
-            'dp_amount' => ['nullable', 'numeric', 'min:0', 'required_if:value,dp'], // Validate dp_amount
+            'dp_amount' => ['nullable', 'numeric', 'min:0', 'required_if:value,dp'],
         ]);
 
         $transaksi = Transaksi::findOrFail($id);
@@ -300,15 +302,32 @@ class TransaksiController extends Controller
         try {
             $transaksi->{$field} = $value;
 
-            // If status is updated, handle the dp_amount
+            // If payment status is updated, handle the dp_amount
             if ($field === 'status') {
                 if ($value === 'dp') {
                     $transaksi->dp_amount = $validated['dp_amount'];
                 } else {
-                    // If status is changed to something else, nullify the dp_amount
                     $transaksi->dp_amount = null;
                 }
             }
+
+            // --- NEW LOGIC: Clean up data when reverting process status ---
+            if ($field === 'process_status') {
+                // If reverting back to the photo selection step, reset selections.
+                if ($value === 'Pilih Foto') {
+                    // 1. Delete previous edit selections from the database
+                    $transaksi->selectedPhotos()->delete();
+
+                    // 2. Clear the 'Pilih Edit' folder of old symlinks
+                    $folderName = str_replace('/', '_', $transaksi->receipt_code);
+                    $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
+
+                    if (File::isDirectory($pilihEditPath)) {
+                        File::cleanDirectory($pilihEditPath);
+                    }
+                }
+            }
+            // --- END OF NEW LOGIC ---
 
             $transaksi->save();
 
@@ -329,30 +348,137 @@ class TransaksiController extends Controller
         return redirect()->route('transaksi.index')->with('success', 'Transaction deleted successfully.');
     }
 
-    public function viewSelectPhotos(Transaksi $transaksi)
+    // In app/Http/Controllers/TransaksiController.php
+
+    // This method is now for selecting photos TO BE EDITED
+    public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
-            // Get photo directory information
-            $photoData = $this->getPhotoDirectoryData($transaksi, 'raw');
+            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW'); // Always show from RAW
+            $selectedPhotos = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
 
-            // Get selected photos
-            $selectedPhotos = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)
-                ->pluck('file_url')
-                ->toArray();
             return view('user.transaction.manage-photo', [
                 'transaksi' => $transaksi,
                 'photoUrls' => $photoData['urls'],
-                'folderName' => $photoData['folderName'],
-                'totalImage' => config('app.max_selected_photos', 5),
+                'pageTitle' => 'Select Photos for Editing',
+                'formAction' => route('transaksi.handle-select-for-edit', $transaksi),
                 'selectedPhotos' => $selectedPhotos,
-                'photoCount' => count($photoData['urls']),
+                'photoCount' => $photoData['count'],
+                'totalImage' => 10, // Or get from a config, e.g., config('app.max_photos_for_edit', 10)
             ]);
-
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
+    }
+    // This method handles the submission from the "Select for Edit" page
+
+    public function handleSelectForEdit(Request $request, Transaksi $transaksi)
+    {
+        // --- NEW: Add this check at the beginning of the method ---
+        if (!in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit'])) {
+            return redirect()->back()->with('error', 'Photo selection is locked because the editing process has already begun.');
+        }
+        // --- END of new check ---
+
+        $request->validate(['photo_urls' => 'sometimes|array', 'photo_urls.*' => 'string']);
+
+        $selectedUrls = $request->input('photo_urls', []);
+
+        DB::transaction(function () use ($transaksi, $selectedUrls) {
+            // Sync the database
+            $transaksi->selectedPhotos()->delete();
+            $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
+                return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
+            })->all();
+            SelectedPhoto::insert($dataToInsert);
+
+            // Create symlinks in "Pilih Edit" folder
+            $folderName = str_replace('/', '_', $transaksi->receipt_code);
+            $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
+            
+            File::cleanDirectory($pilihEditPath);
+
+            foreach ($selectedUrls as $url) {
+                $rawFileName = basename($url);
+                $sourcePath = storage_path("app/public/photos/{$folderName}/RAW/{$rawFileName}");
+                $linkPath = "{$pilihEditPath}/{$rawFileName}";
+
+                if (File::exists($sourcePath) && !File::exists($linkPath)) {
+                    File::link($sourcePath, $linkPath);
+                }
+            }
+
+            // Update status only if it was in the initial state
+            if ($transaksi->process_status === 'Pilih Foto') {
+                $transaksi->update(['process_status' => 'Siap Edit']);
+            }
+        });
+
+        return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with('success', 'Selection for editing has been saved.');
+    }
+
+    // NEW METHOD: Shows a page for user to select photos TO BE PRINTED
+    public function viewSelectForPrint(Transaksi $transaksi)
+    {
+        try {
+            $rawPhotos = $this->getPhotoDirectoryData($transaksi, 'RAW');
+            $resultPhotos = $this->getPhotoDirectoryData($transaksi, 'Result');
+
+            $allPhotos = array_merge($rawPhotos['urls'], $resultPhotos['urls']);
+            $selectedForPrint = SelectedPrint::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
+
+            return view('user.transaction.manage-print-photo', [ // A new view file
+                'transaksi' => $transaksi,
+                'photoUrls' => $allPhotos,
+                'pageTitle' => 'Select Photos for Printing',
+                'formAction' => route('transaksi.handle-select-for-print', $transaksi),
+                'selectedPhotos' => $selectedForPrint,
+                'photoCount' => count($allPhotos),
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    // NEW METHOD: Handles submission from the "Select for Print" page
+    public function handleSelectForPrint(Request $request, Transaksi $transaksi)
+    {
+        $request->validate(['photo_urls' => 'sometimes|array', 'photo_urls.*' => 'string']);
+
+        $selectedUrls = $request->input('photo_urls', []);
+
+        DB::transaction(function () use ($transaksi, $selectedUrls) {
+            // Sync the database
+            SelectedPrint::where('transaction_id', $transaksi->transaction_id)->delete();
+            $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
+                return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
+            })->all();
+            SelectedPrint::insert($dataToInsert);
+
+            // Create symlinks in "Pilih Cetak" folder
+            $folderName = str_replace('/', '_', $transaksi->receipt_code);
+            $pilihCetakPath = storage_path("app/public/photos/{$folderName}/Pilih Cetak");
+
+            File::cleanDirectory($pilihCetakPath);
+
+            foreach ($selectedUrls as $url) {
+                $fileName = basename($url);
+                $sourcePathRaw = storage_path("app/public/photos/{$folderName}/RAW/{$fileName}");
+                $sourcePathResult = storage_path("app/public/photos/{$folderName}/Result/{$fileName}");
+                $linkPath = "{$pilihCetakPath}/{$fileName}";
+
+                $sourcePath = File::exists($sourcePathResult) ? $sourcePathResult : $sourcePathRaw;
+
+                if (File::exists($sourcePath) && !File::exists($linkPath)) {
+                    File::link($sourcePath, $linkPath);
+                }
+            }
+
+            // Update status
+            $transaksi->update(['process_status' => 'Siap Cetak']);
+        });
+
+        return redirect()->route('transaksi.view-select-for-print', $transaksi)->with('success', 'Selection for printing has been saved.');
     }
 
     /**
@@ -436,7 +562,7 @@ class TransaksiController extends Controller
         return $pdf->download($filename);
     }
 
-    public function selectImage(Request $request, $transaction)
+/*     public function selectImage(Request $request, $transaction)
     {
         try {
             $request->validate([
@@ -492,7 +618,7 @@ class TransaksiController extends Controller
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
-    }
+    } */
 
     public function viewResultPhotos(Transaksi $transaksi)
     {
@@ -510,6 +636,28 @@ class TransaksiController extends Controller
             return redirect()
                 ->back()
                 ->with('error', $e->getMessage());
+        }
+    }
+
+    public function viewSelectionsForAdmin(Transaksi $transaksi)
+    {
+        try {
+            // Fetch photos from the source directory
+            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
+            
+            // Fetch the URLs that the user has selected
+            $selectedUrls = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)
+                ->pluck('file_url')
+                ->toArray();
+
+            return view('admin.transaction.view-selections', [
+                'transaksi' => $transaksi,
+                'photoUrls' => $photoData['urls'],
+                'selectedUrls' => $selectedUrls,
+            ]);
+
+        } catch (\Exception $e) {
+            return redirect()->route('transaksi.index')->with('error', $e->getMessage());
         }
     }
 }

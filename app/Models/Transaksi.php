@@ -48,7 +48,8 @@ class Transaksi extends Model
                     ->withTimestamps();
     }
 
-    public function selectedPhotos(){
-        return $this->hasMany(SelectedPhoto::class);
+    public function selectedPhotos()
+    {
+        return $this->hasMany(SelectedPhoto::class, 'transaction_id', 'transaction_id');
     }
 }

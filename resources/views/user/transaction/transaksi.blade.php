@@ -1,6 +1,6 @@
 @extends('layouts.master')
 @section('title')
-    Transaction
+    My Transactions
 @endsection
 
 @section('css')
@@ -35,46 +35,18 @@
         'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
     ];
     $processStatusConfig = [
-    'Belum Foto' => [
-        'icon' => '📷❌',
-        'class' => 'bg-light text-dark'
-    ],
-    'Pilih Foto' => [
-        'icon' => '🖼️',
-        'class' => 'bg-info-subtle text-info-emphasis'
-    ],
-    'Siap Edit' => [
-        'icon' => '✏️',
-        'class' => 'bg-primary-subtle text-primary-emphasis'
-    ],
-    'Proses Edit' => [
-        'icon' => '✏️⚙️',
-        'class' => 'bg-warning-subtle text-warning-emphasis'
-    ],
-    'Selesai Editing' => [
-        'icon' => '✏️✅',
-        'class' => 'bg-success-subtle text-success-emphasis'
-    ],
-    'Siap Cetak' => [
-        'icon' => '🖨️⚪️',
-        'class' => 'bg-primary-subtle text-primary-emphasis'
-    ],
-    'Proses Cetak' => [
-        'icon' => '🖨️⚙️',
-        'class' => 'bg-secondary-subtle text-secondary-emphasis'
-    ],
-    'Selesai' => [
-        'icon' => '✅',
-        'class' => 'bg-success-subtle text-success-emphasis'
-    ],
-    $showEditedPhoto = [
-        'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'
-    ]
-];
+        'Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],
+        'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],
+        'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],
+        'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],
+        'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],
+        'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],
+        'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],
+        'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']
+    ];
 @endphp
 
 @section('content')
-    <!-- Error Message Container -->
     <div class="error-container">
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show error-message" role="alert">
@@ -86,9 +58,9 @@
     </div>
 
     @component('common-components.breadcrumb', [
-        'title' => 'Transaksi',
+        'title' => 'My Transactions',
         'pagetitle' => 'Transactions',
-        'breadcrumbs' => [['text' => 'Transactions', 'url' => '']]
+        'breadcrumbs' => [['text' => 'My Transactions', 'url' => '']]
     ])
     @endcomponent
 
@@ -97,20 +69,13 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row mb-2">
-                        {{-- <div class="col-md-6">
-                            <div class="mb-3">
-                                <a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light">
-                                    <i class="mdi mdi-plus me-2"></i> Add New Transaction
-                                </a>
-                            </div>
-                        </div> --}}
                         <div class="col-md-12">
                             <div class="form-inline float-md-end mb-3">
                                 <div class="search-box ms-2">
                                     <form action="{{ route('transaksi.index') }}" method="GET">
                                         <div class="position-relative">
                                             <input type="text" name="search" class="form-control rounded bg-light border-0"
-                                                   placeholder="Search..." value="{{ request('search') }}">
+                                                   placeholder="Search by name or receipt code..." value="{{ request('search') }}">
                                             <i class="mdi mdi-magnify search-icon"></i>
                                         </div>
                                     </form>
@@ -137,7 +102,7 @@
                             <tbody>
                             @forelse($transactions as $transaksi)
                                 <tr>
-                                    <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
+                                    <td><a href="javascript: void(0);" class="text-body fw-bold" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">{{ $transaksi->receipt_code }}</a></td>
                                     <td>{{ $transaksi->customer_name }}</td>
                                     <td>{{ $transaksi->packet->name ?? 'N/A' }}</td>
                                     <td class="fw-bold">
@@ -149,14 +114,14 @@
                                     </td>
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                     <td>
-                                            <span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">
-                                                {{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}
-                                            </span>
+                                        <span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">
+                                            {{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}
+                                        </span>
                                     </td>
                                     <td>
-                                            <span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">
-                                                {{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}
-                                            </span>
+                                        <span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">
+                                            {{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}
+                                        </span>
                                     </td>
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm btn-rounded"
@@ -167,40 +132,40 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
-                                            @if ($transaksi->process_status != 'Belum Foto')
-                                                <a href="{{ route('transaksi.view-select-photos', $transaksi) }}"
+                                            @if (in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit']))
+                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}"
                                                 class="text-warning"
                                                 data-bs-toggle="tooltip"
-                                                title="Pilih Foto yang Akan Di-Edit">
+                                                title="Select or change photos for editing">
                                                     <i class="uil uil-edit-alt font-size-18"></i>
                                                 </a>
                                             @endif
-                                            @if (in_array($transaksi->process_status, $showEditedPhoto))
+                                            
+                                            @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak']))
+                                                 <a href="{{ route('transaksi.view-select-for-print', $transaksi) }}"
+                                                   class="text-info"
+                                                   data-bs-toggle="tooltip"
+                                                   title="Select photos for printing">
+                                                     <i class="uil uil-print font-size-18"></i>
+                                                 </a>
+                                            @endif
+
+                                            @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
                                                 <a href="{{ route('transaksi.view-result-photos', $transaksi) }}"
-                                                class="text-success"
-                                                data-bs-toggle="tooltip"
-                                                title="Lihat Hasil Edit">
+                                                   class="text-success"
+                                                   data-bs-toggle="tooltip"
+                                                   title="View and download your final photos">
                                                     <i class="uil uil-camera font-size-18"></i>
                                                 </a>
                                             @endif
-                                            {{-- <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}"
-                                                  method="POST"
-                                                  onsubmit="return confirm('Are you sure?');"
-                                                  class="d-inline">
-                                                @csrf @method('DELETE')
-                                                <button type="submit"
-                                                        class="btn btn-link text-danger p-0"
-                                                        data-bs-toggle="tooltip"
-                                                        title="Batalkan Transaksi">
-                                                    <i class="uil uil-trash-alt font-size-18"></i>
-                                                </button>
-                                            </form> --}}
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="text-center">No transactions found.</td>
+                                    <td colspan="9" class="text-center py-4">
+                                        <p class="mb-0">You have no transactions yet.</p>
+                                    </td>
                                 </tr>
                             @endforelse
                             </tbody>
@@ -208,6 +173,7 @@
                     </div>
 
                     <div class="row mt-4">
+                        @if($transactions->total() > 0)
                         <div class="col-sm-6">
                             <div>
                                 <p class="mb-sm-0">
@@ -220,13 +186,13 @@
                                 {{ $transactions->appends(request()->except('page'))->links() }}
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Invoice Modals -->
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -287,32 +253,18 @@
                                         @endif
 
                                         @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
-                                            <tr>
-                                                <td colspan="5" class="pt-3 pb-0">
-                                                    <strong class="text-muted">Included Items:</strong>
-                                                </td>
-                                            </tr>
+                                            <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Included Items:</strong></td></tr>
                                             @foreach($transaksi->packet->additionalDefaults as $default)
-                                                <tr>
-                                                    <td><i class="mdi mdi-circle-small text-muted"></i></td>
-                                                    <td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td>
-                                                </tr>
+                                                <tr><td><i class="mdi mdi-circle-small text-muted"></i></td><td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td></tr>
                                             @endforeach
                                         @endif
 
                                         @if($transaksi->additionals->isNotEmpty())
-                                            <tr>
-                                                <td colspan="5" class="pt-3 pb-0">
-                                                    <strong class="text-muted">Extra Items:</strong>
-                                                </td>
-                                            </tr>
+                                            <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Extra Items:</strong></td></tr>
                                             @foreach($transaksi->additionals as $additional)
                                                 <tr>
                                                     <td><i class="mdi mdi-circle-small text-muted"></i></td>
-                                                    <td>
-                                                        <h5 class="font-size-15 mb-0">{{ $additional->name }}</h5>
-                                                        <span class="text-muted">Additional Item</span>
-                                                    </td>
+                                                    <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td>
                                                     <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
                                                     <td class="text-center">{{ $additional->pivot->quantity }}</td>
                                                     <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
@@ -327,31 +279,24 @@
                                     <div class="w-50">
                                         <table class="table table-nowrap invoice-details-table">
                                             <tbody>
-                                            <tr>
-                                                <td class="fw-bold">Subtotal</td>
-                                                <td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td>
-                                            </tr>
-                                            @if ($transaksi->discount > 0)
-                                                <tr class="text-danger">
-                                                    <td class="fw-bold">Discount</td>
-                                                    <td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td>
-                                                </tr>
-                                            @endif
-                                            <tr class="fs-5 bg-light">
-                                                <td class="fw-bold">Total</td>
-                                                <td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td>
-                                            </tr>
+                                                <tr><td class="fw-bold">Subtotal</td><td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td></tr>
+                                                @if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Discount</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif
+                                                <tr class="border-top"><td class="fw-bold">Grand Total</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                @if($transaksi->status == 'dp' && isset($transaksi->dp_amount))
+                                                    <tr><td class="fw-bold">DP Paid</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Remaining Balance</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                @elseif($transaksi->status == 'sudah dibayar')
+                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Total Paid</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                @else
+                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Total Due</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                @endif
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
                                 @if($transaksi->note)
-                                    <hr>
-                                    <div class="py-2">
-                                        <h5 class="font-size-15">Note:</h5>
-                                        <p class="text-muted fst-italic">{{ $transaksi->note }}</p>
-                                    </div>
+                                    <hr><div class="py-2"><h5 class="font-size-15">Note:</h5><p class="text-muted fst-italic">{{ $transaksi->note }}</p></div>
                                 @endif
                             </div>
                         </div>
@@ -359,13 +304,12 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         @if($transaksi->status == "sudah dibayar")
-                            <a href="{{ route('transaksi.download-invoice', $transaksi->transaction_id) }}"
+                            <a href="{{ route('transaksi.download-invoice', $transaksi) }}"
                                class="btn btn-primary"
                                target="_blank">
                                 <i class="mdi mdi-file-pdf-box me-1"></i> Download PDF
                             </a>
                         @endif
-
                     </div>
                 </div>
             </div>

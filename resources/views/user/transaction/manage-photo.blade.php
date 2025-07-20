@@ -28,9 +28,7 @@
                 </div>
             @endif
 
-            <form id="photoSelectionForm" method="POST" action="
-                {{ route('transaksi.select-image', $transaksi) }}
-            ">
+            <form id="photoSelectionForm" method="POST" action="{{ $formAction }}">
                 @csrf
 
                 <div class="d-flex justify-content-between align-items-center mb-4">

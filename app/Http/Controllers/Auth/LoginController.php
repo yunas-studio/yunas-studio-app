@@ -42,6 +42,24 @@ class LoginController extends Controller
     }
 
     /**
+     * The user has been authenticated.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    protected function authenticated(Request $request, $user)
+    {
+        // Redirect if the user's role is not Admin.
+        if (!$user->isAdmin()) {
+            return redirect()->route('transaksi.index');
+        }
+
+        // Admins will proceed to the default redirectTo path.
+        return redirect()->intended($this->redirectTo);
+    }
+
+    /**
      * Attempt to log the user into the application.
      *
      * @param  \Illuminate\Http\Request  $request
