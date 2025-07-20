@@ -37,7 +37,6 @@
         <div class="col-md-6 col-xl-4"><div class="card"><div class="card-body"><div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-check"></i></div></div><div><h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $sudahDibayarCount }}</span></h4><p class="text-muted mb-0">Total Sudah Dibayar</p></div></div></div></div>
     </div>
 
-
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -62,39 +61,15 @@
                                         'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
                                     ];
                                     $processStatusConfig = [
-                                        'Belum Foto' => [
-                                            'icon' => '📷❌',
-                                            'class' => 'bg-light text-dark'
-                                        ],
-                                        'Pilih Foto' => [
-                                            'icon' => '🖼️',
-                                            'class' => 'bg-info-subtle text-info-emphasis'
-                                        ],
-                                        'Siap Edit' => [
-                                            'icon' => '✏️',
-                                            'class' => 'bg-primary-subtle text-primary-emphasis'
-                                        ],
-                                        'Proses Edit' => [
-                                            'icon' => '✏️⚙️',
-                                            'class' => 'bg-warning-subtle text-warning-emphasis'
-                                        ],
-                                        'Selesai Editing' => [
-                                            'icon' => '✏️✅',
-                                            'class' => 'bg-success-subtle text-success-emphasis'
-                                        ],
-                                        'Siap Cetak' => [
-                                            'icon' => '🖨️⚪️',
-                                            'class' => 'bg-primary-subtle text-primary-emphasis'
-                                        ],
-                                        'Proses Cetak' => [
-                                            'icon' => '🖨️⚙️',
-                                            'class' => 'bg-secondary-subtle text-secondary-emphasis'
-                                        ],
-                                        'Selesai' => [
-                                            'icon' => '✅',
-                                            'class' => 'bg-success-subtle text-success-emphasis'
-                                        ]
-                                    ]
+                                        'Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],
+                                        'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],
+                                        'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],
+                                        'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],
+                                        'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],
+                                        'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],
+                                        'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],
+                                        'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']
+                                    ];
                                 @endphp
                                 @forelse($transactions as $transaksi)
                                     <tr>
@@ -104,10 +79,13 @@
                                         <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
                                         <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                         <td>
-                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
-                                                @csrf @method('PUT')
+                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST" class="status-update-form">
+                                                @csrf
+                                                @method('PUT')
                                                 <input type="hidden" name="field" value="status">
-                                                <select name="value" class="form-select form-select-sm {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" onchange="this.form.submit()">
+                                                <select name="value"
+                                                        class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}"
+                                                        data-transaction-id="{{ $transaksi->transaction_id }}">
                                                     @foreach ($paymentStatusConfig as $status => $config)
                                                         <option value="{{ $status }}" {{ $transaksi->status == $status ? 'selected' : '' }}>
                                                             {{ $config['icon'] }} {{ ucwords($status) }}
@@ -122,10 +100,10 @@
                                                 <input type="hidden" name="field" value="process_status">
                                                 <select name="value" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
                                                      @foreach ($processStatusConfig as $status => $config)
-                                                        <option value="{{ $status }}" {{ $transaksi->process_status == $status ? 'selected' : '' }}>
-                                                            {{ $config['icon'] }} {{ $status }}
-                                                        </option>
-                                                    @endforeach
+                                                         <option value="{{ $status }}" {{ $transaksi->process_status == $status ? 'selected' : '' }}>
+                                                             {{ $config['icon'] }} {{ $status }}
+                                                         </option>
+                                                     @endforeach
                                                 </select>
                                             </form>
                                         </td>
@@ -138,16 +116,7 @@
                                                         <div class="modal-body">
                                                             <div class="invoice-header text-center"><div class="mb-3"><img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="logo" class="invoice-logo"/></div><p class="text-muted mb-0">Jalan Lingkar Selatan, Sukabumi</p></div>
                                                             <div class="p-4">
-                                                                <div class="row"><div class="col-md-6">
-                                                                    <h5 class="font-size-16">Billed To:</h5>
-                                                                    <p class="mb-1">{{ $transaksi->customer_name }}</p>
-                                                                    @if($transaksi->phone_number)
-                                                                        <p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>
-                                                                    @endif
-                                                                    @if($transaksi->user)
-                                                                        <p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Linked to User: {{ $transaksi->user->name }}</p>
-                                                                    @endif
-                                                                </div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Invoice Details:</h5><p class="mb-1"><strong>Invoice #:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Transaction Date:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Payment Status:</strong> {{ ucwords($transaksi->status) }}</p><p class="mb-1"><strong>Process Status:</strong> {{ $transaksi->process_status }}</p></div></div>
+                                                                <div class="row"><div class="col-md-6"><h5 class="font-size-16">Billed To:</h5><p class="mb-1">{{ $transaksi->customer_name }}</p>@if($transaksi->phone_number)<p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>@endif @if($transaksi->user)<p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Linked to User: {{ $transaksi->user->name }}</p>@endif</div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Invoice Details:</h5><p class="mb-1"><strong>Invoice #:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Transaction Date:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Payment Status:</strong> {{ ucwords($transaksi->status) }}</p><p class="mb-1"><strong>Process Status:</strong> {{ $transaksi->process_status }}</p></div></div>
                                                                 <div class="py-2 mt-3"><h3 class="font-size-15 fw-bold">Order Summary</h3></div>
                                                                 <div class="table-responsive">
                                                                     <table class="table table-nowrap">
@@ -159,7 +128,25 @@
                                                                         </tbody>
                                                                     </table>
                                                                 </div>
-                                                                <div class="d-flex justify-content-end"><div class="w-50"><table class="table table-nowrap invoice-details-table"><tbody><tr><td class="fw-bold">Subtotal</td><td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td></tr>@if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Discount</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif<tr class="fs-5 bg-light"><td class="fw-bold">Total</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr></tbody></table></div></div>
+                                                                <div class="d-flex justify-content-end">
+                                                                    <div class="w-50">
+                                                                        <table class="table table-nowrap invoice-details-table">
+                                                                            <tbody>
+                                                                                <tr><td class="fw-bold">Subtotal</td><td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td></tr>
+                                                                                @if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Discount</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif
+                                                                                <tr class="border-top"><td class="fw-bold">Grand Total</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                                                @if($transaksi->status == 'dp' && isset($transaksi->dp_amount))
+                                                                                    <tr><td class="fw-bold">DP Paid</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Remaining Balance</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                                                @elseif($transaksi->status == 'sudah dibayar')
+                                                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Total Paid</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                                                @else
+                                                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Total Due</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                                                @endif
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
                                                                 @if($transaksi->note)<hr><div class="py-2"><h5 class="font-size-15">Note:</h5><p class="text-muted fst-italic">{{ $transaksi->note }}</p></div>@endif
                                                             </div>
                                                         </div>
@@ -187,4 +174,79 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('script')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // DP Modal Logic
+    const dpModalElement = document.getElementById('dpAmountModal');
+    if (dpModalElement) {
+        const dpModal = new bootstrap.Modal(dpModalElement);
+        const dpForm = document.getElementById('dpAmountForm');
+        const dpInput = document.getElementById('dp_amount_modal');
+
+        document.querySelectorAll('.payment-status-select').forEach(selectElement => {
+            selectElement.addEventListener('change', function (e) {
+                const selectedStatus = e.target.value;
+                const form = e.target.closest('form');
+
+                if (selectedStatus === 'dp') {
+                    // Set the form action for the modal before showing it
+                    if (form && form.action) {
+                        dpForm.action = form.action;
+                    }
+                    dpModal.show();
+                } else {
+                    // For any other status, submit the original form directly
+                    if (form) {
+                        form.submit();
+                    }
+                }
+            });
+        });
+
+        // When the modal is shown, focus the input field for better UX
+        dpModalElement.addEventListener('shown.bs.modal', function () {
+            dpInput.focus();
+        });
+    }
+});
+</script>
+@endsection
+
+@section('script-bottom')
+<div class="modal fade" id="dpAmountModal" tabindex="-1" aria-labelledby="dpAmountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="dpAmountForm" method="POST" action="">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="field" value="status">
+                <input type="hidden" name="value" value="dp">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dpAmountModalLabel">Enter Down Payment Amount</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="dp_amount_modal" class="form-label">DP Amount (Rp)</label>
+                        <input type="number" class="form-control" id="dp_amount_modal" name="dp_amount" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save DP Amount</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

@@ -85,6 +85,7 @@ class TransaksiController extends Controller
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'        => ['nullable', 'numeric', 'min:0'],
+            'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'            => ['nullable', 'string'],
             'temporary_link'  => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
@@ -127,6 +128,7 @@ class TransaksiController extends Controller
                 'receipt_code'    => 'TEMP-' . uniqid(),
                 'total_price'     => max(0, $totalPrice),
                 'discount'        => $discount,
+                'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
                 'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
                 'selected_photos' => $validatedData['selected_photos'],
@@ -202,6 +204,7 @@ class TransaksiController extends Controller
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'        => ['nullable', 'numeric', 'min:0'],
+            'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'            => ['nullable', 'string'],
             'temporary_link'  => ['nullable', 'url', 'max:255'],
             'selected_photos' => ['nullable', 'url', 'max:255'],
@@ -239,6 +242,7 @@ class TransaksiController extends Controller
                 'packet_id'       => $validatedData['packet_id'],
                 'total_price'     => max(0, $totalPrice),
                 'discount'        => $discount,
+                'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
                 'note'            => $validatedData['note'],
                 'temporary_link'  => $validatedData['temporary_link'],
                 'selected_photos' => $validatedData['selected_photos'],
@@ -276,25 +280,43 @@ class TransaksiController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'field' => ['required', Rule::in(['status', 'process_status'])],
             'value' => ['required', 'string'],
+            'dp_amount' => ['nullable', 'numeric', 'min:0', 'required_if:value,dp'], // Validate dp_amount
         ]);
 
         $transaksi = Transaksi::findOrFail($id);
-        $field = $request->input('field');
-        $value = $request->input('value');
+        $field = $validated['field'];
+        $value = $validated['value'];
 
+        // Extra validation for status values
         if ($field === 'status' && !in_array($value, ['belum dibayar', 'dp', 'sudah dibayar'])) {
             return redirect()->back()->with('error', 'Invalid payment status value.');
         } elseif ($field === 'process_status' && !in_array($value, ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'])) {
             return redirect()->back()->with('error', 'Invalid process status value.');
         }
 
-        $transaksi->{$field} = $value;
-        $transaksi->save();
+        try {
+            $transaksi->{$field} = $value;
 
-        return redirect()->back()->with('success', 'Status updated successfully.');
+            // If status is updated, handle the dp_amount
+            if ($field === 'status') {
+                if ($value === 'dp') {
+                    $transaksi->dp_amount = $validated['dp_amount'];
+                } else {
+                    // If status is changed to something else, nullify the dp_amount
+                    $transaksi->dp_amount = null;
+                }
+            }
+
+            $transaksi->save();
+
+            return redirect()->back()->with('success', 'Status updated successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return redirect()->back()->with('error', 'Failed to update status.');
+        }
     }
 
     /**

@@ -53,11 +53,18 @@
                                     <div class="pt-2">
                                         @foreach(['belum dibayar', 'dp', 'sudah dibayar'] as $status)
                                             <div class="form-check form-check-inline">
-                                                <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input" {{ old('status', 'belum dibayar') == $status ? 'checked' : '' }}>
+                                                <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input payment-status-radio" {{ old('status', 'belum dibayar') == $status ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="status_{{ $loop->iteration }}">{{ ucwords($status) }}</label>
                                             </div>
                                         @endforeach
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5" id="dp-amount-container" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="dp_amount">DP Amount (Rp)</label>
+                                    <input type="number" class="form-control form-control-sm" id="dp_amount" name="dp_amount" value="{{ old('dp_amount') }}" min="0">
                                 </div>
                             </div>
                         </div>
@@ -144,7 +151,20 @@
                                     <tr><td>Extra Additionals :</td><td id="summary-additionals-price" class="text-end fw-bold">Rp 0</td></tr>
                                     <tr><td class="border-0">Subtotal :</td><td id="summary-subtotal" class="text-end fw-bold border-0">Rp 0</td></tr>
                                     <tr><td class="border-0 pt-0">Discount :</td><td id="summary-discount" class="border-0 pt-0 text-end text-danger">- Rp 0</td></tr>
-                                    <tr class="bg-light"><th class="fs-5">Total Price :</th><th id="summary-total-price" class="text-end fs-5">Rp 0</th></tr>
+
+                                    <tr class="bg-light" id="summary-total-row">
+                                        <th class="fs-5">Total Price :</th>
+                                        <th id="summary-total-price" class="text-end fs-5">Rp 0</th>
+                                    </tr>
+
+                                    <tr id="summary-dp-row" style="display: none;">
+                                        <td class="fw-bold">DP Paid :</td>
+                                        <td id="summary-dp-paid" class="text-end fw-bold">Rp 0</td>
+                                    </tr>
+                                    <tr class="bg-light" id="summary-remaining-row" style="display: none;">
+                                        <th class="fs-5">Remaining :</th>
+                                        <th id="summary-remaining-balance" class="text-end fs-5">Rp 0</th>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -160,21 +180,32 @@
 @endsection
 
 @section('script')
-{{-- The JavaScript is unchanged from the previous step --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Form Elements
+    const packetSelect = document.getElementById('packet_id');
+    const discountInput = document.getElementById('discount-input');
     const includedContainer = document.getElementById('included-additionals-container');
     const extraContainer = document.getElementById('extra-additionals-container');
     const addSelect = document.getElementById('add_additional_select');
-    const packetSelect = document.getElementById('packet_id');
-    const discountInput = document.getElementById('discount-input');
     const addBtn = document.getElementById('add-additional-btn');
+    const statusRadios = document.querySelectorAll('.payment-status-radio');
+    const dpAmountContainer = document.getElementById('dp-amount-container');
+    const dpAmountInput = document.getElementById('dp_amount');
 
-    const summaryPacketEl = document.getElementById('summary-packet-price');
-    const summaryAdditionalsEl = document.getElementById('summary-additionals-price');
-    const summarySubtotalEl = document.getElementById('summary-subtotal');
-    const summaryDiscountEl = document.getElementById('summary-discount');
-    const summaryTotalEl = document.getElementById('summary-total-price');
+    // Summary Card Elements
+    const summary = {
+        packetEl: document.getElementById('summary-packet-price'),
+        additionalsEl: document.getElementById('summary-additionals-price'),
+        subtotalEl: document.getElementById('summary-subtotal'),
+        discountEl: document.getElementById('summary-discount'),
+        totalPriceEl: document.getElementById('summary-total-price'),
+        dpPaidEl: document.getElementById('summary-dp-paid'),
+        remainingBalanceEl: document.getElementById('summary-remaining-balance'),
+        totalRow: document.getElementById('summary-total-row'),
+        dpRow: document.getElementById('summary-dp-row'),
+        remainingRow: document.getElementById('summary-remaining-row'),
+    };
 
     const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
@@ -186,15 +217,31 @@ document.addEventListener('DOMContentLoaded', function() {
             const qty = parseInt(row.querySelector('.quantity-input').value) || 0;
             extraAdditionalsPrice += price * qty;
         });
+
         const subtotal = packetPrice + extraAdditionalsPrice;
         const discount = parseFloat(discountInput.value) || 0;
-        const total = subtotal - discount;
+        const total = subtotal - discount > 0 ? subtotal - discount : 0;
+        const dpAmount = parseFloat(dpAmountInput.value) || 0;
+        const remaining = total - dpAmount;
+        const selectedStatus = document.querySelector('.payment-status-radio:checked').value;
 
-        summaryPacketEl.textContent = formatCurrency(packetPrice);
-        summaryAdditionalsEl.textContent = formatCurrency(extraAdditionalsPrice);
-        summarySubtotalEl.textContent = formatCurrency(subtotal);
-        summaryDiscountEl.textContent = `- ${formatCurrency(discount)}`;
-        summaryTotalEl.textContent = formatCurrency(total > 0 ? total : 0);
+        summary.packetEl.textContent = formatCurrency(packetPrice);
+        summary.additionalsEl.textContent = formatCurrency(extraAdditionalsPrice);
+        summary.subtotalEl.textContent = formatCurrency(subtotal);
+        summary.discountEl.textContent = `- ${formatCurrency(discount)}`;
+        summary.totalPriceEl.textContent = formatCurrency(total);
+
+        if (selectedStatus === 'dp') {
+            summary.totalRow.style.display = 'none';
+            summary.dpRow.style.display = '';
+            summary.remainingRow.style.display = '';
+            summary.dpPaidEl.textContent = formatCurrency(dpAmount);
+            summary.remainingBalanceEl.textContent = formatCurrency(remaining > 0 ? remaining : 0);
+        } else {
+            summary.totalRow.style.display = '';
+            summary.dpRow.style.display = 'none';
+            summary.remainingRow.style.display = 'none';
+        }
     }
 
     function addExtraRow(id, name, price, quantity) {
@@ -210,10 +257,24 @@ document.addEventListener('DOMContentLoaded', function() {
         extraContainer.insertAdjacentHTML('beforeend', template);
     }
 
-    packetSelect.addEventListener('change', function() {
-        const packetId = this.value;
+    function toggleDpField() {
+        const selectedStatus = document.querySelector('.payment-status-radio:checked').value;
+        if (selectedStatus === 'dp') {
+            dpAmountContainer.style.display = 'block';
+        } else {
+            dpAmountContainer.style.display = 'none';
+            dpAmountInput.value = ''; // Clear value when hidden
+        }
+        updateSummary();
+    }
+
+    function fetchAndDisplayDefaults() {
+        const packetId = packetSelect.value;
         includedContainer.innerHTML = '<p class="text-muted">Loading...</p>';
-        if (!packetId) return;
+        if (!packetId) {
+            includedContainer.innerHTML = '<p class="text-muted">Select a packet to see its included items.</p>';
+            return;
+        };
 
         fetch(`/packets/${packetId}/default-additionals`)
             .then(response => response.json())
@@ -224,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     data.forEach(item => {
                         const div = document.createElement('div');
-                        div.className = 'included-item d-inline-block me-2 mb-2';
+                        div.className = 'included-item d-inline-block border rounded-pill px-2 py-1 me-2 mb-2';
                         div.textContent = `${item.quantity}x ${item.additional.name}`;
                         includedContainer.appendChild(div);
                     });
@@ -232,8 +293,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSummary();
             })
             .catch(() => includedContainer.innerHTML = '<p class="text-danger">Could not load included items.</p>');
-    });
+    }
 
+    // Event Listeners
+    packetSelect.addEventListener('change', fetchAndDisplayDefaults);
     addBtn.addEventListener('click', () => {
         const selected = addSelect.options[addSelect.selectedIndex];
         if (!selected.value) return;
@@ -241,20 +304,21 @@ document.addEventListener('DOMContentLoaded', function() {
         addSelect.value = '';
         updateSummary();
     });
-
     extraContainer.addEventListener('click', e => {
         if (e.target.classList.contains('remove-additional-btn')) {
             e.target.closest('.extra-additional-row').remove();
             updateSummary();
         }
     });
-
     extraContainer.addEventListener('input', e => {
         if (e.target.classList.contains('quantity-input')) updateSummary();
     });
-
-    packetSelect.addEventListener('change', updateSummary);
+    statusRadios.forEach(radio => radio.addEventListener('change', toggleDpField));
     discountInput.addEventListener('input', updateSummary);
+    dpAmountInput.addEventListener('input', updateSummary);
+
+    // Initial State
+    toggleDpField();
     updateSummary();
 });
 </script>
