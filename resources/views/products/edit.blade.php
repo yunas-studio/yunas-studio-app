@@ -50,7 +50,7 @@
                                         </div>
                                     @endif
                                     <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
-                                    <small class="form-text text-muted">Upload a new product image (max 2MB). Leave empty to keep current image.</small>
+                                    <small class="form-text text-muted">Upload a new product image (max 15MB). Leave empty to keep current image.</small>
                                 </div>
                                 <div class="mb-3">
                                     <div class="mt-3 text-center">

@@ -6,6 +6,12 @@
 @slot('title') Dashboard @endslot
 @endcomponent
 
+<!-- Hidden div to store chart data -->
+<div id="monthly-expenses-data" 
+    data-expenses="{{ json_encode($monthlyExpenses) }}"
+    data-labels="{{ json_encode($monthlyLabels) }}"
+    style="display: none;"></div>
+
 <div class="row">
     <div class="col-md-6 col-xl-3">
         <div class="card">
@@ -56,22 +62,92 @@
     </div> <!-- end col-->
 
     <div class="col-md-6 col-xl-3">
-
         <div class="card">
             <div class="card-body">
                 <div class="float-end mt-2">
-                    <div id="growth-chart" data-colors='["--bs-warning"]'></div>
+                    <div id="expenses-chart" data-colors='["--bs-danger"]'></div>
                 </div>
                 <div>
-                    <h4 class="mb-1 mt-1">+ <span data-plugin="counterup">12.58</span>%</h4>
-                    <p class="text-muted mb-0">Growth</p>
+                    <h4 class="mb-1 mt-1">Rp <span data-plugin="counterup">{{ number_format($totalExpenses, 0, ',', '.') }}</span></h4>
+                    <p class="text-muted mb-0">Total Expenses</p>
                 </div>
-                <p class="text-muted mt-3 mb-0"><span class="text-success me-1"><i class="mdi mdi-arrow-up-bold me-1"></i>10.51%</span> since last week
+                <p class="text-muted mt-3 mb-0">
+                    <a href="{{ route('expenses.index') }}" class="text-reset">View Details <i class="mdi mdi-arrow-right ms-1"></i></a>
                 </p>
             </div>
         </div>
     </div> <!-- end col-->
 </div> <!-- end row-->
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="float-end">
+                    <div class="dropdown">
+                        <a class="dropdown-toggle text-reset" href="#" id="dropdownMenuButton5" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="fw-semibold">Sort By:</span> <span class="text-muted">Yearly<i class="mdi mdi-chevron-down ms-1"></i></span>
+                        </a>
+
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton5">
+                            <a class="dropdown-item" href="#">Monthly</a>
+                            <a class="dropdown-item" href="#">Yearly</a>
+                            <a class="dropdown-item" href="#">Weekly</a>
+                        </div>
+                    </div>
+                </div>
+                <h4 class="card-title mb-4">Monthly Expenses</h4>
+
+                <div class="mt-1">
+                    <ul class="list-inline main-chart mb-0">
+                        <li class="list-inline-item chart-border-left me-0 border-0">
+                            <h3 class="text-primary">Rp <span data-plugin="counterup">{{ number_format($totalExpenses, 0, ',', '.') }}</span><span class="text-muted d-inline-block font-size-15 ms-3">Total Expenses</span></h3>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="mt-3">
+                    <div id="monthly-expenses-chart" data-colors='["--bs-danger", "#dfe2e6", "--bs-warning"]' class="apex-charts" dir="ltr"></div>
+                </div>
+            </div> <!-- end card-body-->
+        </div> <!-- end card-->
+    </div> <!-- end col-->
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-4">Expenses by Category</h4>
+
+                @if(count($expensesByCategory) > 0)
+                    @foreach($expensesByCategory as $category)
+                        <div class="row align-items-center g-0 mt-3">
+                            <div class="col-sm-5">
+                                <p class="text-truncate mt-1 mb-0"><i class="mdi mdi-circle-medium text-primary me-2"></i> {{ $category->category }} </p>
+                            </div>
+                            <div class="col-sm-7">
+                                <div class="progress mt-1" style="height: 6px;">
+                                    <div class="progress-bar progress-bar bg-primary" role="progressbar"
+                                        style="width: {{ ($category->total / $totalExpenses) * 100 }}%" 
+                                        aria-valuenow="{{ ($category->total / $totalExpenses) * 100 }}" 
+                                        aria-valuemin="0"
+                                        aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <p class="text-end mb-0 mt-1">Rp {{ number_format($category->total, 0, ',', '.') }}</p>
+                            </div>
+                        </div> <!-- end row-->
+                    @endforeach
+                @else
+                    <p class="text-muted">No category data available</p>
+                @endif
+
+                <div class="mt-4 text-center">
+                    <a href="{{ route('expenses.index') }}" class="btn btn-primary btn-sm">View All Expenses</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row">
     <div class="col-xl-8">
@@ -669,4 +745,5 @@
 <script src="{{ URL::asset('/assets/libs/apexcharts/apexcharts.min.js') }}"></script>
 
 <script src="{{ URL::asset('/assets/js/pages/dashboard.init.js') }}"></script>
+<script src="{{ URL::asset('/assets/js/pages/monthly-expenses.init.js') }}"></script>
 @endsection
