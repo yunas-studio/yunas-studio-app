@@ -9,6 +9,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PacketController;
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\HomeController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -25,34 +26,38 @@ Auth::routes();
 
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/', [App\Http\Controllers\HomeController::class, 'root']);
+    Route::get('/', [HomeController::class, 'root']);
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
         ->name('users.toggle-status');
 
     Route::resource('additionals', AdditionalController::class);
     Route::resource('additional-defaults', AdditionalDefaultController::class);
+    Route::resource('products', ProductController::class);
+
+    Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])
+        ->name('packets.toggle-status');
+
+    Route::resource('packets', PacketController::class);
+    Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
+    Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
+
+    Route::resource('expenses', ExpenseController::class);
+            
+    Route::resource('transaksi', TransaksiController::class);
+    Route::get('transaksi/{transaksi}/select-photos', [TransaksiController::class, 'viewSelectPhotos'])->name('transaksi.view-select-photos');
+    Route::get('transaksi/{transaksi}/result-photos', [TransaksiController::class, 'viewResultPhotos'])->name('transaksi.view-result-photos');
+    Route::get('/transaksi/{transaksi}/download-invoice', [TransaksiController::class, 'downloadInvoice'])
+        ->name('transaksi.download-invoice');
+    Route::post('/transaksi/{transaksi}/select-image', [TransaksiController::class, 'selectImage'])->name('transaksi.select-image');
+
+    // Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
+    Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
 });
 
-Route::resource('products', ProductController::class);
 
-Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])
-    ->name('packets.toggle-status');
+Route::get('{any}', [HomeController::class, 'index']);
 
-Route::resource('packets', PacketController::class);
-Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
-Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
+Route::get('index/{locale}', [HomeController::class, 'lang']);
 
-Route::resource('transaksi', TransaksiController::class);
-
-// Route::put('/transaksi/{id}/toggle-status', [TransaksiController::class, 'toggleStatus'])->name('transaksi.toggle-status');
-Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
-
-Route::resource('expenses', ExpenseController::class);
-
-Route::get('{any}', [App\Http\Controllers\HomeController::class, 'index']);
-//Language Translation
-
-Route::get('index/{locale}', [App\Http\Controllers\HomeController::class, 'lang']);
-
-Route::post('/formsubmit', [App\Http\Controllers\HomeController::class, 'FormSubmit'])->name('FormSubmit');
+Route::post('/formsubmit', [HomeController::class, 'FormSubmit'])->name('FormSubmit');

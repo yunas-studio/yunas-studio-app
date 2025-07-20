@@ -23,6 +23,7 @@ class Transaksi extends Model
         'final_link',
         // 'transaction_date', // Removed
         'total_price',
+        'dp_amount',
         'discount',
         'note',
     ];
