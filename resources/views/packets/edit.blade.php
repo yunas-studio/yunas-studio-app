@@ -50,6 +50,12 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
+                                            <label for="max_photos_for_edit" class="form-label">Max Photos for Edit</label>
+                                            <input type="number" class="form-control" id="max_photos_for_edit" name="max_photos_for_edit" value="{{ old('max_photos_for_edit', $packet->max_photos_for_edit) }}" min="0" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
                                             <label for="product_id" class="form-label">Product</label>
                                             <select class="form-select" id="product_id" name="product_id" required>
                                                 <option value="" disabled>Select Product</option>

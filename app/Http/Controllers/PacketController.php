@@ -56,6 +56,7 @@ class PacketController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric',
+            'max_photos_for_edit' => 'required|integer|min:0',
             'product_id' => 'required|exists:products,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
         ]);
@@ -101,6 +102,7 @@ class PacketController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric',
+            'max_photos_for_edit' => 'required|integer|min:0',
             'product_id' => 'required|exists:products,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
         ]);
