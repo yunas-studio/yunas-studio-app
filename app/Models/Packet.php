@@ -15,6 +15,7 @@ class Packet extends Model
         'name',
         'description',
         'price',
+        'max_photos_for_edit',
         'product_id',
         'image',
         'is_active'

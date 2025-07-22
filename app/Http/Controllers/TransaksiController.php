@@ -354,8 +354,11 @@ class TransaksiController extends Controller
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
-            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW'); // Always show from RAW
+            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
             $selectedPhotos = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
+
+            // The photo limit now comes from the packet, with a fallback of 10
+            $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
 
             return view('user.transaction.manage-photo', [
                 'transaksi' => $transaksi,
@@ -364,7 +367,7 @@ class TransaksiController extends Controller
                 'formAction' => route('transaksi.handle-select-for-edit', $transaksi),
                 'selectedPhotos' => $selectedPhotos,
                 'photoCount' => $photoData['count'],
-                'totalImage' => 10, // Or get from a config, e.g., config('app.max_photos_for_edit', 10)
+                'totalImage' => $photoLimit, // Use the dynamic value here
             ]);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
