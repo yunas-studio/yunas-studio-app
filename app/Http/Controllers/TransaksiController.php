@@ -375,49 +375,51 @@ class TransaksiController extends Controller
     }
     // This method handles the submission from the "Select for Edit" page
 
+    // In TransaksiController.php
     public function handleSelectForEdit(Request $request, Transaksi $transaksi)
     {
-        // --- NEW: Add this check at the beginning of the method ---
         if (!in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit'])) {
             return redirect()->back()->with('error', 'Photo selection is locked because the editing process has already begun.');
         }
-        // --- END of new check ---
 
         $request->validate(['photo_urls' => 'sometimes|array', 'photo_urls.*' => 'string']);
-
         $selectedUrls = $request->input('photo_urls', []);
 
         DB::transaction(function () use ($transaksi, $selectedUrls) {
-            // Sync the database
             $transaksi->selectedPhotos()->delete();
-            $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
-                return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
-            })->all();
-            SelectedPhoto::insert($dataToInsert);
+            if (!empty($selectedUrls)) {
+                $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
+                    return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
+                })->all();
+                SelectedPhoto::insert($dataToInsert);
+            }
 
-            // Create symlinks in "Pilih Edit" folder
             $folderName = str_replace('/', '_', $transaksi->receipt_code);
             $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
-            
             File::cleanDirectory($pilihEditPath);
 
             foreach ($selectedUrls as $url) {
                 $rawFileName = basename($url);
                 $sourcePath = storage_path("app/public/photos/{$folderName}/RAW/{$rawFileName}");
                 $linkPath = "{$pilihEditPath}/{$rawFileName}";
-
                 if (File::exists($sourcePath) && !File::exists($linkPath)) {
                     File::link($sourcePath, $linkPath);
                 }
             }
 
-            // Update status only if it was in the initial state
             if ($transaksi->process_status === 'Pilih Foto') {
                 $transaksi->update(['process_status' => 'Siap Edit']);
             }
         });
 
-        return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with('success', 'Selection for editing has been saved.');
+        // Data for the success pop-up
+        $redirectData = [
+            'success_title'   => 'Selection Submitted!',
+            'success_message' => 'Thank you. Your photos have been sent to our editor.',
+            'back_url'        => route('transaksi.index')
+        ];
+
+        return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with($redirectData);
     }
 
     // NEW METHOD: Shows a page for user to select photos TO BE PRINTED

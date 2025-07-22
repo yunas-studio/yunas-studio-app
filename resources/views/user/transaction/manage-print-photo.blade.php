@@ -61,4 +61,16 @@
             </form>
         </div>
     </div>
+    @include('partials.success-modal')
+@endsection
+
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (session('success_message'))
+                var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+            @endif
+        });
+    </script>
 @endsection
