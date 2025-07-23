@@ -121,14 +121,30 @@
                                             <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button>
                                         </td>
                                         <td>
-                                            <div class="d-flex align-items-center gap-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                {{-- Show "Mark Complete" button only at the right stage --}}
+                                                @if(in_array($transaksi->process_status, ['Proses Edit', 'Selesai Editing']))
+                                                    <form action="{{ route('transaksi.completeEditing', $transaksi) }}" method="POST">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Mark Editing as Complete">
+                                                            <i class="bx bx-check-double"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                                {{-- Existing Action Icons --}}
                                                 @if(in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
                                                     <a href="{{ route('transaksi.view-selections', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="View User's Photo Selections">
                                                         <i class="uil uil-camera-change font-size-18"></i>
                                                     </a>
                                                 @endif
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
-                                                <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-link text-danger p-0" data-bs-toggle="tooltip" title="Delete Transaction"><i class="uil uil-trash-alt font-size-18"></i></button></form>
+                                                <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-link text-danger p-0" data-bs-toggle="tooltip" title="Delete Transaction"><i class="uil uil-trash-alt font-size-18"></i></button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>

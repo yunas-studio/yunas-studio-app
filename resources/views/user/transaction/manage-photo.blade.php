@@ -96,6 +96,7 @@
     </div>
 
     @include('user.transaction.photo-modal')
+    @include('partials.success-modal')
 @endsection
 
 @section('css')
@@ -237,5 +238,14 @@
             const modal = bootstrap.Modal.getInstance(document.getElementById('photoModal'));
             modal.hide();
         }
+    </script>
+    <script>
+        // Add this script to trigger the modal
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (session('success_message'))
+                var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+            @endif
+        });
     </script>
 @endsection

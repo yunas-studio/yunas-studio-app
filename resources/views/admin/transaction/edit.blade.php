@@ -206,10 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
         remainingRow: document.getElementById('summary-remaining-row'),
     };
 
-    const existingExtraAdditionals = @json($transaksi->additionals->mapWithKeys(function ($item) {
-        return [$item->id => ['name' => $item->name, 'price' => $item->pivot->price, 'quantity' => $item->pivot->quantity]];
-    }));
-
     const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
     function updateSummary() {
@@ -260,20 +256,13 @@ document.addEventListener('DOMContentLoaded', function() {
         extraContainer.insertAdjacentHTML('beforeend', template);
     }
 
-    function populateExistingExtras() {
-        extraContainer.innerHTML = '';
-        for (const id in existingExtraAdditionals) {
-            const item = existingExtraAdditionals[id];
-            addExtraRow(id, item.name, item.price, item.quantity);
-        }
-    }
-
     function toggleDpField() {
         const selectedStatus = document.querySelector('.payment-status-radio:checked').value;
         if (selectedStatus === 'dp') {
             dpAmountContainer.style.display = 'block';
         } else {
             dpAmountContainer.style.display = 'none';
+            dpAmountInput.value = ''; // Clear value when hidden
         }
         updateSummary();
     }
@@ -293,12 +282,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.length === 0) {
                     includedContainer.innerHTML = '<p class="text-muted">This packet has no included additionals.</p>';
                 } else {
+                    // --- THIS IS THE UPDATED BLOCK ---
                     data.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'included-item d-inline-block border rounded-pill px-2 py-1 me-2 mb-2';
-                        div.textContent = `${item.quantity}x ${item.additional.name}`;
+                        // The property is now just 'name' because of our new accessor in the Packet model
+                        div.textContent = `${item.quantity}x ${item.name}`; 
                         includedContainer.appendChild(div);
                     });
+                    // --- END OF UPDATED BLOCK ---
                 }
                 updateSummary();
             })
@@ -328,9 +320,8 @@ document.addEventListener('DOMContentLoaded', function() {
     dpAmountInput.addEventListener('input', updateSummary);
 
     // Initial State
-    populateExistingExtras();
-    fetchAndDisplayDefaults();
     toggleDpField();
+    updateSummary();
 });
 </script>
 @endsection

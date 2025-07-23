@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Packet;
 use App\Models\Product;
+use App\Models\PrintSize; // This is the line that fixes the error
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -90,7 +91,8 @@ class PacketController extends Controller
     public function edit(Packet $packet)
     {
         $products = Product::all();
-        return view('packets.edit', compact('packet', 'products'));
+        $printSizes = PrintSize::orderBy('name')->get(); // Get all available print sizes
+        return view('packets.edit', compact('packet', 'products', 'printSizes'));
     }
 
     /**
@@ -155,5 +157,31 @@ class PacketController extends Controller
         
         return redirect()->back()
                          ->with('success');
+    }
+
+    /**
+     * Add a print option to a packet.
+     */
+    public function addPrintOption(Request $request, Packet $packet)
+    {
+        $request->validate([
+            'print_size_id' => 'required|exists:print_sizes,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        // Attach the print size with the specified quantity
+        $packet->printOptions()->attach($request->print_size_id, ['quantity' => $request->quantity]);
+
+        return redirect()->back()->with('success', 'Print option added successfully.');
+    }
+
+    /**
+     * Remove a print option from a packet.
+     */
+    public function removePrintOption(Packet $packet, PrintSize $printSize)
+    {
+        $packet->printOptions()->detach($printSize->id);
+
+        return redirect()->back()->with('success', 'Print option removed successfully.');
     }
 }
