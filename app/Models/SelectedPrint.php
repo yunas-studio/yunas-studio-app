@@ -12,6 +12,7 @@ class SelectedPrint extends Model
     protected $fillable = [
         'transaction_id',
         'file_url',
+        'print_size',
     ];
 
     public function transaction()

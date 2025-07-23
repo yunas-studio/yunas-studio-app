@@ -283,12 +283,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.length === 0) {
                     includedContainer.innerHTML = '<p class="text-muted">This packet has no included additionals.</p>';
                 } else {
+                    // --- THIS IS THE UPDATED BLOCK ---
                     data.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'included-item d-inline-block border rounded-pill px-2 py-1 me-2 mb-2';
-                        div.textContent = `${item.quantity}x ${item.additional.name}`;
+                        // The property is now just 'name' because of our new accessor in the Packet model
+                        div.textContent = `${item.quantity}x ${item.name}`; 
                         includedContainer.appendChild(div);
                     });
+                    // --- END OF UPDATED BLOCK ---
                 }
                 updateSummary();
             })

@@ -88,11 +88,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($packet->additionalDefaults as $default)
+                                    @foreach($packet->combined_defaults as $default)
                                         <tr>
-                                            <td>{{ $default->additional->name }}</td>
+                                            <td>{{ $default->name }}</td>
                                             <td>{{ $default->quantity }}</td>
-                                            <td>Rp {{ number_format($default->additional->price * $default->quantity, 0, ',', '.') }}</td>
                                             <td>{{ $default->note ?? '-' }}</td>
                                         </tr>
                                     @endforeach

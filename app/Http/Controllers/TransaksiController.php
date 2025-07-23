@@ -271,8 +271,9 @@ class TransaksiController extends Controller
      */
     public function getDefaultAdditionals(Packet $packet)
     {
-        $defaults = $packet->additionalDefaults()->with('additional')->get();
-        return response()->json($defaults);
+        // Now it uses our new accessor to get both regular and print defaults
+        $combinedDefaults = $packet->combined_defaults; 
+        return response()->json($combinedDefaults);
     }
 
     /**
@@ -422,68 +423,104 @@ class TransaksiController extends Controller
         return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with($redirectData);
     }
 
-    // NEW METHOD: Shows a page for user to select photos TO BE PRINTED
+    // In app/Http/Controllers/TransaksiController.php
+
     public function viewSelectForPrint(Transaksi $transaksi)
     {
         try {
+            // Eager load the packet and its print options relationship
+            $transaksi->load('packet.printOptions');
+
+            if (!$transaksi->packet) {
+                return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
+            }
+
+            // Get the print allowances from the packet (e.g., ['8R + Frame' => 2, '4R' => 5])
+            $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+
+            // Get photos available for printing
             $rawPhotos = $this->getPhotoDirectoryData($transaksi, 'RAW');
             $resultPhotos = $this->getPhotoDirectoryData($transaksi, 'Result');
+            $allPhotos = array_unique(array_merge($rawPhotos['urls'], $resultPhotos['urls']));
+            
+            // Get previously selected prints
+            $selectedForPrint = SelectedPrint::where('transaction_id', $transaksi->transaction_id)
+                ->get(['file_url', 'print_size']);
 
-            $allPhotos = array_merge($rawPhotos['urls'], $resultPhotos['urls']);
-            $selectedForPrint = SelectedPrint::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
-
-            return view('user.transaction.manage-print-photo', [ // A new view file
-                'transaksi' => $transaksi,
-                'photoUrls' => $allPhotos,
-                'pageTitle' => 'Select Photos for Printing',
-                'formAction' => route('transaksi.handle-select-for-print', $transaksi),
-                'selectedPhotos' => $selectedForPrint,
-                'photoCount' => count($allPhotos),
+            return view('user.transaction.manage-print-photo', [
+                'transaksi'        => $transaksi,
+                'photoUrls'        => $allPhotos,
+                'printAllowances'  => $printAllowances,
+                'selectedForPrint' => $selectedForPrint,
+                'pageTitle'        => 'Select Photos for Printing',
+                'formAction'       => route('transaksi.handle-select-for-print', $transaksi),
             ]);
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            // Catch exceptions for cases where a folder (like 'Result') might not exist yet
+            return redirect()->back()->with('error', 'Could not load photos. Please ensure photos have been uploaded.');
         }
     }
 
     // NEW METHOD: Handles submission from the "Select for Print" page
     public function handleSelectForPrint(Request $request, Transaksi $transaksi)
     {
-        $request->validate(['photo_urls' => 'sometimes|array', 'photo_urls.*' => 'string']);
+        $request->validate(['selected_photos' => 'nullable|array']);
+        $selections = $request->input('selected_photos', []);
 
-        $selectedUrls = $request->input('photo_urls', []);
+        // --- NEW: Validation against allowances ---
+        $transaksi->load('packet.printOptions');
+        $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+        $selectionCounts = array_count_values(array_filter($selections));
 
-        DB::transaction(function () use ($transaksi, $selectedUrls) {
-            // Sync the database
+        foreach ($selectionCounts as $size => $count) {
+            if (!isset($printAllowances[$size]) || $count > $printAllowances[$size]) {
+                return redirect()->back()->withInput()->with('error', "You have selected too many photos for the size: {$size}.");
+            }
+        }
+        // --- End Validation ---
+
+        DB::transaction(function () use ($transaksi, $selections) {
             SelectedPrint::where('transaction_id', $transaksi->transaction_id)->delete();
-            $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
-                return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
-            })->all();
-            SelectedPrint::insert($dataToInsert);
+            
+            $dataToInsert = [];
+            $linksToCreate = [];
 
-            // Create symlinks in "Pilih Cetak" folder
+            foreach ($selections as $url => $size) {
+                if (!empty($size)) {
+                    $dataToInsert[] = ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'print_size' => $size, 'created_at' => now(), 'updated_at' => now()];
+                    $linksToCreate[$url] = $size;
+                }
+            }
+
+            if (!empty($dataToInsert)) {
+                SelectedPrint::insert($dataToInsert);
+            }
+
             $folderName = str_replace('/', '_', $transaksi->receipt_code);
             $pilihCetakPath = storage_path("app/public/photos/{$folderName}/Pilih Cetak");
-
             File::cleanDirectory($pilihCetakPath);
 
-            foreach ($selectedUrls as $url) {
+            foreach ($linksToCreate as $url => $size) {
                 $fileName = basename($url);
                 $sourcePathRaw = storage_path("app/public/photos/{$folderName}/RAW/{$fileName}");
                 $sourcePathResult = storage_path("app/public/photos/{$folderName}/Result/{$fileName}");
-                $linkPath = "{$pilihCetakPath}/{$fileName}";
-
+                $linkPath = "{$pilihCetakPath}/{$size} - {$fileName}";
                 $sourcePath = File::exists($sourcePathResult) ? $sourcePathResult : $sourcePathRaw;
 
                 if (File::exists($sourcePath) && !File::exists($linkPath)) {
                     File::link($sourcePath, $linkPath);
                 }
             }
-
-            // Update status
-            $transaksi->update(['process_status' => 'Siap Cetak']);
+            $transaksi->update(['process_status' => 'Proses Cetak']);
         });
 
-        return redirect()->route('transaksi.view-select-for-print', $transaksi)->with('success', 'Selection for printing has been saved.');
+        $redirectData = [
+            'success_title'   => 'Print Selection Saved!',
+            'success_message' => 'Thank you. We have received your photos for printing.',
+            'back_url'        => route('transaksi.index')
+        ];
+
+        return redirect()->route('transaksi.view-select-for-print', $transaksi)->with($redirectData);
     }
 
     /**
@@ -663,6 +700,34 @@ class TransaksiController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->route('transaksi.index')->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Mark the editing process as complete and transition to the next status.
+     */
+    public function completeEditing(Transaksi $transaksi)
+    {
+        // Ensure this can only be done when editing is in progress or just finished
+        if (!in_array($transaksi->process_status, ['Proses Edit', 'Selesai Editing'])) {
+            return redirect()->back()->with('error', 'This action is not allowed at the current status.');
+        }
+
+        try {
+            // Check if the associated packet has any print options defined
+            if ($transaksi->packet && $transaksi->packet->printOptions()->exists()) {
+                $transaksi->process_status = 'Siap Cetak';
+            } else {
+                $transaksi->process_status = 'Selesai';
+            }
+
+            $transaksi->save();
+
+            return redirect()->back()->with('success', 'Transaction status has been updated.');
+
+        } catch (\Exception $e) {
+            report($e);
+            return redirect()->back()->with('error', 'Failed to update transaction status.');
         }
     }
 }

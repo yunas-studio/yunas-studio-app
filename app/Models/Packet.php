@@ -41,9 +41,17 @@ class Packet extends Model
     {
         return $this->hasMany(AdditionalDefault::class);
     }
+    
+    /**
+     * Get the print options included with this packet.
+     */
+    public function printOptions()
+    {
+        return $this->belongsToMany(PrintSize::class, 'packet_print_options')->withPivot('quantity');
+    }
 
     /**
-     * Get all the additional items included with this packet.
+     * Get all the additional items included with this packet (your original method).
      */
     public function additionals()
     {
@@ -55,5 +63,32 @@ class Packet extends Model
             'id', // Local key on Packet table
             'additional_id' // Local key on AdditionalDefault table
         );
+    }
+
+    /**
+     * NEW ACCESSOR: Combines regular defaults and print options into a single collection for display.
+     */
+    public function getCombinedDefaultsAttribute()
+    {
+        // Eager load the relationships to prevent N+1 issues
+        $this->loadMissing('additionalDefaults.additional', 'printOptions');
+
+        $defaults = $this->additionalDefaults->map(function ($default) {
+            return (object)[
+                'name' => $default->additional->name,
+                'quantity' => $default->quantity,
+                'note' => $default->note
+            ];
+        });
+
+        $prints = $this->printOptions->map(function ($print) {
+            return (object)[
+                'name' => 'Cetak ' . $print->name,
+                'quantity' => $print->pivot->quantity,
+                'note' => null
+            ];
+        });
+
+        return $defaults->merge($prints);
     }
 }

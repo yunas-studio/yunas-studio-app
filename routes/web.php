@@ -39,6 +39,10 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])->name('packets.toggle-status');
     Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
     Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
+    
+    // Print Sizes
+    Route::post('/packets/{packet}/print-options', [PacketController::class, 'addPrintOption'])->name('packets.addPrintOption');
+    Route::delete('/packets/{packet}/print-options/{print_size}', [PacketController::class, 'removePrintOption'])->name('packets.removePrintOption');
 
     // Expenses
     Route::resource('expenses', ExpenseController::class);
@@ -46,6 +50,7 @@ Route::middleware(['auth'])->group(function () {
     // Transactions Core
     Route::resource('transaksi', TransaksiController::class);
     Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
+    Route::put('/transaksi/{transaksi}/complete-editing', [TransaksiController::class, 'completeEditing'])->name('transaksi.completeEditing');
 
     // Transaction Photo & Invoice Workflow Routes
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
