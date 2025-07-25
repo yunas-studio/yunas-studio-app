@@ -89,25 +89,18 @@ class TransaksiController extends Controller
             'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'           => ['nullable', 'string'],
-            'temporary_link' => ['nullable', 'url', 'max:255'],
-            'selected_photos' => ['nullable', 'url', 'max:255'],
-            'final_link'     => ['nullable', 'url', 'max:255'],
         ]);
 
         DB::beginTransaction();
         try {
-            // Find or Create User Logic
-            $user = User::where('username', $validatedData['phone_number'])->first();
-
-            if (!$user) {
-                $userRole = Role::where('name', 'User')->firstOrFail();
-                $user = User::create([
+            $user = User::firstOrCreate(
+                ['username' => $validatedData['phone_number']],
+                [
                     'name' => $validatedData['customer_name'],
-                    'username' => $validatedData['phone_number'],
                     'password' => Hash::make($validatedData['phone_number']),
-                    'role_id' => $userRole->id,
-                ]);
-            }
+                    'role_id' => Role::where('name', 'User')->firstOrFail()->id,
+                ]
+            );
 
             $packet = Packet::findOrFail($validatedData['packet_id']);
             $subtotal = $packet->price;
@@ -132,9 +125,6 @@ class TransaksiController extends Controller
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
-                'temporary_link'  => $validatedData['temporary_link'],
-                'selected_photos' => $validatedData['selected_photos'],
-                'final_link'      => $validatedData['final_link'],
             ]);
 
             if (!empty($validatedData['additionals'])) {
@@ -150,7 +140,7 @@ class TransaksiController extends Controller
 
             DB::commit();
 
-            // --- NEW FOLDER CREATION LOGIC ---
+            // Folder Creation Logic
             try {
                 $folderName = str_replace('/', '_', $transaksi->receipt_code);
                 $baseTransactionPath = storage_path('app/public/photos/' . $folderName);
@@ -165,9 +155,8 @@ class TransaksiController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed to create photo directories for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
             }
-            // --- END OF NEW LOGIC ---
 
-            return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully. Customer account linked.');
+            return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Transaction store error: ' . $e->getMessage());
@@ -194,33 +183,27 @@ class TransaksiController extends Controller
         $transaksi = Transaksi::with('user')->findOrFail($id);
 
         $validatedData = $request->validate([
-            'customer_name'   => ['required', 'string', 'max:50'],
-            // Add validation to ensure the new phone number isn't already taken by another user
-            'phone_number'    => ['required', 'string', 'max:20', Rule::unique('users', 'username')->ignore($transaksi->user_id)],
-            'status'          => ['required', 'in:belum dibayar,dp,sudah dibayar'],
-            'process_status'  => ['required', Rule::in(['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'])],
-            'packet_id'       => ['required', 'exists:packets,id'],
-            'additionals'     => ['nullable', 'array'],
+            'customer_name'  => ['required', 'string', 'max:50'],
+            'phone_number'   => ['required', 'string', 'max:20', Rule::unique('users', 'username')->ignore($transaksi->user_id)],
+            'status'         => ['required', 'in:belum dibayar,dp,sudah dibayar'],
+            'process_status' => ['required', Rule::in(['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'])],
+            'packet_id'      => ['required', 'exists:packets,id'],
+            'additionals'    => ['nullable', 'array'],
             'additionals.*.quantity' => ['required', 'integer', 'min:1'],
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
-            'discount'        => ['nullable', 'numeric', 'min:0'],
+            'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
-            'note'            => ['nullable', 'string'],
-            'temporary_link'  => ['nullable', 'url', 'max:255'],
-            'selected_photos' => ['nullable', 'url', 'max:255'],
-            'final_link'      => ['nullable', 'url', 'max:255'],
+            'note'           => ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
         try {
-            // --- Update Existing User Logic ---
             if ($transaksi->user) {
                 $transaksi->user->update([
                     'name' => $validatedData['customer_name'],
                     'username' => $validatedData['phone_number'],
                 ]);
             }
-            // --- End User Logic ---
 
             $packet = Packet::findOrFail($validatedData['packet_id']);
             $subtotal = $packet->price;
@@ -241,12 +224,9 @@ class TransaksiController extends Controller
                 'process_status'  => $validatedData['process_status'],
                 'packet_id'       => $validatedData['packet_id'],
                 'total_price'     => max(0, $totalPrice),
-                'discount'        => $discount,
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
+                'discount'        => $discount,
                 'note'            => $validatedData['note'],
-                'temporary_link'  => $validatedData['temporary_link'],
-                'selected_photos' => $validatedData['selected_photos'],
-                'final_link'      => $validatedData['final_link'],
             ]);
 
             $syncData = [];
@@ -258,7 +238,7 @@ class TransaksiController extends Controller
             $transaksi->additionals()->sync($syncData);
 
             DB::commit();
-            return redirect()->route('transaksi.index')->with('success', 'Transaction and customer details updated successfully.');
+            return redirect()->route('transaksi.index')->with('success', 'Transaction updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Transaction update error: ' . $e->getMessage());
@@ -729,5 +709,22 @@ class TransaksiController extends Controller
             report($e);
             return redirect()->back()->with('error', 'Failed to update transaction status.');
         }
+    }
+
+    /**
+     * Display a printer-friendly version of the invoice.
+     */
+    public function printInvoice(Transaksi $transaksi)
+    {
+        // Eager load the actual relationships needed for the invoice.
+        // The 'combined_defaults' accessor will use these automatically.
+        $transaksi->load(
+            'packet.product', 
+            'packet.additionalDefaults.additional', 
+            'packet.printOptions.pivot', 
+            'additionals'
+        );
+
+        return view('invoices.print-template', ['transaksi' => $transaksi]);
     }
 }

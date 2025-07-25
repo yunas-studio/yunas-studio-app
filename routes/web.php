@@ -65,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/download-invoice', [TransaksiController::class, 'downloadInvoice'])->name('download-invoice');
 
         Route::get('/view-selections', [TransaksiController::class, 'viewSelectionsForAdmin'])->name('view-selections');
+        Route::get('/print-invoice', [TransaksiController::class, 'printInvoice'])->name('print-invoice');
     });
 });
 
