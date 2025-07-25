@@ -104,7 +104,14 @@
                                 <tr>
                                     <td><a href="javascript: void(0);" class="text-body fw-bold" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">{{ $transaksi->receipt_code }}</a></td>
                                     <td>{{ $transaksi->customer_name }}</td>
-                                    <td>{{ $transaksi->packet->name ?? 'N/A' }}</td>
+                                    {{-- This is the updated column --}}
+                                    <td>
+                                        <span class="fw-bold">{{ $transaksi->packet->name ?? 'N/A' }}</span>
+                                        @if($transaksi->packet && $transaksi->packet->product)
+                                            <br>
+                                            <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
+                                        @endif
+                                    </td>
                                     <td class="fw-bold">
                                         <a href="javascript:void(0);" class="clickable-price"
                                            data-bs-toggle="modal"

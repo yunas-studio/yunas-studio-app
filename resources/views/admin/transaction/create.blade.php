@@ -124,14 +124,6 @@
                         </div>
 
                         <hr>
-                        <h5 class="section-title"><i class="mdi mdi-link-variant text-primary me-1"></i> Delivery Links</h5>
-                        <div class="row">
-                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="temporary_link" placeholder="Temporary Link" value="{{ old('temporary_link') }}"><label>Temporary Link</label></div></div>
-                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="selected_photos" placeholder="Selected Photos Link" value="{{ old('selected_photos') }}"><label>Selected Photos Link</label></div></div>
-                            <div class="col-md-4"><div class="form-floating mb-3"><input type="url" class="form-control" name="final_link" placeholder="Final Link" value="{{ old('final_link') }}"><label>Final Link</label></div></div>
-                        </div>
-
-                        <hr>
                         <h5 class="section-title"><i class="mdi mdi-pencil-outline text-primary me-1"></i> Transaction Note</h5>
                         <div class="mb-3">
                             <textarea class="form-control" id="note" name="note" rows="3" placeholder="Add an internal note for this transaction...">{{ old('note') }}</textarea>
