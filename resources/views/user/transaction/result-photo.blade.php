@@ -14,6 +14,8 @@
 
     <div class="container-fluid bg-white py-4">
         <div class="container">
+
+            {{-- Success Alert --}}
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     {{ session('success') }}
@@ -21,16 +23,61 @@
                 </div>
             @endif
 
+            {{-- Error Toast --}}
+            @if(session('error'))
+                <div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+                    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert"
+                         aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                {{ session('error') }}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                                    data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0">Photos for Transaction #{{ $transaksi->receipt_code }}</h2>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Back Button -->
+                    <a href="{{ url()->previous() }}" class="btn btn-secondary btn-sm">
+                        ←
+                    </a>
+                    <h2 class="mb-0">Photos for Transaction #{{ $transaksi->receipt_code }}</h2>
+                </div>
                 <div class="badge bg-primary rounded-pill">
                     {{ $photoCount }} Photos
                 </div>
             </div>
 
+
+            {{-- Filter Buttons --}}
+            <div class="mb-4">
+                <div class="btn-group" role="group">
+                    <a href="{{ route('transaksi.view-result-photos', ['transaksi' => $transaksi->transaction_id, 'filter' => 'raw']) }}"
+                       class="btn btn-outline-primary {{ $currentFilter === 'RAW' ? 'active' : '' }}">
+                        RAW
+                    </a>
+                    <a href="{{ route('transaksi.view-result-photos', ['transaksi' => $transaksi->transaction_id, 'filter' => 'result']) }}"
+                       class="btn btn-outline-primary {{ $currentFilter === 'Result' ? 'active' : '' }}">
+                        Result
+                    </a>
+                    <a href="{{ route('transaksi.view-result-photos', ['transaksi' => $transaksi->transaction_id, 'filter' => 'pilih_edit']) }}"
+                       class="btn btn-outline-primary {{ $currentFilter === 'Pilih Edit' ? 'active' : '' }}">
+                        Pilih Edit
+                    </a>
+                    <a href="{{ route('transaksi.view-result-photos', ['transaksi' => $transaksi->transaction_id, 'filter' => 'pilih_cetak']) }}"
+                       class="btn btn-outline-primary {{ $currentFilter === 'Pilih Cetak' ? 'active' : '' }}">
+                        Pilih Cetak
+                    </a>
+                </div>
+            </div>
+
             @if($photoCount > 0)
                 <div class="row g-4">
-                    @foreach ($photoUrls as $index => $url)
+                    @foreach ($photoUrls['urls'] as $index => $url)
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3">
                             <div class="card photo-card h-100 mx-auto">
                                 <div class="image-container ratio ratio-4x3 position-relative">
@@ -47,7 +94,7 @@
                                                 onclick="openModal('{{ $url }}', '{{ $transaksi->receipt_code }}-photo-{{ $index + 1 }}')">
                                             <i class="fas fa-expand me-1"></i> Preview
                                         </button>
-                                        <a href="{{ $url }}" download="{{ $transaksi->receipt_code }}-photo-{{ $index + 1 }}.jpg" 
+                                        <a href="{{ $url }}" download="{{ $transaksi->receipt_code }}-photo-{{ $index + 1 }}.jpg"
                                            class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-download me-1"></i> Download
                                         </a>
@@ -121,17 +168,24 @@
 
 @section('script')
     <script>
-        // Modal function with download setup
         function openModal(photoUrl, photoName) {
             const modal = new bootstrap.Modal(document.getElementById('photoModal'));
             const modalPhoto = document.getElementById('modalPhoto');
             const downloadBtn = document.getElementById('downloadBtn');
-            
+
             modalPhoto.src = photoUrl;
             downloadBtn.href = photoUrl;
             downloadBtn.download = photoName + '.jpg';
-            
+
             modal.show();
         }
+
+        @if(session('error'))
+        document.addEventListener('DOMContentLoaded', function () {
+            const toastElement = document.getElementById('errorToast');
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        });
+        @endif
     </script>
 @endsection
