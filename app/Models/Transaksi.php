@@ -20,8 +20,6 @@ class Transaksi extends Model
         'status',
         'process_status',
         'receipt_code',
-        'final_link',
-        // 'transaction_date', // Removed
         'total_price',
         'dp_amount',
         'discount',
@@ -33,9 +31,6 @@ class Transaksi extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The packets that belong to the transaction.
-     */
     public function packet()
     {
         return $this->belongsTo(Packet::class);
@@ -44,12 +39,39 @@ class Transaksi extends Model
     public function additionals()
     {
         return $this->belongsToMany(Additional::class, 'additional_transaksi', 'transaksi_id', 'additional_id')
-                    ->withPivot('quantity', 'price')
-                    ->withTimestamps();
+            ->withPivot('quantity', 'price')
+            ->withTimestamps();
     }
 
     public function selectedPhotos()
     {
         return $this->hasMany(SelectedPhoto::class, 'transaction_id', 'transaction_id');
+    }
+
+    /**
+     * Get all of the selected prints for the transaction.
+     */
+    public function selectedPrints()
+    {
+        return $this->hasMany(SelectedPrint::class, 'transaction_id', 'transaction_id');
+    }
+
+    /**
+     * Check if the transaction has any items that require printing.
+     *
+     * @return bool
+     */
+    public function hasPrintableItems(): bool
+    {
+        if ($this->packet && $this->packet->printOptions()->exists()) {
+            return true;
+        }
+
+        $hasPrintAdditional = $this->additionals()->where('name', 'LIKE', '%Cetak%')->exists();
+        if ($hasPrintAdditional) {
+            return true;
+        }
+
+        return false;
     }
 }

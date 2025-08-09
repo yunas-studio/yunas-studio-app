@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Additional;
 use App\Models\Packet;
+use App\Models\Product; // <--- THIS IS THE FIX
 use App\Models\SelectedPhoto;
+use App\Models\SelectedPrint;
 use App\Models\Transaksi;
 use App\Models\User;
 use App\Models\Role;
@@ -23,42 +25,116 @@ class TransaksiController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+
+    public function index(Request $request)
     {
-        $search = request('search');
+        $search = $request->input('search');
+
         if (auth()->user()->isUser()) {
-            $transactions = Transaksi::with([
-                'packet.product',
-                'packet.additionalDefaults.additional', // Included items
-                'additionals' // Extra items
-            ])
-                ->when($search, function ($query) use ($search) {
-                    return $query->where('receipt_code', 'like', "%$search%")
-                        ->orWhere('customer_name', 'like', "%$search%");
+            $user = auth()->user();
+            $search = $request->input('search');
+
+            // Base query is now scoped to the logged-in user
+            $query = Transaksi::where('phone_number', $user->username)
+                ->with(['packet.product', 'packet.printOptions', 'additionals']) // Eager load everything needed
+                ->when($search, function ($q) use ($search) {
+                    $q->where(function($sub) use ($search) {
+                        $sub->where('receipt_code', 'like', "%$search%")
+                            ->orWhere('customer_name', 'like', "%$search%");
+                    });
                 })
-                ->where('phone_number', auth()->user()->username)
-                ->orderByDesc('created_at')
-                ->paginate(10);
-            return view('user.transaction.transaksi', compact('transactions'));
+                ->when($request->filled('payment_status'), function ($q) use ($request) {
+                    $q->where('status', $request->payment_status);
+                })
+                ->when($request->filled('process_status'), function ($q) use ($request) {
+                    $q->where('process_status', $request->process_status);
+                })
+                ->when($request->filled('packet_id'), function ($q) use ($request) {
+                    $q->where('packet_id', $request->packet_id);
+                })
+                ->when($request->filled('start_date'), function ($q) use ($request) {
+                    $q->whereDate('created_at', '>=', $request->start_date);
+                })
+                ->when($request->filled('end_date'), function ($q) use ($request) {
+                    $q->whereDate('created_at', '<=', $request->end_date);
+                });
+
+            // Sorting Logic for the user
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+            if (in_array($sortBy, ['total_price', 'created_at'])) {
+                $query->orderBy($sortBy, $sortDirection);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+
+            $transactions = $query->paginate(10)->withQueryString();
+
+            // Data for filters - get only packets relevant to this user
+            $userPacketIds = Transaksi::where('phone_number', $user->username)->distinct()->pluck('packet_id');
+            $packetsForFilter = Packet::with('product')->whereIn('id', $userPacketIds)->orderBy('name')->get()->groupBy('product.name');
+            $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
+            $processStatuses = ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'];
+            
+            return view('user.transaction.transaksi', compact(
+                'transactions', 'packetsForFilter', 'paymentStatuses', 'processStatuses'
+            ));
         }
+
+        // --- UPDATED EAGER-LOADING ---
+        $query = Transaksi::with([
+                'packet.product', 
+                'packet.printOptions', // Eager-load for print check
+                'user', 
+                'additionals' // Eager-load for print check
+            ])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function($sub) use ($search) {
+                    $sub->where('receipt_code', 'like', "%$search%")
+                        ->orWhere('customer_name', 'like', "%$search%");
+                });
+            })
+            ->when($request->filled('payment_status'), function ($q) use ($request) {
+                $q->where('status', $request->payment_status);
+            })
+            ->when($request->filled('process_status'), function ($q) use ($request) {
+                $q->where('process_status', $request->process_status);
+            })
+            ->when($request->filled('packet_id'), function ($q) use ($request) {
+                $q->where('packet_id', $request->packet_id);
+            })
+            ->when($request->filled('start_date'), function ($q) use ($request) {
+                $q->whereDate('created_at', '>=', $request->start_date);
+            })
+            ->when($request->filled('end_date'), function ($q) use ($request) {
+                $q->whereDate('created_at', '<=', $request->end_date);
+            });
+
+        // Sorting Logic
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+        if (in_array($sortBy, ['total_price', 'created_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $transactions = $query->paginate(10)->withQueryString();
+
+        // Data for filters
+        $packetsForFilter = Packet::with('product')->whereHas('product')->orderBy('name')->get()->groupBy('product.name');
+        $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
+        $processStatuses = ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'];
+
+        // Counts
         $belumDibayarCount = Transaksi::where('status', 'belum dibayar')->count();
         $dpCount = Transaksi::where('status', 'dp')->count();
         $sudahDibayarCount = Transaksi::where('status', 'sudah dibayar')->count();
 
-        $transactions = Transaksi::with([
-            'packet.product',
-            'packet.additionalDefaults.additional',
-            'additionals',
-            'user'
-        ])
-            ->when($search, function ($query) use ($search) {
-                return $query->where('receipt_code', 'like', "%$search%")
-                      ->orWhere('customer_name', 'like', "%$search%");
-            })
-            ->orderByDesc('created_at')
-            ->paginate(10);
-
-        return view('admin.transaction.transaksi', compact('transactions', 'belumDibayarCount', 'dpCount', 'sudahDibayarCount'));
+        return view('admin.transaction.transaksi', compact(
+            'transactions', 'belumDibayarCount', 'dpCount', 'sudahDibayarCount',
+            'packetsForFilter', 'paymentStatuses', 'processStatuses'
+        ));
     }
 
     /**
@@ -74,8 +150,6 @@ class TransaksiController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    // In app/Http/Controllers/TransaksiController.php
-
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -140,7 +214,6 @@ class TransaksiController extends Controller
 
             DB::commit();
 
-            // Folder Creation Logic
             try {
                 $folderName = str_replace('/', '_', $transaksi->receipt_code);
                 $baseTransactionPath = storage_path('app/public/photos/' . $folderName);
@@ -167,12 +240,18 @@ class TransaksiController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
+    // In app/Http/Controllers/TransaksiController.php
+
     public function edit(string $id)
     {
         $transaksi = Transaksi::with(['packet', 'additionals'])->findOrFail($id);
         $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
         $all_additionals = Additional::orderBy('name')->get();
-        return view('admin.transaction.edit', compact('transaksi', 'packets', 'all_additionals'));
+        
+        // Use our new model method to determine if print statuses should be available
+        $canPrint = $transaksi->hasPrintableItems();
+
+        return view('admin.transaction.edit', compact('transaksi', 'packets', 'all_additionals', 'canPrint'));
     }
 
     /**
@@ -251,7 +330,6 @@ class TransaksiController extends Controller
      */
     public function getDefaultAdditionals(Packet $packet)
     {
-        // Now it uses our new accessor to get both regular and print defaults
         $combinedDefaults = $packet->combined_defaults;
         return response()->json($combinedDefaults);
     }
@@ -259,8 +337,6 @@ class TransaksiController extends Controller
     /**
      * Handle inline status updates from the index page.
      */
-    // In app/Http/Controllers/TransaksiController.php
-
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
@@ -273,7 +349,6 @@ class TransaksiController extends Controller
         $field = $validated['field'];
         $value = $validated['value'];
 
-        // Extra validation for status values
         if ($field === 'status' && !in_array($value, ['belum dibayar', 'dp', 'sudah dibayar'])) {
             return redirect()->back()->with('error', 'Invalid payment status value.');
         } elseif ($field === 'process_status' && !in_array($value, ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'])) {
@@ -283,32 +358,18 @@ class TransaksiController extends Controller
         try {
             $transaksi->{$field} = $value;
 
-            // If payment status is updated, handle the dp_amount
             if ($field === 'status') {
-                if ($value === 'dp') {
-                    $transaksi->dp_amount = $validated['dp_amount'];
-                } else {
-                    $transaksi->dp_amount = null;
-                }
+                $transaksi->dp_amount = ($value === 'dp') ? $validated['dp_amount'] : null;
             }
 
-            // --- NEW LOGIC: Clean up data when reverting process status ---
-            if ($field === 'process_status') {
-                // If reverting back to the photo selection step, reset selections.
-                if ($value === 'Pilih Foto') {
-                    // 1. Delete previous edit selections from the database
-                    $transaksi->selectedPhotos()->delete();
-
-                    // 2. Clear the 'Pilih Edit' folder of old symlinks
-                    $folderName = str_replace('/', '_', $transaksi->receipt_code);
-                    $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
-
-                    if (File::isDirectory($pilihEditPath)) {
-                        File::cleanDirectory($pilihEditPath);
-                    }
+            if ($field === 'process_status' && $value === 'Pilih Foto') {
+                $transaksi->selectedPhotos()->delete();
+                $folderName = str_replace('/', '_', $transaksi->receipt_code);
+                $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
+                if (File::isDirectory($pilihEditPath)) {
+                    File::cleanDirectory($pilihEditPath);
                 }
             }
-            // --- END OF NEW LOGIC ---
 
             $transaksi->save();
 
@@ -329,26 +390,42 @@ class TransaksiController extends Controller
         return redirect()->route('transaksi.index')->with('success', 'Transaction deleted successfully.');
     }
 
+    // This method is now for selecting photos TO BE EDITED
     // In app/Http/Controllers/TransaksiController.php
 
-    // This method is now for selecting photos TO BE EDITED
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
+            // Eager load all necessary relationships for efficiency
+            $transaksi->load('packet.printOptions', 'selectedPhotos', 'selectedPrints');
+
+            if (!$transaksi->packet) {
+                return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
+            }
+
+            // Get all RAW photos from the filesystem
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
-            $selectedPhotos = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
+
+            // Get the print allowances from the packet (e.g., ['8R + Frame' => 1, '4R' => 2])
+            $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+
+            // Get previous selections to pre-populate the form
+            $selectedForEdit = $transaksi->selectedPhotos->pluck('file_url')->toArray();
+            $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url')->toArray();
 
             $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
 
             return view('user.transaction.manage-photo', [
-                'transaksi' => $transaksi,
-                'photoUrls' => $photoData['urls'],
-                'pageTitle' => 'Select Photos for Editing',
-                'formAction' => route('transaksi.handle-select-for-edit', $transaksi),
-                'selectedPhotos' => $selectedPhotos,
-                'photoCount' => $photoData['count'],
-                'totalImage' => $photoLimit, // Use the dynamic value here
+                'transaksi'        => $transaksi,
+                'photoUrls'        => $photoData['urls'],
+                'photoCount'       => $photoData['count'],
+                'photoLimit'       => $photoLimit,
+                'printAllowances'  => $printAllowances,
+                'selectedForEdit'  => $selectedForEdit,
+                'selectedForPrint' => $selectedForPrint,
+                'formAction'       => route('transaksi.handle-select-for-edit', $transaksi), // Action remains the same
             ]);
+
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }

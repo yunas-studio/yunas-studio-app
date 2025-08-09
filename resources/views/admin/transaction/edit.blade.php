@@ -31,6 +31,7 @@
                     <div class="card-body">
                         <h5 class="section-title"><i class="mdi mdi-file-document-edit-outline text-primary me-1"></i> Edit Transaction ({{ $transaksi->receipt_code }})</h5>
                         
+                        {{-- Customer Details Row --}}
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
@@ -57,7 +58,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="col-md-5" id="dp-amount-container" style="display: none;">
                                 <div class="mb-3">
                                     <label for="dp_amount">DP Amount (Rp)</label>
@@ -66,6 +66,7 @@
                             </div>
                         </div>
 
+                        {{-- Packet and Status Row --}}
                         <div class="row">
                             <div class="col-md-5">
                                 <div class="mb-3">
@@ -87,8 +88,15 @@
                                 <div class="mb-3">
                                     <label for="process_status" class="form-label">Process Status</label>
                                     <select class="form-select" id="process_status" name="process_status" required>
-                                        @foreach (['Siap Cetak', 'Proses Cetak', 'Selesai'] as $status)
-                                            <option value="{{ $status }}" {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}>{{ $status }}</option>
+                                        @foreach (['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'] as $status)
+                                            @php
+                                                $isPrintStatus = in_array($status, ['Siap Cetak', 'Proses Cetak']);
+                                            @endphp
+                                            <option value="{{ $status }}" 
+                                                {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}
+                                                {{ $isPrintStatus && !$canPrint ? 'disabled' : '' }}>
+                                                {{ $status }} {{ $isPrintStatus && !$canPrint ? '(No printable items)' : '' }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -100,7 +108,8 @@
                                 </div>
                             </div>
                         </div>
-
+                        
+                        {{-- Other sections (Included Additionals, Extra Additionals, Note) --}}
                         <hr>
                         <h5 class="section-title"><i class="mdi mdi-check-all text-primary me-1"></i> Included Additionals</h5>
                         <div id="included-additionals-container" class="mb-3"></div>
@@ -131,38 +140,28 @@
                     </div>
                 </div>
             </div>
+            {{-- Price Summary Column --}}
             <div class="col-lg-4">
-                 <div class="card price-summary-card">
+                <div class="card price-summary-card">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Price Summary</h5>
                         <div class="table-responsive">
                             <table class="table mb-0">
                                 <tbody>
-                                    <tr><td>Packet Price :</td><td id="summary-packet-price" class="text-end fw-bold">Rp 0</td></tr>
-                                    <tr><td>Extra Additionals :</td><td id="summary-additionals-price" class="text-end fw-bold">Rp 0</td></tr>
-                                    <tr><td class="border-0">Subtotal :</td><td id="summary-subtotal" class="text-end fw-bold border-0">Rp 0</td></tr>
-                                    <tr><td class="border-0 pt-0">Discount :</td><td id="summary-discount" class="border-0 pt-0 text-end text-danger">- Rp 0</td></tr>
-
-                                    <tr class="bg-light" id="summary-total-row">
-                                        <th class="fs-5">Total Price :</th>
-                                        <th id="summary-total-price" class="text-end fs-5">Rp 0</th>
-                                    </tr>
-
-                                    <tr id="summary-dp-row" style="display: none;">
-                                        <td class="fw-bold">DP Paid :</td>
-                                        <td id="summary-dp-paid" class="text-end fw-bold">Rp 0</td>
-                                    </tr>
-                                    <tr class="bg-light" id="summary-remaining-row" style="display: none;">
-                                        <th class="fs-5">Remaining :</th>
-                                        <th id="summary-remaining-balance" class="text-end fs-5">Rp 0</th>
-                                    </tr>
+                                    <tr><td>Packet Price:</td><td id="summary-packet-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td>Extra Additionals:</td><td id="summary-additionals-price" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr><td class="border-0">Subtotal:</td><td id="summary-subtotal" class="text-end fw-bold border-0">Rp 0</td></tr>
+                                    <tr><td class="border-0 pt-0">Discount:</td><td id="summary-discount" class="border-0 pt-0 text-end text-danger">- Rp 0</td></tr>
+                                    <tr class="bg-light" id="summary-total-row"><th class="fs-5">Total Price:</th><th id="summary-total-price" class="text-end fs-5">Rp 0</th></tr>
+                                    <tr id="summary-dp-row" style="display: none;"><td class="fw-bold">DP Paid:</td><td id="summary-dp-paid" class="text-end fw-bold">Rp 0</td></tr>
+                                    <tr class="bg-light" id="summary-remaining-row" style="display: none;"><th class="fs-5">Remaining:</th><th id="summary-remaining-balance" class="text-end fs-5">Rp 0</th></tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="d-grid mt-4">
-                             <button type="submit" class="btn btn-primary btn-lg waves-effect waves-light">Save Changes</button>
+                            <button type="submit" class="btn btn-primary btn-lg waves-effect waves-light">Save Changes</button>
                         </div>
-                         <a href="{{ route('transaksi.index') }}" class="btn btn-light d-block mt-2">Cancel</a>
+                        <a href="{{ route('transaksi.index') }}" class="btn btn-light d-block mt-2">Cancel</a>
                     </div>
                 </div>
             </div>

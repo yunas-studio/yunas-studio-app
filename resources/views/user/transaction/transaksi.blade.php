@@ -4,46 +4,26 @@
 @endsection
 
 @section('css')
-    <style>
-        .invoice-modal .modal-dialog { max-width: 800px; }
-        .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
-        .invoice-modal .invoice-logo { max-height: 60px; }
-        .invoice-modal .invoice-details-table th,
-        .invoice-modal .invoice-details-table td { border: none; }
-        .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
-        .clickable-price:hover { text-decoration: underline; color: #556ee6; }
-
-        /* Error message styling */
-        .error-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1100;
-            max-width: 400px;
-        }
-        .error-message {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: all 0.3s ease;
-        }
-    </style>
+<style>
+    .invoice-modal .modal-dialog { max-width: 800px; }
+    .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
+    .invoice-modal .invoice-logo { max-height: 60px; }
+    .invoice-modal .invoice-details-table th,
+    .invoice-modal .invoice-details-table td { border: none; }
+    .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
+    .clickable-price:hover { text-decoration: underline; color: #556ee6; }
+    .sortable-header { cursor: pointer; position: relative; padding-right: 20px; }
+    .sortable-header .sort-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
+    .sortable-header.active .sort-icon { opacity: 1; color: #556ee6; }
+    .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
+    .error-container { position: fixed; top: 20px; right: 20px; z-index: 1100; max-width: 400px; }
+    .error-message { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s ease; }
+</style>
 @endsection
 
 @php
-    $paymentStatusConfig = [
-        'belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],
-        'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
-        'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
-    ];
-    $processStatusConfig = [
-        'Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],
-        'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],
-        'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],
-        'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],
-        'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],
-        'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],
-        'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],
-        'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']
-    ];
+    $paymentStatusConfig = ['belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],];
+    $processStatusConfig = ['Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
 @endphp
 
 @section('content')
@@ -57,54 +37,124 @@
         @endif
     </div>
 
-    @component('common-components.breadcrumb', [
-        'title' => 'My Transactions',
-        'pagetitle' => 'Transactions',
-        'breadcrumbs' => [['text' => 'My Transactions', 'url' => '']]
-    ])
+    @component('common-components.breadcrumb', ['title' => 'My Transactions', 'pagetitle' => 'Transactions', 'breadcrumbs' => [['text' => 'My Transactions', 'url' => '']]])
     @endcomponent
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form action="{{ route('transaksi.index') }}" method="GET">
+                        <div class="row">
+                            <div class="col-12">
+                                <label for="search" class="form-label">Search My Transactions</label>
+                                <input type="text" name="search" class="form-control" placeholder="Search by receipt code..." value="{{ request('search') }}">
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                             <a class="advanced-filter-toggler" data-bs-toggle="collapse" href="#advancedFilters" role="button" aria-expanded="false" aria-controls="advancedFilters">
+                                <i class="bx bx-slider-alt me-1"></i> Advanced Filters
+                            </a>
+                        </div>
+
+                        @php
+                            $isAdvancedFilterActive = request()->filled('payment_status') || request()->filled('process_status') || request()->filled('packet_id') || request()->filled('start_date') || request()->filled('end_date');
+                        @endphp
+
+                        <div class="collapse {{ $isAdvancedFilterActive ? 'show' : '' }}" id="advancedFilters">
+                            <hr>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="payment_status" class="form-label">Payment Status</label>
+                                    <select class="form-select" name="payment_status" id="payment_status">
+                                        <option value="">All</option>
+                                        @foreach($paymentStatuses as $status)
+                                            <option value="{{ $status }}" {{ request('payment_status') == $status ? 'selected' : '' }}>{{ ucwords($status) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="process_status" class="form-label">Process Status</label>
+                                    <select class="form-select" name="process_status" id="process_status">
+                                        <option value="">All</option>
+                                        @foreach($processStatuses as $status)
+                                            <option value="{{ $status }}" {{ request('process_status') == $status ? 'selected' : '' }}>{{ $status }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="packet_id" class="form-label">Packet</label>
+                                    <select class="form-select" name="packet_id" id="packet_id">
+                                        <option value="">All My Packets</option>
+                                        @foreach($packetsForFilter as $productName => $packets)
+                                            <optgroup label="{{ $productName }}">
+                                                @foreach($packets as $packet)
+                                                    <option value="{{ $packet->id }}" {{ request('packet_id') == $packet->id ? 'selected' : '' }}>
+                                                        {{ $packet->name }}
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-12 mt-3">
+                                    <label class="form-label mb-0">Date Range</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="start_date" class="form-label small text-muted">From</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ request('start_date') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="end_date" class="form-label small text-muted">To</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request('end_date') }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-end gap-2">
+                             <a href="{{ route('transaksi.index') }}" class="btn btn-secondary"><i class="bx bx-reset me-1"></i> Reset</a>
+                            <button type="submit" class="btn btn-primary"><i class="bx bx-filter-alt me-1"></i> Apply Filters</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <div class="row mb-2">
-                        <div class="col-md-12">
-                            <div class="form-inline float-md-end mb-3">
-                                <div class="search-box ms-2">
-                                    <form action="{{ route('transaksi.index') }}" method="GET">
-                                        <div class="position-relative">
-                                            <input type="text" name="search" class="form-control rounded bg-light border-0"
-                                                   placeholder="Search by name or receipt code..." value="{{ request('search') }}">
-                                            <i class="mdi mdi-magnify search-icon"></i>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="table-responsive">
                         <table class="table table-centered table-nowrap mb-0">
                             <thead class="table-light">
-                            <tr>
-                                <th>Receipt Code</th>
-                                <th>Customer</th>
-                                <th>Packet</th>
-                                <th>Total Price</th>
-                                <th>Transaction Date</th>
-                                <th>Payment Status</th>
-                                <th>Process Status</th>
-                                <th>Details</th>
-                                <th style="width: 120px;">Action</th>
-                            </tr>
+                                <tr>
+                                    @php
+                                        function sortable_header($label, $column, $request) {
+                                            $sortBy = $request->input('sort_by');
+                                            $sortDirection = $request->input('sort_direction', 'asc');
+                                            $isActive = ($sortBy === $column);
+                                            $newDirection = ($isActive && $sortDirection === 'asc') ? 'desc' : 'asc';
+                                            $icon = $isActive ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort';
+                                            $url = $request->fullUrlWithQuery(['sort_by' => $column, 'sort_direction' => $newDirection]);
+                                            return '<a href="' . $url . '" class="text-dark sortable-header' . ($isActive ? ' active' : '') . '">' . $label . '<i class="bx ' . $icon . ' sort-icon"></i></a>';
+                                        }
+                                    @endphp
+                                    <th>Receipt Code</th>
+                                    <th>Packet</th>
+                                    <th>{!! sortable_header('Total Price', 'total_price', request()) !!}</th>
+                                    <th>{!! sortable_header('Transaction Date', 'created_at', request()) !!}</th>
+                                    <th>Payment Status</th>
+                                    <th>Process Status</th>
+                                    <th>Details</th>
+                                    <th style="width: 120px;">Action</th>
+                                </tr>
                             </thead>
                             <tbody>
                             @forelse($transactions as $transaksi)
                                 <tr>
                                     <td><a href="javascript: void(0);" class="text-body fw-bold" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">{{ $transaksi->receipt_code }}</a></td>
-                                    <td>{{ $transaksi->customer_name }}</td>
-                                    {{-- This is the updated column --}}
                                     <td>
                                         <span class="fw-bold">{{ $transaksi->packet->name ?? 'N/A' }}</span>
                                         @if($transaksi->packet && $transaksi->packet->product)
@@ -112,56 +162,21 @@
                                             <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                         @endif
                                     </td>
-                                    <td class="fw-bold">
-                                        <a href="javascript:void(0);" class="clickable-price"
-                                           data-bs-toggle="modal"
-                                           data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
-                                            Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
-                                        </a>
-                                    </td>
+                                    <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
-                                    <td>
-                                        <span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">
-                                            {{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">
-                                            {{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-primary btn-sm btn-rounded"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
-                                            View
-                                        </button>
-                                    </td>
+                                    <td><span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">{{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}</span></td>
+                                    <td><span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">{{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}</span></td>
+                                    <td><button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button></td>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
                                             @if (in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit']))
-                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}"
-                                                class="text-warning"
-                                                data-bs-toggle="tooltip"
-                                                title="Select or change photos for editing">
+                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="Select photos for editing and printing">
                                                     <i class="uil uil-edit-alt font-size-18"></i>
                                                 </a>
                                             @endif
                                             
-                                            @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak']))
-                                                 <a href="{{ route('transaksi.view-select-for-print', $transaksi) }}"
-                                                   class="text-info"
-                                                   data-bs-toggle="tooltip"
-                                                   title="Select photos for printing">
-                                                     <i class="uil uil-print font-size-18"></i>
-                                                 </a>
-                                            @endif
-
                                             @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
-                                                <a href="{{ route('transaksi.view-result-photos', $transaksi) }}"
-                                                   class="text-success"
-                                                   data-bs-toggle="tooltip"
-                                                   title="View and download your final photos">
+                                                <a href="{{ route('transaksi.view-result-photos', $transaksi) }}" class="text-success" data-bs-toggle="tooltip" title="View and download your final photos">
                                                     <i class="uil uil-camera font-size-18"></i>
                                                 </a>
                                             @endif
@@ -169,30 +184,15 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="9" class="text-center py-4">
-                                        <p class="mb-0">You have no transactions yet.</p>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="8" class="text-center py-4"><p class="mb-0">You have no transactions that match the current filters.</p></td></tr>
                             @endforelse
                             </tbody>
                         </table>
                     </div>
-
-                    <div class="row mt-4">
+                     <div class="row mt-4">
                         @if($transactions->total() > 0)
-                        <div class="col-sm-6">
-                            <div>
-                                <p class="mb-sm-0">
-                                    Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} of {{ $transactions->total() }} entries
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="float-sm-end">
-                                {{ $transactions->appends(request()->except('page'))->links() }}
-                            </div>
-                        </div>
+                        <div class="col-sm-6"><div><p class="mb-sm-0">Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} of {{ $transactions->total() }} entries</p></div></div>
+                        <div class="col-sm-6"><div class="float-sm-end">{{ $transactions->withQueryString()->links() }}</div></div>
                         @endif
                     </div>
                 </div>
@@ -326,13 +326,7 @@
 
 @section('script')
     <script>
-        // Auto-close error messages after 5 seconds
         $(document).ready(function() {
-            setTimeout(function() {
-                $('.alert').alert('close');
-            }, 5000);
-
-            // Initialize tooltips
             $('[data-bs-toggle="tooltip"]').tooltip();
         });
     </script>
