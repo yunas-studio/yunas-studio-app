@@ -252,7 +252,7 @@ class TransaksiController extends Controller
     public function getDefaultAdditionals(Packet $packet)
     {
         // Now it uses our new accessor to get both regular and print defaults
-        $combinedDefaults = $packet->combined_defaults; 
+        $combinedDefaults = $packet->combined_defaults;
         return response()->json($combinedDefaults);
     }
 
@@ -338,7 +338,6 @@ class TransaksiController extends Controller
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
             $selectedPhotos = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)->pluck('file_url')->toArray();
 
-            // The photo limit now comes from the packet, with a fallback of 10
             $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
 
             return view('user.transaction.manage-photo', [
@@ -422,7 +421,7 @@ class TransaksiController extends Controller
             $rawPhotos = $this->getPhotoDirectoryData($transaksi, 'RAW');
             $resultPhotos = $this->getPhotoDirectoryData($transaksi, 'Result');
             $allPhotos = array_unique(array_merge($rawPhotos['urls'], $resultPhotos['urls']));
-            
+
             // Get previously selected prints
             $selectedForPrint = SelectedPrint::where('transaction_id', $transaksi->transaction_id)
                 ->get(['file_url', 'print_size']);
@@ -461,7 +460,7 @@ class TransaksiController extends Controller
 
         DB::transaction(function () use ($transaksi, $selections) {
             SelectedPrint::where('transaction_id', $transaksi->transaction_id)->delete();
-            
+
             $dataToInsert = [];
             $linksToCreate = [];
 
@@ -595,7 +594,7 @@ class TransaksiController extends Controller
             // Get the actual process_status value, not the entire object
             $existingTransaction = Transaksi::findOrFail($transaction);
             $currentStatus = $existingTransaction->process_status;
-            
+
             if(!in_array($currentStatus, ['Pilih Foto', 'Siap Edit'])) {
                 throw new \Exception("Status transaksi tidak valid untuk pemilihan foto");
             }
@@ -608,7 +607,7 @@ class TransaksiController extends Controller
             $newPhotos = $request->photo_urls;
 
             $photosToDelete = array_diff($existingPhotos, $newPhotos);
-            
+
             $photosToAdd = array_diff($newPhotos, $existingPhotos);
 
             DB::transaction(function () use ($transaction, $photosToDelete, $photosToAdd, $newPhotos) {
@@ -633,7 +632,7 @@ class TransaksiController extends Controller
             return redirect()
                 ->route('transaksi.view-select-photos', $transaction)
                 ->with('success', 'Foto yang dipilih berhasil diperbarui');
-                
+
         } catch (\Exception $e) {
             return redirect()
                 ->back()
@@ -642,16 +641,34 @@ class TransaksiController extends Controller
         }
     } */
 
-    public function viewResultPhotos(Transaksi $transaksi)
+    public function viewResultPhotos(Transaksi $transaksi, Request $request)
     {
         try {
-            // Get photo directory information
-            $photoData = $this->getPhotoDirectoryData($transaksi, 'result');
+            // Ambil filter dari query string (default RAW)
+            $filter = $request->get('filter', 'raw');
 
+            // Tentukan nama filter untuk highlight tombol
+            switch ($filter) {
+                case "result":
+                    $currentFilter = "Result";
+                    break;
+                case "pilih_cetak":
+                    $currentFilter = "Pilih Cetak";
+                    break;
+                case "pilih_edit":
+                    $currentFilter = "Pilih Edit";
+                    break;
+                default:
+                    $currentFilter = "RAW";
+                    break;
+            }
+
+            $photos = $this->getPhotoDirectoryData($transaksi, $currentFilter);
             return view('user.transaction.result-photo', [
-                'transaksi'=>$transaksi,
-                'photoUrls' => $photoData['urls'],
-                'photoCount' => count($photoData['urls']),
+                'transaksi' => $transaksi,
+                'photoUrls' => $photos,
+                'photoCount' => $photos['count'],
+                'currentFilter' => $currentFilter
             ]);
 
         } catch (\Exception $e) {
@@ -666,7 +683,7 @@ class TransaksiController extends Controller
         try {
             // Fetch photos from the source directory
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
-            
+
             // Fetch the URLs that the user has selected
             $selectedUrls = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)
                 ->pluck('file_url')
@@ -719,9 +736,9 @@ class TransaksiController extends Controller
         // Eager load the actual relationships needed for the invoice.
         // The 'combined_defaults' accessor will use these automatically.
         $transaksi->load(
-            'packet.product', 
-            'packet.additionalDefaults.additional', 
-            'packet.printOptions.pivot', 
+            'packet.product',
+            'packet.additionalDefaults.additional',
+            'packet.printOptions.pivot',
             'additionals'
         );
 

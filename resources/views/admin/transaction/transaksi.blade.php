@@ -76,7 +76,7 @@
                                     <tr>
                                         <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
                                         <td>{{ $transaksi->customer_name }}</td>
-                                        
+
                                         {{-- This is the updated column --}}
                                         <td>
                                             <span class="fw-bold">{{ $transaksi->packet->name ?? 'N/A' }}</span>
@@ -85,7 +85,7 @@
                                                 <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                             @endif
                                         </td>
-                                        
+
                                         <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
                                         <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                         <td>
@@ -140,6 +140,37 @@
                                                     </a>
                                                 @endif
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
+                                                @if(!empty($transaksi->phone_number))
+                                                    @php
+                                                        $waMessages = [
+                                                            'Belum Foto' => "Halo, kami ingin mengingatkan bahwa jadwal foto anda belum terlaksana. Silakan hubungi kami untuk penjadwalan ulang. Terima kasih.",
+                                                            'Pilih Foto' => "Halo, terima kasih telah melakukan sesi foto. Mohon segera memilih foto yang akan diproses. Anda dapat datang langsung atau klik link berikut untuk memilih foto:\n" . url("/transaksi/{$transaksi->transaction_id}/select-for-edit"),
+                                                            'Selesai Editing' => "Halo, foto anda telah selesai diedit. Silakan datang untuk proses pencetakan atau konfirmasi kepada kami.",
+                                                            'Selesai' => "Terima kasih atas kunjungannya, kami sampaikan bahwa foto anda telah selesai dicetak. Silakan anda ambil hasil cetak anda di Kota Sukabumi.\n\nBerikan rating terbaik anda melalui link berikut:\nhttps://share.google/hbH82FzldhrdNS53M"
+                                                        ];
+
+                                                        // Pastikan status ada di daftar pesan
+                                                        if (isset($waMessages[$transaksi->process_status])) {
+                                                            $waMessage = $waMessages[$transaksi->process_status];
+
+                                                            // Format nomor telepon
+                                                            $phoneNumber = preg_replace('/\D/', '', $transaksi->phone_number);
+                                                            if (strpos($phoneNumber, '0') === 0) {
+                                                                $phoneNumber = '62' . substr($phoneNumber, 1);
+                                                            }
+
+                                                            $waLink = "https://api.whatsapp.com/send?phone={$phoneNumber}&text=" . urlencode($waMessage);
+                                                        }
+                                                    @endphp
+
+                                                    @if(isset($waLink))
+                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WhatsApp">
+                                                            <i class="uil uil-whatsapp"></i>
+                                                        </a>
+                                                    @endif
+                                                @endif
+
+
                                                 <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="d-inline">
                                                     @csrf
                                                     @method('DELETE')
@@ -159,7 +190,7 @@
             </div>
         </div>
     </div>
-    
+
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
