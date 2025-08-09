@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PacketController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpenseCategoryController; 
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\AdditionalController;
 use App\Http\Controllers\AdditionalDefaultController;
@@ -27,11 +28,11 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
     Route::get('/', [HomeController::class, 'root']);
 
-    // User Management
+    
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
 
-    // Products, Packets, and Additionals
+    
     Route::resource('additionals', AdditionalController::class);
     Route::resource('additional-defaults', AdditionalDefaultController::class);
     Route::resource('products', ProductController::class);
@@ -40,19 +41,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
     Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
     
-    // Print Sizes
+    
     Route::post('/packets/{packet}/print-options', [PacketController::class, 'addPrintOption'])->name('packets.addPrintOption');
     Route::delete('/packets/{packet}/print-options/{print_size}', [PacketController::class, 'removePrintOption'])->name('packets.removePrintOption');
 
-    // Expenses
+    
     Route::resource('expenses', ExpenseController::class);
     
-    // Transactions Core
+   
+    Route::resource('expense-categories', ExpenseCategoryController::class);
+    Route::put('/expense-categories/{expenseCategory}/toggle-monthly-default', [ExpenseCategoryController::class, 'toggleMonthlyDefault'])->name('expense-categories.toggle-monthly-default');
+    Route::post('/expenses/generate-monthly', [ExpenseController::class, 'generateMonthlyExpenses'])->name('expenses.generate-monthly');
+    
+    
     Route::resource('transaksi', TransaksiController::class);
     Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
     Route::put('/transaksi/{transaksi}/complete-editing', [TransaksiController::class, 'completeEditing'])->name('transaksi.completeEditing');
 
-    // Transaction Photo & Invoice Workflow Routes
+    
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
         Route::get('/select-for-edit', [TransaksiController::class, 'viewSelectForEdit'])->name('view-select-for-edit');
         Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEdit'])->name('handle-select-for-edit');
@@ -69,7 +75,7 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Language and Fallback Routes
+
 Route::get('index/{locale}', [HomeController::class, 'lang']);
 Route::post('/formsubmit', [HomeController::class, 'FormSubmit'])->name('FormSubmit');
 Route::get('{any}', [HomeController::class, 'index'])->where('any', '.*');

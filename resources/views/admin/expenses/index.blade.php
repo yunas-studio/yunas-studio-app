@@ -1,5 +1,9 @@
 @extends('layouts.master')
 
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 @section('title')
     Expenses
 @endsection
@@ -42,28 +46,72 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
+                    <!-- Tambahkan di bagian atas, misalnya di dekat tombol Add New Expense -->
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h4 class="card-title">Expenses List</h4>
-                            @if($month)
-                                <div class="mt-2">
-                                    <span class="filter-status">
-                                        <i class="bx bx-calendar me-1"></i>
-                                        {{ $months[$month] }} {{ $year }}
-                                    </span>
-                                </div>
-                            @elseif($year != date('Y'))
-                                <div class="mt-2">
-                                    <span class="filter-status">
-                                        <i class="bx bx-calendar me-1"></i>
-                                        {{ $year }}
-                                    </span>
-                                </div>
-                            @endif
+                            <!-- Filter status yang sudah ada -->
                         </div>
-                        <a href="{{ route('expenses.create') }}" class="btn btn-primary">
-                            <i class="bx bx-plus me-1"></i> Add New Expense
-                        </a>
+                        <div>
+                            <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#generateMonthlyModal">
+                                <i class="bx bx-refresh me-1"></i> Generate Monthly
+                            </button>
+                            <a href="{{ route('expenses.create') }}" class="btn btn-primary">
+                                <i class="bx bx-plus me-1"></i> Add New Expense
+                            </a>
+                            <a href="{{ route('expense-categories.index') }}" class="btn btn-secondary me-2">
+                                <i class="bx bx-category me-1"></i> Manage Categories
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Tambahkan modal di bagian bawah file -->
+                    <!-- Generate Monthly Expenses Modal -->
+                    <div class="modal fade" id="generateMonthlyModal" tabindex="-1" aria-labelledby="generateMonthlyModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="generateMonthlyModalLabel">Generate Monthly Expenses</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ route('expenses.generate-monthly') }}" method="POST">
+                                    @csrf
+                                    <div class="modal-body">
+                                        <p>This will generate default monthly expenses for the selected month and year.</p>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="month" class="form-label">Month</label>
+                                                    <select class="form-select" id="month" name="month" required>
+                                                        @foreach(range(1, 12) as $m)
+                                                            <option value="{{ $m }}" {{ date('n') == $m ? 'selected' : '' }}>
+                                                                {{ date('F', mktime(0, 0, 0, $m, 1)) }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="year" class="form-label">Year</label>
+                                                    <select class="form-select" id="year" name="year" required>
+                                                        @foreach(range(date('Y')-2, date('Y')+2) as $y)
+                                                            <option value="{{ $y }}" {{ date('Y') == $y ? 'selected' : '' }}>
+                                                                {{ $y }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Generate</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                     
                     @if(session('success'))
@@ -107,13 +155,13 @@
                                         @foreach($expensesByCategory->take(3) as $category)
                                             <div class="mb-3">
                                                 <p class="mb-1 d-flex justify-content-between">
-                                                    <span>{{ $category->category }}</span>
+                                                    <span>{{ $category->category_name }}</span>
                                                     <span>Rp {{ number_format($category->total, 0, ',', '.') }}</span>
                                                 </p>
                                                 <div class="progress" style="height: 6px;">
                                                     <div class="progress-bar bg-primary" role="progressbar" 
-                                                        style="width: {{ ($category->total / $totalExpenses) * 100 }}%" 
-                                                        aria-valuenow="{{ ($category->total / $totalExpenses) * 100 }}" 
+                                                        style="width: {{ $totalExpenses > 0 ? ($category->total / $totalExpenses) * 100 : 0 }}%" 
+                                                        aria-valuenow="{{ $totalExpenses > 0 ? ($category->total / $totalExpenses) * 100 : 0 }}" 
                                                         aria-valuemin="0" 
                                                         aria-valuemax="100">
                                                     </div>
@@ -134,7 +182,7 @@
                                 <div class="card-body">
                                     <h5 class="card-title mb-3">Filter Expenses</h5>
                                     <form action="{{ route('expenses.index') }}" method="GET" class="row g-3">
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <label for="month" class="form-label">Month</label>
                                             <select name="month" id="month" class="form-select">
                                                 <option value="">All Months</option>
@@ -143,7 +191,7 @@
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <label for="year" class="form-label">Year</label>
                                             <select name="year" id="year" class="form-select">
                                                 <option value="" {{ request('year') === null ? 'selected' : '' }}>All Years</option>
@@ -152,7 +200,16 @@
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="col-md-4 d-flex align-items-end">
+                                        <div class="col-md-3">
+                                            <label for="category_id" class="form-label">Category</label>
+                                            <select name="category_id" id="category_id" class="form-select">
+                                                <option value="">All Categories</option>
+                                                @foreach($categories as $category)
+                                                    <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end">
                                             <button type="submit" class="btn btn-primary me-2">
                                                 <i class="bx bx-filter-alt me-1"></i> Apply Filter
                                             </button>
@@ -172,7 +229,15 @@
                                 <tr>
                                     <th>Number</th>
                                     <th>Name</th>
-                                    <th>Amount</th>
+                                    <th>
+                                        Amount
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_amount' => 'asc']) }}" class="text-decoration-none {{ request('sort_amount') == 'asc' ? 'text-primary' : 'text-muted' }}">
+                                            <i class="bx bx-up-arrow-alt"></i>
+                                        </a>
+                                        <a href="{{ request()->fullUrlWithQuery(['sort_amount' => 'desc']) }}" class="text-decoration-none {{ request('sort_amount') == 'desc' ? 'text-primary' : 'text-muted' }}">
+                                            <i class="bx bx-down-arrow-alt"></i>
+                                        </a>
+                                    </th>
                                     <th>Date</th>
                                     <th>Category</th>
                                     <th>Description</th>
@@ -180,14 +245,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($expenses as $expense)
+                                @forelse($expenses as $key => $expense)
                                     <tr>
-                                        <td>{{ $expense->number }}</td>
+                                        <td>{{ $expenses->firstItem() + $key }}</td>
                                         <td>{{ $expense->name }}</td>
                                         <td>{{ $expense->formatted_amount }}</td>
                                         <td>{{ $expense->expense_date->format('d M Y') }}</td>
-                                        <td>{{ $expense->category ?? '-' }}</td>
-                                        <td>{{ $expense->keterangan ?? '-' }}</td>
+                                        
+                                        <td>{{ $expense->category ? $expense->category->name : '-' }}</td>
+                                        <td>{{ Str::limit($expense->description ?? '-', 30, '...') }}</td>
                                         <td>
                                             <div class="d-flex">
                                                 <a href="{{ route('expenses.show', $expense->id) }}" class="btn btn-sm btn-info me-1">
@@ -224,4 +290,4 @@
             </div>
         </div>
     </div>
-@endsection 
+@endsection

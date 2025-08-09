@@ -51,9 +51,22 @@
                                     <input type="date" class="form-control" id="expense_date" name="expense_date" value="{{ old('expense_date', $expense->expense_date->format('Y-m-d')) }}" required>
                                 </div>
 
+                                <!-- Ganti input text category dengan dropdown -->
                                 <div class="mb-3">
-                                    <label for="category" class="form-label">Category</label>
-                                    <input type="text" class="form-control" id="category" name="category" value="{{ old('category', $expense->category) }}">
+                                    <label for="category_id" class="form-label">Category</label>
+                                    <select class="form-select @error('category_id') is-invalid @enderror" id="category_id" name="category_id">
+                                        <option value="">Select Category</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}" {{ old('category_id', $expense->category_id) == $category->id ? 'selected' : '' }}>
+                                                {{ $category->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('category_id')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -62,11 +75,6 @@
                                     <textarea class="form-control" id="description" name="description" rows="3">{{ old('description', $expense->description) }}</textarea>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label for="keterangan" class="form-label">Keterangan</label>
-                                    <textarea class="form-control" id="keterangan" name="keterangan" rows="3">{{ old('keterangan', $expense->keterangan) }}</textarea>
-                                </div>
-
                                 <div class="mb-3">
                                     <label for="receipt_image" class="form-label">Receipt Image</label>
                                     <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*" onchange="previewImage(this)">
@@ -85,7 +93,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ route('expenses.index') }}" class="btn btn-secondary">Cancel</a>
+                            <a href="{{ route('expenses.index', request()->query()) }}" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-primary">Update Expense</button>
                         </div>
                     </form>
@@ -109,4 +117,4 @@
             }
         }
     </script>
-@endsection 
+@endsection

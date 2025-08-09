@@ -28,32 +28,46 @@ class HomeController extends Controller
     public function index(Request $request)
     {
         if (view()->exists($request->path())) {
-            // Get total expenses
-            $totalExpenses = Expense::sum('amount');
-            
-            // Get monthly expenses for current year
-            $currentYear = date('Y');
+            // Initialize variables
+            $totalExpenses = 0;
             $monthlyExpenses = [];
             $monthlyLabels = [];
+            $expensesByCategory = collect();
+            $currentYear = date('Y');
             
-            for ($i = 1; $i <= 12; $i++) {
-                $month = Carbon::create($currentYear, $i, 1);
-                $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
+            // Only show expense data if user is authorized
+            if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
+                // Get total expenses
+                $totalExpenses = Expense::sum('amount');
                 
-                $amount = Expense::whereYear('expense_date', $currentYear)
-                    ->whereMonth('expense_date', $i)
-                    ->sum('amount');
+                // Get monthly expenses for current year
+                for ($i = 1; $i <= 12; $i++) {
+                    $month = Carbon::create($currentYear, $i, 1);
+                    $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
                     
-                $monthlyExpenses[] = $amount;
+                    $amount = Expense::whereYear('expense_date', $currentYear)
+                        ->whereMonth('expense_date', $i)
+                        ->sum('amount');
+                        
+                    $monthlyExpenses[] = $amount;
+                }
+                
+                // Get expenses by category
+                $expensesByCategory = Expense::join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
+                    ->selectRaw('expense_categories.name as category_name, SUM(expenses.amount) as total')
+                    ->whereNotNull('expenses.category_id')
+                    ->groupBy('expense_categories.id', 'expense_categories.name')
+                    ->orderBy('total', 'desc')
+                    ->limit(5)
+                    ->get();
+            } else {
+                // Initialize empty data for non-authorized users
+                for ($i = 1; $i <= 12; $i++) {
+                    $month = Carbon::create($currentYear, $i, 1);
+                    $monthlyLabels[] = $month->format('M');
+                    $monthlyExpenses[] = 0;
+                }
             }
-            
-            // Get expenses by category
-            $expensesByCategory = Expense::selectRaw('category, SUM(amount) as total')
-                ->whereNotNull('category')
-                ->groupBy('category')
-                ->orderBy('total', 'desc')
-                ->limit(5)
-                ->get();
             
             return view($request->path(), compact(
                 'totalExpenses', 
@@ -67,32 +81,46 @@ class HomeController extends Controller
 
     public function root()
     {
-        // Get total expenses
-        $totalExpenses = Expense::sum('amount');
-        
-        // Get monthly expenses for current year
-        $currentYear = date('Y');
+        // Initialize variables
+        $totalExpenses = 0;
         $monthlyExpenses = [];
         $monthlyLabels = [];
+        $expensesByCategory = collect();
+        $currentYear = date('Y');
         
-        for ($i = 1; $i <= 12; $i++) {
-            $month = Carbon::create($currentYear, $i, 1);
-            $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
+        // Only show expense data if user is authorized
+        if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
+            // Get total expenses
+            $totalExpenses = Expense::sum('amount');
             
-            $amount = Expense::whereYear('expense_date', $currentYear)
-                ->whereMonth('expense_date', $i)
-                ->sum('amount');
+            // Get monthly expenses for current year
+            for ($i = 1; $i <= 12; $i++) {
+                $month = Carbon::create($currentYear, $i, 1);
+                $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
                 
-            $monthlyExpenses[] = $amount;
+                $amount = Expense::whereYear('expense_date', $currentYear)
+                    ->whereMonth('expense_date', $i)
+                    ->sum('amount');
+                    
+                $monthlyExpenses[] = $amount;
+            }
+            
+            // Get expenses by category
+            $expensesByCategory = Expense::join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
+                ->selectRaw('expense_categories.name as category_name, SUM(expenses.amount) as total')
+                ->whereNotNull('expenses.category_id')
+                ->groupBy('expense_categories.id', 'expense_categories.name')
+                ->orderBy('total', 'desc')
+                ->limit(5)
+                ->get();
+        } else {
+            // Initialize empty data for non-authorized users
+            for ($i = 1; $i <= 12; $i++) {
+                $month = Carbon::create($currentYear, $i, 1);
+                $monthlyLabels[] = $month->format('M');
+                $monthlyExpenses[] = 0;
+            }
         }
-        
-        // Get expenses by category
-        $expensesByCategory = Expense::selectRaw('category, SUM(amount) as total')
-            ->whereNotNull('category')
-            ->groupBy('category')
-            ->orderBy('total', 'desc')
-            ->limit(5)
-            ->get();
         
         return view('index', compact(
             'totalExpenses', 
