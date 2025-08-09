@@ -20,7 +20,7 @@
                             <a href="{{ route('expenses.edit', $expense->id) }}" class="btn btn-primary me-2">
                                 <i class="bx bx-edit me-1"></i> Edit
                             </a>
-                            <a href="{{ route('expenses.index') }}" class="btn btn-secondary">
+                            <a href="{{ route('expenses.index', request()->query()) }}" class="btn btn-secondary">
                                 <i class="bx bx-arrow-back me-1"></i> Back to List
                             </a>
                         </div>
@@ -47,14 +47,10 @@
                                 </tr>
                                 <tr>
                                     <th>Category</th>
-                                    <td>{{ $expense->category ?? '-' }}</td>
+                                    <td>{{ $expense->category ? $expense->category->name : '-' }}</td>
                                 </tr>
                                 <tr>
                                     <th>Description</th>
-                                    <td>{{ $expense->description ?? '-' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Keterangan</th>
                                     <td>{{ $expense->keterangan ?? '-' }}</td>
                                 </tr>
                                 <tr>
@@ -103,4 +99,4 @@
             </div>
         </div>
     </div>
-@endsection 
+@endsection

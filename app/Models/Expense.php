@@ -17,7 +17,7 @@ class Expense extends Model
         'keterangan',
         'amount',
         'expense_date',
-        'category',
+        'category_id', // Ubah dari 'category' menjadi 'category_id'
         'receipt_image',
     ];
 
@@ -64,5 +64,11 @@ class Expense extends Model
         }
         
         return $result;
+    }
+    
+    // Tambahkan relasi ke kategori
+    public function category()
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'category_id');
     }
 }

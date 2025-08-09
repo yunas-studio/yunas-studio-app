@@ -122,13 +122,13 @@
                     @foreach($expensesByCategory as $category)
                         <div class="row align-items-center g-0 mt-3">
                             <div class="col-sm-5">
-                                <p class="text-truncate mt-1 mb-0"><i class="mdi mdi-circle-medium text-primary me-2"></i> {{ $category->category }} </p>
+                                <p class="text-truncate mt-1 mb-0"><i class="mdi mdi-circle-medium text-primary me-2"></i> {{ $category->category_name }} </p>
                             </div>
                             <div class="col-sm-7">
                                 <div class="progress mt-1" style="height: 6px;">
                                     <div class="progress-bar progress-bar bg-primary" role="progressbar"
-                                        style="width: {{ ($category->total / $totalExpenses) * 100 }}%" 
-                                        aria-valuenow="{{ ($category->total / $totalExpenses) * 100 }}" 
+                                        style="width: {{ $totalExpenses > 0 ? ($category->total / $totalExpenses) * 100 : 0 }}%" 
+                                        aria-valuenow="{{ $totalExpenses > 0 ? ($category->total / $totalExpenses) * 100 : 0 }}" 
                                         aria-valuemin="0"
                                         aria-valuemax="100">
                                     </div>
