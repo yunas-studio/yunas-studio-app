@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-// Tambahkan use statement
 use App\Models\ExpenseCategory;
+use App\Models\Balance;
+use App\Models\DebtPayment;
 use Carbon\Carbon;
 
 class ExpenseController extends Controller
@@ -31,7 +32,11 @@ class ExpenseController extends Controller
         $month = $request->input('month');
         $year = $request->input('year');
         $category_id = $request->input('category_id');
+        $type = $request->input('type');
         $sort_amount = $request->input('sort_amount');
+        
+        // Get current balance
+        $currentBalance = $this->getCurrentBalance();
         
         // Build the main query for expenses
         $query = Expense::query();
@@ -47,6 +52,10 @@ class ExpenseController extends Controller
         
         if ($category_id) {
             $query->where('category_id', $category_id);
+        }
+        
+        if ($type) {
+            $query->where('expenses.type', $type);
         }
         
         // Apply sorting
@@ -75,8 +84,13 @@ class ExpenseController extends Controller
             $filteredQuery->where('category_id', $category_id);
         }
         
-        // Calculate total expenses
-        $totalExpenses = $filteredQuery->sum('amount');
+        if ($type) {
+            $filteredQuery->where('expenses.type', $type);
+        }
+        
+        // Calculate total expenses and income
+        $totalExpenses = (clone $filteredQuery)->where('expenses.type', 'expense')->sum('amount');
+        $totalIncome = (clone $filteredQuery)->where('expenses.type', 'income')->sum('amount');
         
         // Get expenses by category for the filtered data
         $expensesByCategory = (clone $filteredQuery)
@@ -101,15 +115,18 @@ class ExpenseController extends Controller
         
         return view('admin.expenses.index', compact(
             'expenses', 
-            'totalExpenses', 
+            'totalExpenses',
+            'totalIncome', 
             'month', 
             'year', 
+            'type',
             'months', 
             'years',
             'expensesByCategory',
             'categories',
             'category_id',
-            'sort_amount'
+            'sort_amount',
+            'currentBalance'
         ));
     }
 
@@ -131,7 +148,8 @@ class ExpenseController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
-            'category_id' => 'nullable|exists:expense_categories,id', // Ubah validasi
+            'category_id' => 'nullable|exists:expense_categories,id',
+            'type' => 'required|in:income,expense,debt',
             'description' => 'nullable|string',
             'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:15360',
         ]);
@@ -146,7 +164,7 @@ class ExpenseController extends Controller
         Expense::create($data);
         
         return redirect()->route('expenses.index')
-            ->with('success', 'Pengeluaran berhasil ditambahkan');
+            ->with('success', 'Data berhasil ditambahkan');
     }
 
     /**
@@ -175,7 +193,8 @@ class ExpenseController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
-            'category_id' => 'nullable|exists:expense_categories,id', // Ubah validasi
+            'category_id' => 'nullable|exists:expense_categories,id',
+            'type' => 'required|in:income,expense,debt',
             'description' => 'nullable|string',
             'receipt_image' => 'nullable|image|mimes:jpeg,png,jpg|max:15360',
         ]);
@@ -195,7 +214,7 @@ class ExpenseController extends Controller
         $expense->update($data);
         
         return redirect()->route('expenses.index')
-            ->with('success', 'Pengeluaran berhasil diperbarui');
+            ->with('success', 'Data berhasil diperbarui');
     }
 
     /**
@@ -210,7 +229,72 @@ class ExpenseController extends Controller
         $expense->delete();
         
         return redirect()->route('expenses.index')
-            ->with('success', 'Pengeluaran berhasil dihapus');
+            ->with('success', 'Data berhasil dihapus');
+    }
+
+    /**
+     * Toggle payment status for debt expenses.
+     */
+    public function togglePayment(Expense $expense)
+    {
+        // Only allow toggle for debt type expenses
+        if ($expense->type !== 'debt') {
+            return redirect()->route('expenses.index')
+                ->with('error', 'Status pembayaran hanya dapat diubah untuk jenis hutang.');
+        }
+        
+        // Get current status before update
+        $wasAlreadyPaid = $expense->is_paid;
+        
+        // Update payment status
+        $expense->update([
+            'is_paid' => !$expense->is_paid
+        ]);
+        
+        // Update balance based on payment status change
+        if ($expense->is_paid && !$wasAlreadyPaid) {
+            // If changing from unpaid to paid, add the remaining amount to balance
+            $remainingAmount = $expense->remaining_amount;
+            if ($remainingAmount > 0) {
+                // Update remaining amount to 0 and paid amount to full amount
+                $expense->update([
+                    'paid_amount' => $expense->amount,
+                    'remaining_amount' => 0
+                ]);
+                
+                // Update balance
+                Balance::updateBalance($remainingAmount, "Debt fully paid: {$expense->name}");
+            }
+        } else if (!$expense->is_paid && $wasAlreadyPaid) {
+            // If changing from paid to unpaid, subtract the amount from balance
+            // Only if there are no partial payments
+            if ($expense->debtPayments()->count() == 0) {
+                // Reset paid and remaining amounts
+                $expense->update([
+                    'paid_amount' => 0,
+                    'remaining_amount' => $expense->amount
+                ]);
+                
+                // Update balance
+                Balance::updateBalance(-$expense->amount, "Debt payment cancelled: {$expense->name}");
+            } else {
+                // If there are partial payments, calculate the difference
+                $paidAmount = $expense->paid_amount;
+                $remainingAmount = $expense->amount - $paidAmount;
+                
+                // Update remaining amount
+                $expense->update([
+                    'remaining_amount' => $remainingAmount
+                ]);
+                
+                // No need to update balance as partial payments already updated it
+            }
+        }
+        
+        $status = $expense->is_paid ? 'lunas' : 'belum lunas';
+        
+        return redirect()->route('expenses.index')
+            ->with('success', "Status pembayaran berhasil diubah menjadi {$status}.");
     }
 
     // Tambahkan method ini ke dalam class ExpenseController
@@ -232,27 +316,71 @@ class ExpenseController extends Controller
         // Get the first day of the month
         $date = Carbon::createFromDate($year, $month, 1)->format('Y-m-d');
         
+        // Check if monthly expenses have already been generated for this month and year
+        // Hanya cek berdasarkan is_monthly_generated, bukan berdasarkan tipe
+        // Hapus pengecekan ini agar bisa generate ulang untuk bulan yang sama
+        // $monthlyGeneratedExists = Expense::where('is_monthly_generated', true)
+        //     ->whereYear('expense_date', $year)
+        //     ->whereMonth('expense_date', $month)
+        //     ->exists();
+            
+        // if ($monthlyGeneratedExists) {
+        //     return redirect()->route('expenses.index', ['month' => $month, 'year' => $year])
+        //         ->with('info', 'Biaya bulanan sudah pernah di-generate untuk bulan dan tahun ini.');
+        // }
+        
         // Get all monthly default categories
         $defaultCategories = ExpenseCategory::where('is_monthly_default', true)->get();
         
+        // Log semua kategori monthly default yang ditemukan
+        \Log::info('Found monthly default categories:', [
+            'count' => $defaultCategories->count(),
+            'categories' => $defaultCategories->pluck('name', 'id')->toArray()
+        ]);
+        
         $count = 0;
         foreach ($defaultCategories as $category) {
-            // Check if expense for this category already exists for this month
-            $exists = Expense::where('category_id', $category->id)
+            // Cek apakah kategori ini sudah memiliki expense untuk bulan ini (baik manual atau monthly generated)
+            $existingExpense = Expense::where('category_id', $category->id)
                 ->whereYear('expense_date', $year)
                 ->whereMonth('expense_date', $month)
-                ->exists();
+                ->first();
                 
-            if (!$exists) {
-                Expense::create([
-                    'name' => 'Monthly Expense: ' . date('F Y', strtotime($date)),
-                    'description' => 'Auto-generated monthly expense for ' . $category->name,
-                    'amount' => 0, // Default amount, to be filled by user
-                    'expense_date' => $date,
+            // Jika sudah ada expense untuk kategori ini di bulan yang sama, skip kategori ini
+            if ($existingExpense) {
+                // Log untuk debugging
+                \Log::info('Skipping category, expense already exists:', [
                     'category_id' => $category->id,
+                    'category_name' => $category->name,
+                    'month' => $month,
+                    'year' => $year,
+                    'existing_expense_id' => $existingExpense->id
                 ]);
-                $count++;
+                continue;
             }
+            
+            // Gunakan tipe asli dari kategori
+            $originalType = $category->type;
+            
+            // Create monthly expense for each category
+            Expense::create([
+                'name' => 'Monthly Expense: ' . date('F Y', strtotime($date)),
+                'description' => 'Auto-generated monthly expense for ' . $category->name,
+                'amount' => 0, // Default amount, to be filled by user
+                'expense_date' => $date,
+                'category_id' => $category->id,
+                'type' => $originalType, // Gunakan tipe asli dari kategori
+                'is_monthly_generated' => true, // Mark as monthly generated
+            ]);
+            $count++;
+            
+            // Log untuk debugging
+            \Log::info('Generated monthly expense for category:', [
+                'category_id' => $category->id,
+                'category_name' => $category->name,
+                'month' => $month,
+                'year' => $year
+            ]);
         }
         
         if ($count > 0) {
@@ -260,7 +388,51 @@ class ExpenseController extends Controller
                 ->with('success', "$count biaya bulanan default berhasil dibuat.");
         } else {
             return redirect()->route('expenses.index', ['month' => $month, 'year' => $year])
-                ->with('info', 'Semua biaya bulanan default sudah ada untuk bulan ini.');
+                ->with('info', 'Tidak ada kategori biaya bulanan default yang ditemukan.');
         }
+    }
+
+    /**
+     * Make partial payment for debt
+     */
+    public function makePartialPayment(Request $request, Expense $expense)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01|max:' . $expense->remaining_amount,
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        try {
+            $expense->makePartialPayment($request->amount, $request->notes);
+            
+            return redirect()->route('expenses.index')
+                ->with('success', 'Pembayaran sebagian berhasil dicatat. Sisa hutang: ' . $expense->formatted_remaining_amount);
+        } catch (\Exception $e) {
+            return redirect()->route('expenses.index')
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Show debt payment history
+     */
+    public function showDebtPayments(Expense $expense)
+    {
+        if ($expense->type !== 'debt') {
+            return redirect()->route('expenses.index')
+                ->with('error', 'Riwayat pembayaran hanya tersedia untuk hutang.');
+        }
+
+        $payments = $expense->debtPayments()->orderBy('payment_date', 'desc')->get();
+        
+        return view('admin.expenses.debt-payments', compact('expense', 'payments'));
+    }
+
+    /**
+     * Get current balance
+     */
+    public function getCurrentBalance()
+    {
+        return Balance::getCurrentBalance();
     }
 }

@@ -6,73 +6,75 @@
 @slot('title') Dashboard @endslot
 @endcomponent
 
-<!-- Hidden div to store chart data -->
+
 <div id="monthly-expenses-data" 
     data-expenses="{{ json_encode($monthlyExpenses) }}"
-    data-labels="{{ json_encode($monthlyLabels) }}"
+    data-income="{{ json_encode($monthlyIncome) }}"
+    data-labels="{{ json_encode($chartLabels ?? []) }}"
+    data-period="{{ $chartType ?? 'monthly' }}"
     style="display: none;"></div>
 
 <div class="row">
+    
     <div class="col-md-6 col-xl-3">
         <div class="card">
             <div class="card-body">
                 <div class="float-end mt-2">
-                    <div id="total-revenue-chart" data-colors='["--bs-primary"]'></div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-soft-success text-success font-size-24 rounded-circle">
+                            <i class="mdi mdi-cash-multiple"></i>
+                        </span>
+                    </div>
                 </div>
                 <div>
-                    <h4 class="mb-1 mt-1">$<span data-plugin="counterup">34,152</span></h4>
-                    <p class="text-muted mb-0">Total Revenue</p>
+                    <h4 class="mb-1 mt-1">Rp <span data-plugin="counterup">{{ number_format($totalIncome, 0, ',', '.') }}</span></h4>
+                    <p class="text-muted mb-0">Total Pemasukan</p>
                 </div>
-                <p class="text-muted mt-3 mb-0"><span class="text-success me-1"><i class="mdi mdi-arrow-up-bold me-1"></i>2.65%</span> since last week
+                <p class="text-muted mt-3 mb-0">
+                    <a href="{{ route('transaksi.index') }}" class="text-reset">Lihat Detail <i class="mdi mdi-arrow-right ms-1"></i></a>
                 </p>
             </div>
         </div>
-    </div> <!-- end col-->
+    </div> 
 
+    
     <div class="col-md-6 col-xl-3">
         <div class="card">
             <div class="card-body">
                 <div class="float-end mt-2">
-                    <div id="orders-chart" data-colors='["--bs-success"]'> </div>
-                </div>
-                <div>
-                    <h4 class="mb-1 mt-1"><span data-plugin="counterup">5,643</span></h4>
-                    <p class="text-muted mb-0">Orders</p>
-                </div>
-                <p class="text-muted mt-3 mb-0"><span class="text-danger me-1"><i class="mdi mdi-arrow-down-bold me-1"></i>0.82%</span> since last week
-                </p>
-            </div>
-        </div>
-    </div> <!-- end col-->
-
-    <div class="col-md-6 col-xl-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="float-end mt-2">
-                    <div id="customers-chart" data-colors='["--bs-primary"]'> </div>
-                </div>
-                <div>
-                    <h4 class="mb-1 mt-1"><span data-plugin="counterup">45,254</span></h4>
-                    <p class="text-muted mb-0">Customers</p>
-                </div>
-                <p class="text-muted mt-3 mb-0"><span class="text-danger me-1"><i class="mdi mdi-arrow-down-bold me-1"></i>6.24%</span> since last week
-                </p>
-            </div>
-        </div>
-    </div> <!-- end col-->
-
-    <div class="col-md-6 col-xl-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="float-end mt-2">
-                    <div id="expenses-chart" data-colors='["--bs-danger"]'></div>
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-soft-danger text-danger font-size-24 rounded-circle">
+                            <i class="mdi mdi-cash-minus"></i>
+                        </span>
+                    </div>
                 </div>
                 <div>
                     <h4 class="mb-1 mt-1">Rp <span data-plugin="counterup">{{ number_format($totalExpenses, 0, ',', '.') }}</span></h4>
-                    <p class="text-muted mb-0">Total Expenses</p>
+                    <p class="text-muted mb-0">Total Pengeluaran</p>
                 </div>
                 <p class="text-muted mt-3 mb-0">
-                    <a href="{{ route('expenses.index') }}" class="text-reset">View Details <i class="mdi mdi-arrow-right ms-1"></i></a>
+                    <a href="{{ route('expenses.index') }}" class="text-reset">Lihat Detail <i class="mdi mdi-arrow-right ms-1"></i></a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="float-end mt-2">
+                    <div class="avatar-sm">
+                        <span class="avatar-title bg-soft-primary text-primary font-size-24 rounded-circle">
+                            <i class="mdi mdi-account-group"></i>
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $totalCustomers }}</span></h4>
+                    <p class="text-muted mb-0">Total Konsumen</p>
+                </div>
+                <p class="text-muted mt-3 mb-0">
+                    <span class="text-muted">Konsumen unik terdaftar</span>
                 </p>
             </div>
         </div>
@@ -80,38 +82,71 @@
 </div> <!-- end row-->
 
 <div class="row">
+    <div class="col-md-12">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h3 class="text-white mb-1">Rp <span data-plugin="counterup">{{ number_format($currentBalance, 0, ',', '.') }}</span></h3>
+                        <p class="text-white-50 mb-0">Saldo Saat Ini</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="avatar-lg">
+                            <span class="avatar-title bg-white bg-opacity-25 text-white font-size-32 rounded-circle">
+                                <i class="mdi mdi-wallet"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
+
+<div class="row">
     <div class="col-xl-8">
         <div class="card">
             <div class="card-body">
                 <div class="float-end">
-                    <div class="dropdown">
-                        <a class="dropdown-toggle text-reset" href="#" id="dropdownMenuButton5" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <span class="fw-semibold">Sort By:</span> <span class="text-muted">Yearly<i class="mdi mdi-chevron-down ms-1"></i></span>
-                        </a>
-
-                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton5">
-                            <a class="dropdown-item" href="#">Monthly</a>
-                            <a class="dropdown-item" href="#">Yearly</a>
-                            <a class="dropdown-item" href="#">Weekly</a>
-                        </div>
-                    </div>
+                    
                 </div>
-                <h4 class="card-title mb-4">Monthly Expenses</h4>
+                <h4 class="card-title mb-4">Grafik Pemasukan & Pengeluaran</h4>
 
                 <div class="mt-1">
                     <ul class="list-inline main-chart mb-0">
                         <li class="list-inline-item chart-border-left me-0 border-0">
-                            <h3 class="text-primary">Rp <span data-plugin="counterup">{{ number_format($totalExpenses, 0, ',', '.') }}</span><span class="text-muted d-inline-block font-size-15 ms-3">Total Expenses</span></h3>
+                            <h3 class="text-success">Rp <span data-plugin="counterup">{{ number_format($totalIncome, 0, ',', '.') }}</span><span class="text-muted d-inline-block font-size-15 ms-3">Total Pemasukan</span></h3>
+                        </li>
+                        <li class="list-inline-item chart-border-left me-0">
+                            <h3 class="text-danger">Rp <span data-plugin="counterup">{{ number_format($totalExpenses, 0, ',', '.') }}</span><span class="text-muted d-inline-block font-size-15 ms-3">Total Pengeluaran</span></h3>
                         </li>
                     </ul>
                 </div>
 
+                <div class="float-end mt-2">
+                    <div class="dropdown">
+                        <a class="dropdown-toggle text-reset" href="#" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="fw-semibold">Sort By:</span> <span class="text-muted">{{ ucfirst($period ?? 'monthly') }}<i class="mdi mdi-chevron-down ms-1"></i></span>
+                        </a>
+
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton1">
+                            @if(!auth()->user()->isKasir())
+                                <a class="dropdown-item {{ ($period ?? 'monthly') == 'daily' ? 'active' : '' }}" href="{{ route('dashboard', ['period' => 'daily']) }}">Daily</a>
+                                <a class="dropdown-item {{ ($period ?? 'monthly') == 'monthly' ? 'active' : '' }}" href="{{ route('dashboard', ['period' => 'monthly']) }}">Monthly</a>
+                                <a class="dropdown-item {{ ($period ?? 'monthly') == 'yearly' ? 'active' : '' }}" href="{{ route('dashboard', ['period' => 'yearly']) }}">Yearly</a>
+                            @else
+                                <a class="dropdown-item active" href="#">Daily</a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="mt-3">
                     <div id="monthly-expenses-chart" data-colors='["--bs-danger", "#dfe2e6", "--bs-warning"]' class="apex-charts" dir="ltr"></div>
                 </div>
-            </div> <!-- end card-body-->
-        </div> <!-- end card-->
-    </div> <!-- end col-->
+            </div> 
+        </div> 
+    </div> 
 
     <div class="col-xl-4">
         <div class="card">
@@ -135,7 +170,7 @@
                                 </div>
                                 <p class="text-end mb-0 mt-1">Rp {{ number_format($category->total, 0, ',', '.') }}</p>
                             </div>
-                        </div> <!-- end row-->
+                        </div> 
                     @endforeach
                 @else
                     <p class="text-muted">No category data available</p>
@@ -186,9 +221,9 @@
                 <div class="mt-3">
                     <div id="sales-analytics-chart" data-colors='["--bs-primary", "#dfe2e6", "--bs-warning"]' class="apex-charts" dir="ltr"></div>
                 </div>
-            </div> <!-- end card-body-->
-        </div> <!-- end card-->
-    </div> <!-- end col-->
+            </div> 
+        </div> 
+    </div> 
 
     <div class="col-xl-4">
         <div class="card bg-primary">
@@ -206,8 +241,8 @@
                         </div>
                     </div>
                 </div>
-            </div> <!-- end card-body-->
-        </div> <!-- end card-->
+            </div> 
+        </div> 
 
         <div class="card">
             <div class="card-body">
@@ -243,7 +278,7 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- end row-->
+                </div> 
 
                 <div class="row align-items-center g-0 mt-3">
                     <div class="col-sm-3">
@@ -257,7 +292,7 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- end row-->
+                </div> 
 
                 <div class="row align-items-center g-0 mt-3">
                     <div class="col-sm-3">
@@ -271,7 +306,7 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- end row-->
+                </div>
 
                 <div class="row align-items-center g-0 mt-3">
                     <div class="col-sm-3">
@@ -285,7 +320,7 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- end row-->
+                </div>
 
                 <div class="row align-items-center g-0 mt-3">
                     <div class="col-sm-3">

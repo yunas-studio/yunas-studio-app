@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Session;
 use App\Models\Expense;
+use App\Models\Transaksi;
+use App\Models\Additional;
+use App\Models\Balance;
 use Carbon\Carbon;
 
 class HomeController extends Controller
@@ -28,29 +31,57 @@ class HomeController extends Controller
     public function index(Request $request)
     {
         if (view()->exists($request->path())) {
-            // Initialize variables
             $totalExpenses = 0;
-            $monthlyExpenses = [];
-            $monthlyLabels = [];
+            $chartData = [];
+            $chartLabels = [];
             $expensesByCategory = collect();
+            $totalIncome = 0;
+            $printingCosts = 0;
+            $totalCustomers = 0;
+            $unpaidDebts = 0;
+            $paidDebts = 0;
+            $currentBalance = 0;
             $currentYear = date('Y');
+            $period = $request->input('period', 'monthly'); // Default to monthly
+            $chartType = $period; // For passing to view
             
-            // Only show expense data if user is authorized
             if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
-                // Get total expenses
-                $totalExpenses = Expense::sum('amount');
+               
+                $totalExpenses = Expense::where('type', 'expense')->sum('amount');
                 
-                // Get monthly expenses for current year
-                for ($i = 1; $i <= 12; $i++) {
-                    $month = Carbon::create($currentYear, $i, 1);
-                    $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
+                
+                $totalIncome = Expense::where('type', 'income')->sum('amount');
+                
+               
+                $printingCosts = Transaksi::join('additional_transaksi', 'transaksi.transaction_id', '=', 'additional_transaksi.transaksi_id')
+                    ->join('additionals', 'additional_transaksi.additional_id', '=', 'additionals.id')
+                    ->where('additionals.name', 'LIKE', '%Cetak%')
+                    ->sum('additional_transaksi.price');
+                
+                // Get total unique customers by phone number
+                $totalCustomers = Transaksi::distinct('phone_number')->count('phone_number');
+                
+                // Get transaction payment statistics
+                $unpaidDebts = Transaksi::where('status', 'unpaid')->count();
                     
-                    $amount = Expense::whereYear('expense_date', $currentYear)
-                        ->whereMonth('expense_date', $i)
-                        ->sum('amount');
-                        
-                    $monthlyExpenses[] = $amount;
+                $paidDebts = Transaksi::where('status', 'paid')->count();
+                
+                // Get current balance from expenses
+                $currentBalance = Expense::where('type', 'income')->sum('amount') - Expense::where('type', 'expense')->sum('amount');
+                
+                $isKasir = auth()->user()->isKasir();
+                
+                
+                if ($isKasir) {
+                    $period = 'daily';
+                    $chartType = 'daily';
                 }
+                
+                // Get chart data based on period
+                $chartData = $this->getChartData($period, $isKasir);
+                $chartLabels = $chartData['labels'];
+                $monthlyExpenses = $chartData['expenses'];
+                $monthlyIncome = $chartData['income'];
                 
                 // Get expenses by category
                 $expensesByCategory = Expense::join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
@@ -62,21 +93,147 @@ class HomeController extends Controller
                     ->get();
             } else {
                 // Initialize empty data for non-authorized users
-                for ($i = 1; $i <= 12; $i++) {
-                    $month = Carbon::create($currentYear, $i, 1);
-                    $monthlyLabels[] = $month->format('M');
-                    $monthlyExpenses[] = 0;
+                $monthlyExpenses = [];
+                $monthlyIncome = [];
+                
+                if ($period == 'daily') {
+                    // Last 7 days
+                    for ($i = 6; $i >= 0; $i--) {
+                        $day = Carbon::today()->subDays($i);
+                        $chartLabels[] = $day->format('d M');
+                        $monthlyExpenses[] = 0;
+                        $monthlyIncome[] = 0;
+                    }
+                } elseif ($period == 'yearly') {
+                    // Last 5 years
+                    for ($i = 4; $i >= 0; $i--) {
+                        $year = Carbon::now()->subYears($i)->year;
+                        $chartLabels[] = $year;
+                        $monthlyExpenses[] = 0;
+                        $monthlyIncome[] = 0;
+                    }
+                } else {
+                    // Monthly (default)
+                    for ($i = 1; $i <= 12; $i++) {
+                        $month = Carbon::create($currentYear, $i, 1);
+                        $chartLabels[] = $month->format('M');
+                        $monthlyExpenses[] = 0;
+                        $monthlyIncome[] = 0;
+                    }
                 }
             }
             
             return view($request->path(), compact(
                 'totalExpenses', 
                 'monthlyExpenses', 
-                'monthlyLabels',
-                'expensesByCategory'
+                'chartLabels',
+                'expensesByCategory',
+                'totalIncome',
+                'printingCosts',
+                'totalCustomers',
+                'unpaidDebts',
+                'paidDebts',
+                'currentBalance',
+                'monthlyIncome',
+                'chartType',
+                'period'
             ));
         }
         return abort(404);
+    }
+    
+    /**
+     * Get chart data based on period
+     *
+     * @param string $period
+     * @param bool $isKasir
+     * @return array
+     */
+    private function getChartData($period, $isKasir)
+    {
+        $labels = [];
+        $expenses = [];
+        $income = [];
+        $currentYear = date('Y');
+        
+        if ($period == 'daily') {
+            // Last 7 days data
+            for ($i = 6; $i >= 0; $i--) {
+                $day = Carbon::today()->subDays($i);
+                $labels[] = $day->format('d M');
+                
+                $expenseAmount = Expense::where('type', 'expense')
+                    ->whereDate('expense_date', $day)
+                    ->sum('amount');
+                    
+                $incomeAmount = Expense::where('type', 'income')
+                    ->whereDate('expense_date', $day)
+                    ->sum('amount');
+                
+                $expenses[] = $expenseAmount;
+                $income[] = $incomeAmount;
+            }
+        } elseif ($period == 'yearly' && !$isKasir) {
+            // Last 5 years data (only for superadmin)
+            for ($i = 4; $i >= 0; $i--) {
+                $year = Carbon::now()->subYears($i)->year;
+                $labels[] = $year;
+                
+                $expenseAmount = Expense::where('type', 'expense')
+                    ->whereYear('expense_date', $year)
+                    ->sum('amount');
+                    
+                $incomeAmount = Expense::where('type', 'income')
+                    ->whereYear('expense_date', $year)
+                    ->sum('amount');
+                
+                $expenses[] = $expenseAmount;
+                $income[] = $incomeAmount;
+            }
+        } else {
+            // Monthly data (default)
+            for ($i = 1; $i <= 12; $i++) {
+                $month = Carbon::create($currentYear, $i, 1);
+                $labels[] = $month->format('M'); // Jan, Feb, etc.
+                
+                if ($isKasir) {
+                    // Today's data only for kasir
+                    $today = Carbon::today();
+                    if ($today->month == $i && $today->year == $currentYear) {
+                        $expenseAmount = Expense::where('type', 'expense')
+                            ->whereDate('expense_date', $today)
+                            ->sum('amount');
+                            
+                        $incomeAmount = Expense::where('type', 'income')
+                            ->whereDate('expense_date', $today)
+                            ->sum('amount');
+                    } else {
+                        $expenseAmount = 0;
+                        $incomeAmount = 0;
+                    }
+                } else {
+                    // Monthly data for superadmin
+                    $expenseAmount = Expense::where('type', 'expense')
+                        ->whereYear('expense_date', $currentYear)
+                        ->whereMonth('expense_date', $i)
+                        ->sum('amount');
+                        
+                    $incomeAmount = Expense::where('type', 'income')
+                        ->whereYear('expense_date', $currentYear)
+                        ->whereMonth('expense_date', $i)
+                        ->sum('amount');
+                }
+                
+                $expenses[] = $expenseAmount;
+                $income[] = $incomeAmount;
+            }
+        }
+        
+        return [
+            'labels' => $labels,
+            'expenses' => $expenses,
+            'income' => $income
+        ];
     }
 
     public function root()
@@ -86,23 +243,78 @@ class HomeController extends Controller
         $monthlyExpenses = [];
         $monthlyLabels = [];
         $expensesByCategory = collect();
+        $totalIncome = 0;
+        $printingCosts = 0;
+        $totalCustomers = 0;
+        $unpaidDebts = 0;
+        $paidDebts = 0;
+        $currentBalance = 0;
         $currentYear = date('Y');
         
-        // Only show expense data if user is authorized
+        // Only show data if user is authorized
         if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
-            // Get total expenses
-            $totalExpenses = Expense::sum('amount');
+            // Get total expenses from expenses with type 'expense'
+            $totalExpenses = Expense::where('type', 'expense')->sum('amount');
             
-            // Get monthly expenses for current year
+            // Get total income from expenses with type 'income'
+            $totalIncome = Expense::where('type', 'income')->sum('amount');
+            
+            // Get printing costs from additionals that contain 'Cetak'
+            $printingCosts = Transaksi::join('additional_transaksi', 'transaksi.transaction_id', '=', 'additional_transaksi.transaksi_id')
+                ->join('additionals', 'additional_transaksi.additional_id', '=', 'additionals.id')
+                ->where('additionals.name', 'LIKE', '%Cetak%')
+                ->sum('additional_transaksi.price');
+            
+            // Get total unique customers by phone number
+            $totalCustomers = Transaksi::distinct('phone_number')->count('phone_number');
+            
+            // Get transaction payment statistics
+            $unpaidDebts = Transaksi::where('status', 'unpaid')->count();
+                
+            $paidDebts = Transaksi::where('status', 'paid')->count();
+            
+            // Get current balance from expenses
+            $currentBalance = Expense::where('type', 'income')->sum('amount') - Expense::where('type', 'expense')->sum('amount');
+            
+            // Get monthly expenses and income for current year
+            $monthlyIncome = [];
+            $isKasir = auth()->user()->isKasir();
+            
             for ($i = 1; $i <= 12; $i++) {
                 $month = Carbon::create($currentYear, $i, 1);
                 $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
                 
-                $amount = Expense::whereYear('expense_date', $currentYear)
-                    ->whereMonth('expense_date', $i)
-                    ->sum('amount');
-                    
-                $monthlyExpenses[] = $amount;
+                
+                if ($isKasir) {
+                    // Today's data only
+                    $today = Carbon::today();
+                    if ($today->month == $i && $today->year == $currentYear) {
+                        $expenseAmount = Expense::where('type', 'expense')
+                            ->whereDate('expense_date', $today)
+                            ->sum('amount');
+                            
+                        $incomeAmount = Expense::where('type', 'income')
+                            ->whereDate('expense_date', $today)
+                            ->sum('amount');
+                    } else {
+                        $expenseAmount = 0;
+                        $incomeAmount = 0;
+                    }
+                } else {
+                    // Monthly data for superadmin
+                    $expenseAmount = Expense::where('type', 'expense')
+                        ->whereYear('expense_date', $currentYear)
+                        ->whereMonth('expense_date', $i)
+                        ->sum('amount');
+                        
+                    $incomeAmount = Expense::where('type', 'income')
+                        ->whereYear('expense_date', $currentYear)
+                        ->whereMonth('expense_date', $i)
+                        ->sum('amount');
+                }
+                
+                $monthlyExpenses[] = $expenseAmount;
+                $monthlyIncome[] = $incomeAmount;
             }
             
             // Get expenses by category
@@ -126,7 +338,14 @@ class HomeController extends Controller
             'totalExpenses', 
             'monthlyExpenses', 
             'monthlyLabels',
-            'expensesByCategory'
+            'expensesByCategory',
+            'totalIncome',
+            'printingCosts',
+            'totalCustomers',
+            'unpaidDebts',
+            'paidDebts',
+            'currentBalance',
+            'monthlyIncome'
         ));
     }
 

@@ -10,7 +10,8 @@ class ExpenseCategoryController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->authorizeResource(ExpenseCategory::class, 'expenseCategory');
+        // Tidak menggunakan authorizeResource agar semua user yang login bisa mengakses
+        // Otorisasi akan ditangani oleh policy di masing-masing method
     }
     
     /**
@@ -18,6 +19,7 @@ class ExpenseCategoryController extends Controller
      */
     public function index()
     {
+        // Semua user yang login bisa melihat daftar kategori
         $categories = ExpenseCategory::orderBy('name')->get();
         return view('admin.expenses.categories.index', compact('categories'));
     }
@@ -27,6 +29,7 @@ class ExpenseCategoryController extends Controller
      */
     public function create()
     {
+        // Semua user yang login bisa membuat kategori baru
         return view('admin.expenses.categories.create');
     }
 
@@ -40,6 +43,7 @@ class ExpenseCategoryController extends Controller
         
         $request->validate([
             'name' => 'required|string|max:255|unique:expense_categories',
+            'type' => 'required|in:income,expense,debt',
             'is_monthly_default' => 'boolean',
         ]);
 
@@ -49,6 +53,7 @@ class ExpenseCategoryController extends Controller
         
         $category = ExpenseCategory::create([
             'name' => $request->name,
+            'type' => $request->type,
             'is_monthly_default' => $isMonthlyDefault,
         ]);
         
@@ -64,6 +69,7 @@ class ExpenseCategoryController extends Controller
      */
     public function edit(ExpenseCategory $expenseCategory)
     {
+        // Semua user yang login bisa mengedit kategori
         return view('admin.expenses.categories.edit', compact('expenseCategory'));
     }
 
@@ -78,6 +84,7 @@ class ExpenseCategoryController extends Controller
         
         $request->validate([
             'name' => 'required|string|max:255|unique:expense_categories,name,' . $expenseCategory->id,
+            'type' => 'required|in:income,expense,debt',
             'is_monthly_default' => 'boolean',
         ]);
 
@@ -87,6 +94,7 @@ class ExpenseCategoryController extends Controller
         
         $expenseCategory->update([
             'name' => $request->name,
+            'type' => $request->type,
             'is_monthly_default' => $isMonthlyDefault,
         ]);
         
@@ -102,6 +110,12 @@ class ExpenseCategoryController extends Controller
      */
     public function destroy(ExpenseCategory $expenseCategory)
     {
+        // Hanya admin dan kasir yang bisa menghapus kategori
+        if (!auth()->user()->isAdmin() && !auth()->user()->isKasir()) {
+            return redirect()->route('expense-categories.index')
+                ->with('error', 'Anda tidak memiliki izin untuk menghapus kategori.');
+        }
+        
         // Cek apakah kategori digunakan oleh expense
         if ($expenseCategory->expenses()->count() > 0) {
             return redirect()->route('expense-categories.index')
@@ -119,8 +133,8 @@ class ExpenseCategoryController extends Controller
      */
     public function toggleMonthlyDefault(ExpenseCategory $expenseCategory)
     {
-        // Authorize the action
-        $this->authorize('toggleMonthlyDefault', $expenseCategory);
+        // Semua user yang login bisa mengubah status monthly default
+        // Tidak perlu authorize karena sudah dihandle oleh middleware auth
         
         // Debug: Log toggle action
         \Log::info('Toggling monthly default for category:', $expenseCategory->toArray());

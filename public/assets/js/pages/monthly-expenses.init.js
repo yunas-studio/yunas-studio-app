@@ -35,8 +35,24 @@ function getChartColorsArray(chartId) {
 
 // Monthly Expenses Chart
 document.addEventListener("DOMContentLoaded", function () {
-    var monthlyExpensesData = JSON.parse(document.getElementById('monthly-expenses-data').getAttribute('data-expenses'));
-    var monthlyLabels = JSON.parse(document.getElementById('monthly-expenses-data').getAttribute('data-labels'));
+    var dataElement = document.getElementById('monthly-expenses-data');
+    var expensesData = JSON.parse(dataElement.getAttribute('data-expenses'));
+    var incomeData = JSON.parse(dataElement.getAttribute('data-income'));
+    var chartLabels = JSON.parse(dataElement.getAttribute('data-labels'));
+    var period = dataElement.getAttribute('data-period') || 'monthly';
+    
+    // Set chart title based on period
+    var chartTitle;
+    switch(period) {
+        case 'daily':
+            chartTitle = 'Daily Income & Expenses';
+            break;
+        case 'yearly':
+            chartTitle = 'Yearly Income & Expenses';
+            break;
+        default:
+            chartTitle = 'Monthly Income & Expenses';
+    }
     
     var options = {
         chart: {
@@ -44,6 +60,15 @@ document.addEventListener("DOMContentLoaded", function () {
             type: 'bar',
             toolbar: {
                 show: false,
+            }
+        },
+        title: {
+            text: chartTitle,
+            align: 'center',
+            style: {
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#666'
             }
         },
         plotOptions: {
@@ -59,12 +84,15 @@ document.addEventListener("DOMContentLoaded", function () {
             width: 2
         },
         series: [{
-            name: 'Expenses',
-            data: monthlyExpensesData
+            name: 'Pengeluaran',
+            data: expensesData
+        }, {
+            name: 'Pemasukan',
+            data: incomeData
         }],
-        colors: getChartColorsArray("monthly-expenses-chart"),
+        colors: ['#f46a6a', '#34c38f'],
         xaxis: {
-            categories: monthlyLabels,
+            categories: chartLabels,
             labels: {
                 style: {
                     fontSize: '12px'
@@ -90,6 +118,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return 'Rp ' + val.toLocaleString('id-ID');
                 }
             }
+        },
+        legend: {
+            position: 'top'
         }
     };
 
@@ -99,4 +130,4 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
     chart.render();
-}); 
+});

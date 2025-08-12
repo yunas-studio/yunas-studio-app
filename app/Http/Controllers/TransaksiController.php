@@ -211,6 +211,28 @@ class TransaksiController extends Controller
 
             $transaksi->receipt_code = "INV/" . Carbon::now()->format('Ymd') . "/" . $transaksi->transaction_id;
             $transaksi->save();
+            
+           
+            if ($validatedData['status'] === 'sudah dibayar') {
+               
+                $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
+                
+                
+                $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
+                
+               
+                \App\Models\Expense::create([
+                    'name' => $transaksi->receipt_code,
+                    'description' => $description,
+                    'amount' => $transaksi->total_price,
+                    'paid_amount' => $transaksi->total_price,
+                    'remaining_amount' => 0,
+                    'expense_date' => now(),
+                    'category_id' => $categoryId,
+                    'type' => 'income', 
+                    'is_paid' => true,
+                ]);
+            }
 
             DB::commit();
 
@@ -296,6 +318,9 @@ class TransaksiController extends Controller
 
             $totalPrice = $subtotal - $discount;
 
+            // Simpan status sebelumnya untuk pengecekan perubahan status
+            $previousStatus = $transaksi->status;
+            
             $transaksi->update([
                 'customer_name'   => $validatedData['customer_name'],
                 'phone_number'    => $validatedData['phone_number'],
@@ -307,6 +332,28 @@ class TransaksiController extends Controller
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
             ]);
+            
+            
+            if ($previousStatus !== 'sudah dibayar' && $validatedData['status'] === 'sudah dibayar') {
+                
+                $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
+                
+               
+                $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
+                
+                
+                \App\Models\Expense::create([
+                    'name' => $transaksi->receipt_code,
+                    'description' => $description,
+                    'amount' => $transaksi->total_price,
+                    'paid_amount' => $transaksi->total_price,
+                    'remaining_amount' => 0,
+                    'expense_date' => now(),
+                    'category_id' => $categoryId,
+                    'type' => 'income', 
+                    'is_paid' => true,
+                ]);
+            }
 
             $syncData = [];
             if (!empty($validatedData['additionals'])) {
@@ -360,6 +407,28 @@ class TransaksiController extends Controller
 
             if ($field === 'status') {
                 $transaksi->dp_amount = ($value === 'dp') ? $validated['dp_amount'] : null;
+                
+               
+                if ($value === 'sudah dibayar') {
+                    
+                    $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
+                    
+                  
+                    $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
+                    
+                   
+                    \App\Models\Expense::create([
+                        'name' => $transaksi->receipt_code,
+                        'description' => $description,
+                        'amount' => $transaksi->total_price,
+                        'paid_amount' => $transaksi->total_price,
+                        'remaining_amount' => 0,
+                        'expense_date' => now(),
+                        'category_id' => $categoryId,
+                        'type' => 'income', // Transaksi adalah pemasukan
+                        'is_paid' => true,
+                    ]);
+                }
             }
 
             if ($field === 'process_status' && $value === 'Pilih Foto') {
@@ -376,7 +445,7 @@ class TransaksiController extends Controller
             return redirect()->back()->with('success', 'Status updated successfully.');
         } catch (\Exception $e) {
             report($e);
-            return redirect()->back()->with('error', 'Failed to update status.');
+            return redirect()->back()->with('error', 'Failed to update status: ' . $e->getMessage());
         }
     }
 
