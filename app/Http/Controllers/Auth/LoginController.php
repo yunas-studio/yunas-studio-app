@@ -99,4 +99,9 @@ class LoginController extends Controller
             $this->username() => [trans('auth.failed')],
         ]);
     }
+
+    public function username()
+    {
+        return 'username';
+    }
 }
