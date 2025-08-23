@@ -27,6 +27,7 @@ Auth::routes();
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/', [HomeController::class, 'root']);
+    Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
     
     Route::resource('users', UserController::class);
@@ -47,6 +48,9 @@ Route::middleware(['auth'])->group(function () {
 
     
     Route::resource('expenses', ExpenseController::class);
+    Route::put('/expenses/{expense}/toggle-payment', [ExpenseController::class, 'togglePayment'])->name('expenses.toggle-payment');
+    Route::post('/expenses/{expense}/partial-payment', [ExpenseController::class, 'makePartialPayment'])->name('expenses.partial-payment');
+    Route::get('/expenses/{expense}/debt-payments', [ExpenseController::class, 'showDebtPayments'])->name('expenses.debt-payments');
     
    
     Route::resource('expense-categories', ExpenseCategoryController::class);

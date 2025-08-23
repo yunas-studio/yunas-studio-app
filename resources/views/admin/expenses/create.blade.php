@@ -45,6 +45,32 @@
                                     <input type="date" class="form-control" id="expense_date" name="expense_date" value="{{ old('expense_date', date('Y-m-d')) }}" required>
                                 </div>
 
+                                <div class="mb-3">
+                                    <label for="type" class="form-label">Type</label>
+                                    <select class="form-select @error('type') is-invalid @enderror" id="type" name="type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="expense" {{ old('type') == 'expense' ? 'selected' : '' }}>
+                                            <span class="text-danger">Pengeluaran</span>
+                                        </option>
+                                        <option value="income" {{ old('type') == 'income' ? 'selected' : '' }}>
+                                            <span class="text-success">Pemasukan</span>
+                                        </option>
+                                        <option value="debt" {{ old('type') == 'debt' ? 'selected' : '' }}>
+                                            <span class="text-warning">Hutang</span>
+                                        </option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <span class="text-danger">Pengeluaran:</span> Uang keluar dari kas<br>
+                                        <span class="text-success">Pemasukan:</span> Uang masuk ke kas<br>
+                                        <span class="text-warning">Hutang:</span> Kewajiban yang harus dibayar
+                                    </small>
+                                    @error('type')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
                                 <!-- Ganti input text category dengan dropdown -->
                                 <div class="mb-3">
                                     <label for="category_id" class="form-label">Category</label>

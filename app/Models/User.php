@@ -41,6 +41,12 @@ class User extends Authenticatable
     {
         return $this->role_id === 1;
     }
+
+    public function isSuperAdmin()
+    {
+        return $this->role_id === 1; // Assuming admin is also super admin, adjust if needed
+    }
+    
     public function isUser(){
         return $this->role_id === 3;
     }

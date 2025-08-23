@@ -46,6 +46,7 @@
                                 <tr>
                                     <th width="5%">#</th>
                                     <th>Name</th>
+                                    <th width="15%">Type</th>
                                     <th width="15%">Monthly Default</th>
                                     <th width="15%">Actions</th>
                                 </tr>
@@ -55,6 +56,9 @@
                                     <tr>
                                         <td>{{ $key + 1 }}</td>
                                         <td>{{ $category->name }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{{ $category->type_color }}">{{ $category->type_label }}</span>
+                                        </td>
                                         <td class="text-center">
                                             @if($category->is_monthly_default)
                                                 <span class="badge bg-success">Yes</span>
@@ -86,7 +90,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center">No categories found</td>
+                                        <td colspan="5" class="text-center">No categories found</td>
                                     </tr>
                                 @endforelse
                             </tbody>

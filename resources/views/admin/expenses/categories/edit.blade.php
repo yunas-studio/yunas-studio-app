@@ -30,6 +30,25 @@
                             @enderror
                         </div>
                         
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Category Type</label>
+                            <select class="form-select @error('type') is-invalid @enderror" id="type" name="type" required>
+                                <option value="expense" {{ old('type', $expenseCategory->type) == 'expense' ? 'selected' : '' }}>Pengeluaran</option>
+                                <option value="income" {{ old('type', $expenseCategory->type) == 'income' ? 'selected' : '' }}>Pemasukan</option>
+                                <option value="debt" {{ old('type', $expenseCategory->type) == 'debt' ? 'selected' : '' }}>Hutang</option>
+                            </select>
+                            @error('type')
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                            <div class="form-text">
+                                <span class="badge bg-danger me-1">Pengeluaran</span> untuk biaya keluar,
+                                <span class="badge bg-success me-1">Pemasukan</span> untuk pendapatan,
+                                <span class="badge bg-warning me-1">Hutang</span> untuk kewajiban yang belum dibayar
+                            </div>
+                        </div>
+                        
                         <div class="mb-3 form-check">
                             <input type="hidden" name="is_monthly_default" value="0">
                             <input type="checkbox" class="form-check-input" id="is_monthly_default" name="is_monthly_default" value="1" {{ old('is_monthly_default', $expenseCategory->is_monthly_default) ? 'checked' : '' }}>
