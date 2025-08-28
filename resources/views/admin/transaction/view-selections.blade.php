@@ -50,15 +50,19 @@
                     <h2 class="mb-0">Viewing Selection for #{{ $transaksi->receipt_code }}</h2>
                     <p class="text-muted mb-0">Customer: {{ $transaksi->customer_name }}</p>
                 </div>
-                <a href="{{ route('transaksi.index') }}" class="btn btn-secondary">
-                    <i class="bx bx-arrow-back me-1"></i> Back to Transactions
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('transaksi.downloadSelected', $transaksi) }}" class="btn btn-success">
+                        <i class="bx bx-download me-1"></i> Download Selected
+                    </a>
+                    <a href="{{ route('transaksi.index') }}" class="btn btn-secondary">
+                        <i class="bx bx-arrow-back me-1"></i> Back to Transactions
+                    </a>
+                </div>
             </div>
 
-            {{-- This is the updated message --}}
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
-                The user has selected <strong>{{ count($selectedUrls) }}</strong> out of <strong>{{ count($photoUrls) }}</strong> available photos for editing.
+                The user has selected <strong>{{ count($selectedUrls) }}</strong> out of <strong>{{ count($photoUrls) }}</strong> available photos for editing. Please take the photos from the "Pilih Edit" folder in the Photos Folder or click Download Selected and forward it to Editor.
             </div>
 
             @if(count($photoUrls) > 0)

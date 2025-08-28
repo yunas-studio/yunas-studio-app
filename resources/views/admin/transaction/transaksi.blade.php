@@ -3,6 +3,10 @@
     Transaction
 @endsection
 
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 @section('css')
 <style>
     .invoice-modal .modal-dialog { max-width: 800px; }
@@ -12,53 +16,87 @@
     .invoice-modal .invoice-details-table td { border: none; }
     .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
     .clickable-price:hover { text-decoration: underline; color: #556ee6; }
-
-    /* For sortable table headers */
-    .sortable-header {
-        cursor: pointer;
-        position: relative;
-        padding-right: 20px;
-    }
-    .sortable-header .sort-icon {
-        position: absolute;
-        right: 5px;
-        top: 50%;
-        transform: translateY(-50%);
-        opacity: 0.4;
-    }
-    .sortable-header.active .sort-icon {
-        opacity: 1;
-        color: #556ee6;
-    }
-
-    /* Advanced filter link styling */
-    .advanced-filter-toggler {
-        text-decoration: none;
-        font-size: 0.9em;
-    }
-
-    @media print {
-        body * { visibility: hidden; }
-        .invoice-modal .modal-content, .invoice-modal .modal-content * { visibility: visible; }
-        .invoice-modal { position: absolute; left: 0; top: 0; }
-        .modal-footer { display: none; }
-    }
+    .sortable-header { cursor: pointer; position: relative; padding-right: 20px; }
+    .sortable-header .sort-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
+    .sortable-header.active .sort-icon { opacity: 1; color: #556ee6; }
+    .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
+    a.disabled { pointer-events: none; opacity: 0.65; }
 </style>
 @endsection
 
 @section('content')
-    @component('common-components.breadcrumb', [
-        'title' => 'Transaksi',
-        'pagetitle' => 'Transactions',
-        'breadcrumbs' => [['text' => 'Transactions', 'url' => '']]
-    ])
+    @component('common-components.breadcrumb', ['title' => 'Transaksi', 'pagetitle' => 'Transactions', 'breadcrumbs' => [['text' => 'Transactions', 'url' => '']]])
     @endcomponent
 
+    {{-- Summary Cards Row --}}
     <div class="row">
-        {{-- Count Cards --}}
-        <div class="col-md-6 col-xl-4"><div class="card"><div class="card-body"><div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-cancel"></i></div></div><div><h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $belumDibayarCount }}</span></h4><p class="text-muted mb-0">Total Belum Dibayar</p></div></div></div></div>
-        <div class="col-md-6 col-xl-4"><div class="card"><div class="card-body"><div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-clock"></i></div></div><div><h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $dpCount }}</span></h4><p class="text-muted mb-0">Total DP</p></div></div></div></div>
-        <div class="col-md-6 col-xl-4"><div class="card"><div class="card-body"><div class="float-end mt-2 me-3"><div style="font-size: 2rem"><i class="mdi mdi-file-check"></i></div></div><div><h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $sudahDibayarCount }}</span></h4><p class="text-muted mb-0">Total Sudah Dibayar</p></div></div></div></div>
+        <div class="col-lg-9">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card mini-stats-wid">
+                        <div class="card-body">
+                            <div class="d-flex">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted fw-medium">Total Belum Dibayar</p>
+                                    <h4 class="mb-0 text-warning">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</h4>
+                                    <p class="text-muted mb-0 font-size-12">from {{ $countBelumDibayar }} {{ Str::plural('transaction', $countBelumDibayar) }}</p>
+                                </div>
+                                <div class="flex-shrink-0 align-self-center">
+                                    <i class="bx bx-error-circle font-size-24 text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mini-stats-wid">
+                        <div class="card-body">
+                            <div class="d-flex">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted fw-medium">Total DP (Paid)</p>
+                                    <h4 class="mb-0 text-info">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</h4>
+                                    <p class="text-muted mb-0 font-size-12">from {{ $countDp }} {{ Str::plural('transaction', $countDp) }}</p>
+                                </div>
+                                <div class="flex-shrink-0 align-self-center">
+                                    <i class="bx bx-time-five font-size-24 text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card mini-stats-wid">
+                        <div class="card-body">
+                            <div class="d-flex">
+                                <div class="flex-grow-1">
+                                    <p class="text-muted fw-medium">Total Sudah Dibayar</p>
+                                    <h4 class="mb-0 text-success">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</h4>
+                                    <p class="text-muted mb-0 font-size-12">from {{ $countSudahDibayar }} {{ Str::plural('transaction', $countSudahDibayar) }}</p>
+                                </div>
+                                <div class="flex-shrink-0 align-self-center">
+                                    <i class="bx bx-check-circle font-size-24 text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-grow-1">
+                            <p class="fw-medium">Total Profit (Filtered)</p>
+                            <h4 class="mb-0 text-white">Rp {{ number_format($totalProfit, 0, ',', '.') }}</h4>
+                        </div>
+                        <div class="flex-shrink-0 align-self-center">
+                            <i class="bx bx-wallet font-size-24"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Interactive Filter Card --}}
@@ -149,7 +187,14 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row mb-2">
-                        <div class="col-md-6"><div class="mb-3"><a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Add New Transaction</a></div></div>
+                        <div class="col-md-12">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Add New Transaction</a>
+                                <button type="button" id="hide-completed-btn" class="btn btn-secondary waves-effect waves-light">
+                                    <i class="bx bx-hide me-1"></i> Hide Completed
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -184,7 +229,7 @@
                                     $processStatusConfig = ['Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
                                 @endphp
                                 @forelse($transactions as $transaksi)
-                                    <tr>
+                                    <tr data-process-status="{{ $transaksi->process_status }}" data-payment-status="{{ $transaksi->status }}">
                                         <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
                                         <td>{{ $transaksi->customer_name }}</td>
                                         <td>
@@ -234,23 +279,16 @@
                                         </td>
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
-                                                @if(in_array($transaksi->process_status, ['Proses Edit', 'Selesai Editing']))
-                                                    <form action="{{ route('transaksi.completeEditing', $transaksi) }}" method="POST">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Mark Editing as Complete">
-                                                            <i class="bx bx-check-double"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                @if(in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
-                                                    <a href="{{ route('transaksi.view-selections', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="View User's Photo Selections">
-                                                        <i class="uil uil-camera-change font-size-18"></i>
-                                                    </a>
-                                                @endif
+                                                @php $canViewSelections = in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']); @endphp
+                                                <a href="{{ $canViewSelections ? route('transaksi.view-selections', $transaksi) : '#' }}" 
+                                                   class="text-warning {{ !$canViewSelections ? 'disabled' : '' }}" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="{{ $canViewSelections ? 'View User\'s Photo Selections' : 'Action not available until photos are selected' }}">
+                                                    <i class="uil uil-camera-change font-size-18"></i>
+                                                </a>
+                                                
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
-
-                                                {{-- UPDATED WHATSAPP MESSAGE LOGIC --}}
+                                                
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
                                                         $waMessages = [
@@ -273,9 +311,7 @@
                                                         }
                                                     @endphp
                                                     @if(isset($waLink))
-                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WhatsApp">
-                                                            <i class="uil uil-whatsapp"></i>
-                                                        </a>
+                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WhatsApp"><i class="uil uil-whatsapp"></i></a>
                                                     @endif
                                                 @endif
 
@@ -294,15 +330,35 @@
                         </table>
                     </div>
                      <div class="row mt-4">
-                        <div class="col-sm-6"><div><p class="mb-sm-0">Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} of {{ $transactions->total() }} entries</p></div></div>
-                        <div class="col-sm-6"><div class="float-sm-end">{{ $transactions->withQueryString()->links() }}</div></div>
+                        <div class="col-sm-6 d-flex align-items-center">
+                            <div>
+                                <p class="mb-sm-0">Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} of {{ $transactions->total() }} entries</p>
+                            </div>
+                            <div class="ms-3">
+                                <form method="GET" action="{{ route('transaksi.index') }}" class="d-flex align-items-center">
+                                    @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                                        <input type="hidden" name="{{ $key }}" value="{{ is_array($value) ? http_build_query($value) : $value }}">
+                                    @endforeach
+                                    <label for="per_page" class="form-label me-2 mb-0">Show:</label>
+                                    <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: 70px;" onchange="this.form.submit()">
+                                        @foreach($perPageOptions as $option)
+                                            <option value="{{ $option }}" {{ request('per_page', 10) == $option ? 'selected' : '' }}>{{ $option }}</option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="float-sm-end">
+                                {{ $transactions->withQueryString()->links() }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Modals --}}
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -409,4 +465,44 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
     </div>
 </div>
+    
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('hide-completed-btn');
+        const processStatusToHide = 'Selesai';
+        const paymentStatusToHide = 'sudah dibayar';
+
+        function updateView(isHidden) {
+            const rows = document.querySelectorAll(`tr[data-process-status]`);
+            
+            rows.forEach(row => {
+                const isCompleted = row.dataset.processStatus === processStatusToHide && row.dataset.paymentStatus === paymentStatusToHide;
+                if (isCompleted && isHidden) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = '';
+                }
+            });
+
+            if (isHidden) {
+                toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Show Completed`;
+                toggleBtn.classList.remove('btn-secondary');
+                toggleBtn.classList.add('btn-info');
+            } else {
+                toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Hide Completed`;
+                toggleBtn.classList.remove('btn-info');
+                toggleBtn.classList.add('btn-secondary');
+            }
+        }
+
+        let isCompletedHidden = localStorage.getItem('hideCompleted') === 'true';
+        updateView(isCompletedHidden);
+
+        toggleBtn.addEventListener('click', function() {
+            isCompletedHidden = !isCompletedHidden;
+            localStorage.setItem('hideCompleted', isCompletedHidden);
+            updateView(isCompletedHidden);
+        });
+    });
+</script>
 @endsection

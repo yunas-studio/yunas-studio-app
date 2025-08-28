@@ -60,9 +60,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('transaksi', TransaksiController::class);
     Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
-    Route::put('/transaksi/{transaksi}/complete-editing', [TransaksiController::class, 'completeEditing'])->name('transaksi.completeEditing');
 
-    
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
         Route::get('/select-for-edit', [TransaksiController::class, 'viewSelectForEdit'])->name('view-select-for-edit');
         Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEdit'])->name('handle-select-for-edit');
@@ -76,6 +74,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/view-selections', [TransaksiController::class, 'viewSelectionsForAdmin'])->name('view-selections');
         Route::get('/print-invoice', [TransaksiController::class, 'printInvoice'])->name('print-invoice');
+
+        Route::get('/download-all', [TransaksiController::class, 'downloadAllPhotosAsZip'])->name('downloadAll');
+        Route::get('/download-selected', [TransaksiController::class, 'downloadSelectedPhotosAsZip'])->name('downloadSelected');
+
+        Route::get('/download-folder/{status}', [TransaksiController::class, 'downloadFolderAsZip'])->name('downloadFolder');
     });
 });
 

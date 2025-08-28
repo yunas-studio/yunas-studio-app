@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice {{ $transaksi->receipt_code }}</title>
     <style>
-        /* General Styling */
+        /*
+            Print style for Kertas Continuous Form 3 Ply
+            Standard size: 9.5in x 11in. Printable area is smaller.
+            Width: ~210mm to 215mm is a safe bet for most dot matrix printers.
+        */
+        @page {
+            size: 8.5in 11in; /* Standard letter size, fits well on 9.5x11 continuous paper */
+            margin: 12mm 10mm; /* ~0.5 inch margins */
+        }
+
         body {
             font-family: 'Courier New', Courier, monospace;
             color: #000;
             margin: 0;
-            padding: 10mm 5mm;
+            font-size: 10pt; /* Standard size for dot matrix readability */
         }
         .invoice-container {
             width: 100%;
@@ -25,21 +34,20 @@
         }
         .header p {
             margin: 2px 0;
-            font-size: 0.8em;
+            font-size: 0.9em;
         }
         hr {
             border: 0;
             border-top: 1px dashed #000;
             margin: 10px 0;
         }
-        /* Table Styling */
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8em;
+            font-size: 0.9em;
         }
         th, td {
-            padding: 3px 0;
+            padding: 4px 0;
         }
         th {
             text-align: left;
@@ -48,9 +56,8 @@
         .text-right {
             text-align: right;
         }
-        /* Details Section */
         .details-section {
-            font-size: 0.8em;
+            font-size: 0.9em;
             margin-bottom: 10px;
         }
         .summary-section {
@@ -60,9 +67,10 @@
         /* Print-specific CSS */
         @media print {
             body {
-                /* Set width for common receipt paper (adjust 80mm as needed) */
-                width: 80mm; 
                 padding: 0;
+            }
+            .no-print {
+                display: none;
             }
         }
     </style>
@@ -70,7 +78,7 @@
 <body>
     <div class="invoice-container">
         <div class="header">
-            <h1>Yuna's Studio</h1>
+            <h1>Yunas Studio</h1>
             <p>Jalan Lingkar Selatan, Sukabumi</p>
             <p>{{ $transaksi->created_at->format('d/m/Y H:i') }}</p>
         </div>
@@ -100,13 +108,27 @@
                     <td class="text-right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
                 </tr>
                 @endif
+
                 {{-- Extra Additionals --}}
-                @foreach($transaksi->additionals as $item)
-                <tr>
-                    <td>{{ $item->pivot->quantity }}x {{ $item->name }}</td>
-                    <td class="text-right">Rp {{ number_format($item->pivot->price * $item->pivot->quantity, 0, ',', '.') }}</td>
-                </tr>
-                @endforeach
+                @if($transaksi->additionals->isNotEmpty())
+                    <tr><td colspan="2" style="padding-top: 10px;"><strong>Extra Items:</strong></td></tr>
+                    @foreach($transaksi->additionals as $item)
+                    <tr>
+                        <td>{{ $item->pivot->quantity }}x {{ $item->name }}</td>
+                        <td class="text-right">Rp {{ number_format($item->pivot->price * $item->pivot->quantity, 0, ',', '.') }}</td>
+                    </tr>
+                    @endforeach
+                @endif
+
+                {{-- NEW: Included Items Section --}}
+                @if($transaksi->packet && $transaksi->packet->combined_defaults->isNotEmpty())
+                    <tr><td colspan="2" style="padding-top: 10px;"><strong>Included Items:</strong></td></tr>
+                    @foreach($transaksi->packet->combined_defaults as $default)
+                    <tr>
+                        <td colspan="2" style="padding-left: 15px;">- {{ $default->quantity }}x {{ $default->name }}</td>
+                    </tr>
+                    @endforeach
+                @endif
             </tbody>
         </table>
 
@@ -151,7 +173,6 @@
     </div>
 
     <script>
-        // Automatically trigger the print dialog when the page loads
         window.onload = function() {
             window.print();
         };

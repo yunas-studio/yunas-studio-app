@@ -3,10 +3,36 @@
 
 @section('css')
     <style>
-        .summary-box { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-        .photo-card { border: 2px solid transparent; transition: all 0.2s ease-in-out; }
-        .photo-card.has-selection { border-color: #556ee6; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); }
-        .photo-card .card-img-top { object-fit: cover; }
+        /* Copied from admin's view-selections.blade.php for consistency */
+        .photo-card {
+            border: 2px solid transparent;
+            border-radius: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .photo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .photo-card.has-selection {
+            border-color: #556ee6;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .image-container {
+            overflow: hidden;
+            border-top-left-radius: calc(0.5rem - 2px);
+            border-top-right-radius: calc(0.5rem - 2px);
+        }
+        .fixed-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            background-color: #e9ecef;
+            transition: transform 0.3s ease;
+        }
+        .photo-card:hover .fixed-image {
+            transform: scale(1.05);
+        }
         .selection-badge { font-size: 0.75rem; }
     </style>
 @endsection
@@ -27,7 +53,11 @@
                                     <h4 class="mb-1">Photo Selection for #{{ $transaksi->receipt_code }}</h4>
                                     <p class="text-muted mb-0">Select photos for editing and assign your included prints.</p>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-lg"><i class="bx bx-save me-1"></i> Submit All Selections</button>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('transaksi.index') }}" class="btn btn-secondary btn-lg"><i class="bx bx-arrow-back me-1"></i> Back</a>
+                                    <a href="{{ route('transaksi.downloadAll', $transaksi) }}" class="btn btn-success btn-lg"><i class="bx bx-download me-1"></i> Download All</a>
+                                    <button type="submit" class="btn btn-primary btn-lg"><i class="bx bx-save me-1"></i> Submit All Selections</button>
+                                </div>
                             </div>
                             <hr>
                             <div class="row text-center">
@@ -58,13 +88,22 @@
             @if($photoCount > 0)
                 <div class="row g-3">
                     @foreach ($photoUrls as $index => $url)
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                             <div class="card photo-card h-100" data-url="{{ $url }}">
-                                <img src="{{ $url }}" class="card-img-top" alt="Photo {{ $index + 1 }}" height="200">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">Photo #{{ $loop->iteration }}</h6>
-                                    <div class="selection-badges my-2" style="min-height: 22px;"></div>
-                                    <button type="button" class="btn btn-outline-primary manage-selection-btn">Manage Selection</button>
+                                <div class="image-container ratio ratio-4x3">
+                                    <img src="{{ $url }}" class="card-img-top fixed-image" alt="Photo {{ $index + 1 }}" loading="lazy">
+                                </div>
+                                <div class="card-body d-flex flex-column p-2">
+                                    <h6 class="card-title small">Photo #{{ $loop->iteration }}</h6>
+                                    <div class="selection-badges my-2" style="min-height: 20px;"></div>
+                                    <div class="mt-auto">
+                                        <button type="button" class="btn btn-primary btn-sm w-100 mb-2 instant-select-btn">Select for Edit</button>
+                                        <div class="btn-group w-100">
+                                             <button type="button" class="btn btn-sm btn-outline-info preview-btn" title="Preview"><i class="bx bx-fullscreen"></i></button>
+                                             <button type="button" class="btn btn-sm btn-outline-secondary manage-selection-btn" title="Manage Print"><i class="bx bx-printer"></i></button>
+                                             <a href="{{ $url }}" class="btn btn-sm btn-outline-success" download title="Download"><i class="bx bx-download"></i></a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -76,6 +115,7 @@
         </form>
     </div>
 
+    <!-- Selection Modal -->
     <div class="modal fade" id="selectionModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -107,6 +147,25 @@
             </div>
         </div>
     </div>
+    
+    <!-- Preview-only Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Photo Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-0">
+                    <img id="previewModalPhoto" src="" class="img-fluid" style="max-height: 80vh; object-fit: contain;" alt="Photo Preview">
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @include('partials.success-modal')
 @endsection
 
@@ -122,11 +181,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // --- STATE MANAGEMENT ---
-    let selections = {}; // { "photo_url": { edit: bool, print: "size" | null } }
+    let selections = {};
     let activeModalUrl = null;
 
     // --- DOM ELEMENTS ---
     const selectionModal = new bootstrap.Modal(document.getElementById('selectionModal'));
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
     const elements = {
         form: document.getElementById('photoSelectionForm'),
         editCount: document.getElementById('edit-count'),
@@ -138,7 +198,8 @@ document.addEventListener('DOMContentLoaded', function () {
             printSelect: document.getElementById('modalAssignToPrint'),
             saveBtn: document.getElementById('saveSelectionBtn'),
             clearBtn: document.getElementById('clearSelectionBtn'),
-        }
+        },
+        previewModalPhoto: document.getElementById('previewModalPhoto'),
     };
 
     // --- FUNCTIONS ---
@@ -185,7 +246,6 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.modal.editCheckbox.checked = currentSelection.edit;
         elements.modal.printSelect.value = currentSelection.print || "";
         
-        // Disable options if limits are reached
         const editCount = Object.values(selections).filter(s => s.edit).length;
         elements.modal.editCheckbox.disabled = (editCount >= config.photoLimit && !currentSelection.edit);
 
@@ -204,6 +264,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         selectionModal.show();
     };
+    
+    const openPreviewModal = (url) => {
+        elements.previewModalPhoto.src = url;
+        previewModal.show();
+    };
 
     const saveModalSelection = () => {
         const url = activeModalUrl;
@@ -214,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
             print: elements.modal.printSelect.value || null
         };
 
-        // If selection is now empty, remove it from the object
         if (!selections[url].edit && !selections[url].print) {
             delete selections[url];
         }
@@ -235,7 +299,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const updateHiddenInputs = () => {
-        // Clear previous inputs to avoid stale data
         elements.form.querySelectorAll('.selection-input-field').forEach(input => input.remove());
         
         Object.entries(selections).forEach(([url, selection]) => {
@@ -274,6 +337,36 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', (e) => {
             const url = e.target.closest('.photo-card').dataset.url;
             openSelectionModal(url);
+        });
+    });
+    
+    document.querySelectorAll('.preview-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const url = e.target.closest('.photo-card').dataset.url;
+            openPreviewModal(url);
+        });
+    });
+
+    document.querySelectorAll('.instant-select-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const url = e.target.closest('.photo-card').dataset.url;
+            const currentSelection = selections[url] || { edit: false, print: null };
+            const editCount = Object.values(selections).filter(s => s.edit).length;
+
+            if (!currentSelection.edit && editCount >= config.photoLimit) {
+                alert(`You can only select up to ${config.photoLimit} photos for editing.`);
+                return;
+            }
+            
+            currentSelection.edit = !currentSelection.edit;
+            selections[url] = currentSelection;
+            
+            if (!selections[url].edit && !selections[url].print) {
+                delete selections[url];
+            }
+
+            updateHiddenInputs();
+            updateDisplays();
         });
     });
     

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Additional;
 use App\Models\Packet;
-use App\Models\Product; // <--- THIS IS THE FIX
+use App\Models\Product;
 use App\Models\SelectedPhoto;
 use App\Models\SelectedPrint;
 use App\Models\Transaksi;
@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 class TransaksiController extends Controller
 {
@@ -28,113 +30,98 @@ class TransaksiController extends Controller
 
     public function index(Request $request)
     {
-        $search = $request->input('search');
-
-        if (auth()->user()->isUser()) {
-            $user = auth()->user();
-            $search = $request->input('search');
-
-            // Base query is now scoped to the logged-in user
-            $query = Transaksi::where('phone_number', $user->username)
-                ->with(['packet.product', 'packet.printOptions', 'additionals']) // Eager load everything needed
-                ->when($search, function ($q) use ($search) {
-                    $q->where(function($sub) use ($search) {
-                        $sub->where('receipt_code', 'like', "%$search%")
-                            ->orWhere('customer_name', 'like', "%$search%");
-                    });
-                })
-                ->when($request->filled('payment_status'), function ($q) use ($request) {
-                    $q->where('status', $request->payment_status);
-                })
-                ->when($request->filled('process_status'), function ($q) use ($request) {
-                    $q->where('process_status', $request->process_status);
-                })
-                ->when($request->filled('packet_id'), function ($q) use ($request) {
-                    $q->where('packet_id', $request->packet_id);
-                })
-                ->when($request->filled('start_date'), function ($q) use ($request) {
-                    $q->whereDate('created_at', '>=', $request->start_date);
-                })
-                ->when($request->filled('end_date'), function ($q) use ($request) {
-                    $q->whereDate('created_at', '<=', $request->end_date);
-                });
-
-            // Sorting Logic for the user
-            $sortBy = $request->input('sort_by', 'created_at');
-            $sortDirection = $request->input('sort_direction', 'desc');
-            if (in_array($sortBy, ['total_price', 'created_at'])) {
-                $query->orderBy($sortBy, $sortDirection);
-            } else {
-                $query->orderBy('created_at', 'desc');
-            }
-
-            $transactions = $query->paginate(10)->withQueryString();
-
-            // Data for filters - get only packets relevant to this user
-            $userPacketIds = Transaksi::where('phone_number', $user->username)->distinct()->pluck('packet_id');
-            $packetsForFilter = Packet::with('product')->whereIn('id', $userPacketIds)->orderBy('name')->get()->groupBy('product.name');
-            $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
-            $processStatuses = ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'];
-            
-            return view('user.transaction.transaksi', compact(
-                'transactions', 'packetsForFilter', 'paymentStatuses', 'processStatuses'
-            ));
+        // 1. Setup pagination options once at the top
+        $perPageOptions = [5, 10, 20, 50, 100];
+        $perPage = $request->input('per_page', 10);
+        if (!in_array($perPage, $perPageOptions)) {
+            $perPage = 10; // Default to 10 if an invalid value is provided
         }
 
-        // --- UPDATED EAGER-LOADING ---
-        $query = Transaksi::with([
-                'packet.product', 
-                'packet.printOptions', // Eager-load for print check
-                'user', 
-                'additionals' // Eager-load for print check
-            ])
-            ->when($search, function ($q) use ($search) {
-                $q->where(function($sub) use ($search) {
-                    $sub->where('receipt_code', 'like', "%$search%")
-                        ->orWhere('customer_name', 'like', "%$search%");
-                });
-            })
-            ->when($request->filled('payment_status'), function ($q) use ($request) {
-                $q->where('status', $request->payment_status);
-            })
-            ->when($request->filled('process_status'), function ($q) use ($request) {
-                $q->where('process_status', $request->process_status);
-            })
-            ->when($request->filled('packet_id'), function ($q) use ($request) {
-                $q->where('packet_id', $request->packet_id);
-            })
-            ->when($request->filled('start_date'), function ($q) use ($request) {
-                $q->whereDate('created_at', '>=', $request->start_date);
-            })
-            ->when($request->filled('end_date'), function ($q) use ($request) {
-                $q->whereDate('created_at', '<=', $request->end_date);
-            });
+        // 2. Build the base query with all necessary relationships
+        $query = Transaksi::with(['packet.product', 'packet.printOptions', 'user', 'additionals']);
+        $user = auth()->user();
 
-        // Sorting Logic
+        // 3. Apply role-specific scope
+        if ($user->isUser()) {
+            $query->where('phone_number', $user->username);
+        }
+
+        // 4. Apply all common filters to the query
+        $search = $request->input('search');
+        $query->when($search, function ($q) use ($search) {
+            $q->where(function($sub) use ($search) {
+                $sub->where('receipt_code', 'like', "%$search%")
+                    ->orWhere('customer_name', 'like', "%$search%");
+            });
+        })
+        ->when($request->filled('payment_status'), function ($q) use ($request) {
+            $q->where('status', $request->payment_status);
+        })
+        ->when($request->filled('process_status'), function ($q) use ($request) {
+            $q->where('process_status', $request->process_status);
+        })
+        ->when($request->filled('packet_id'), function ($q) use ($request) {
+            $q->where('packet_id', $request->packet_id);
+        })
+        ->when($request->filled('start_date'), function ($q) use ($request) {
+            $q->whereDate('created_at', '>=', $request->start_date);
+        })
+        ->when($request->filled('end_date'), function ($q) use ($request) {
+            $q->whereDate('created_at', '<=', $request->end_date);
+        });
+
+        // 5. Clone the query *before* sorting and pagination for accurate financial totals
+        $financialQuery = clone $query;
+
+        // 6. Apply sorting
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         if (in_array($sortBy, ['total_price', 'created_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
-            $query->orderBy('created_at', 'desc');
+            $query->orderBy('created_at', 'desc'); // Default sort
         }
 
-        $transactions = $query->paginate(10)->withQueryString();
+        // 7. Paginate the final query
+        $transactions = $query->paginate($perPage)->withQueryString();
 
-        // Data for filters
-        $packetsForFilter = Packet::with('product')->whereHas('product')->orderBy('name')->get()->groupBy('product.name');
+        // 8. Prepare data and return the correct view based on role
         $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
         $processStatuses = ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'];
 
-        // Counts
-        $belumDibayarCount = Transaksi::where('status', 'belum dibayar')->count();
-        $dpCount = Transaksi::where('status', 'dp')->count();
-        $sudahDibayarCount = Transaksi::where('status', 'sudah dibayar')->count();
+        if ($user->isUser()) {
+            // Data for user filters
+            $userPacketIds = (clone $financialQuery)->distinct()->pluck('packet_id');
+            $packetsForFilter = Packet::with('product')->whereIn('id', $userPacketIds)->orderBy('name')->get()->groupBy('product.name');
+            
+            return view('user.transaction.transaksi', compact(
+                'transactions', 'packetsForFilter', 'paymentStatuses', 'processStatuses', 'perPageOptions'
+            ));
 
-        return view('admin.transaction.transaksi', compact(
-            'transactions', 'belumDibayarCount', 'dpCount', 'sudahDibayarCount',
-            'packetsForFilter', 'paymentStatuses', 'processStatuses'
-        ));
+        } else { // Admin view
+            // Perform financial calculations AND counts on the filtered query
+            $totalBelumDibayar = (clone $financialQuery)->where('status', 'belum dibayar')->sum('total_price');
+            $countBelumDibayar = (clone $financialQuery)->where('status', 'belum dibayar')->count();
+            
+            $totalDpPaid = (clone $financialQuery)->where('status', 'dp')->sum('dp_amount');
+            $countDp = (clone $financialQuery)->where('status', 'dp')->count();
+
+            $totalSudahDibayar = (clone $financialQuery)->where('status', 'sudah dibayar')->sum('total_price');
+            $countSudahDibayar = (clone $financialQuery)->where('status', 'sudah dibayar')->count();
+
+            $totalProfit = $totalDpPaid + $totalSudahDibayar;
+
+            $packetsForFilter = Packet::with('product')->whereHas('product')->orderBy('name')->get()->groupBy('product.name');
+
+            return view('admin.transaction.transaksi', compact(
+                'transactions', 'perPageOptions',
+                'totalBelumDibayar', 'countBelumDibayar',
+                'totalDpPaid', 'countDp',
+                'totalSudahDibayar', 'countSudahDibayar',
+                'totalProfit',
+                'packetsForFilter', 'paymentStatuses', 'processStatuses'
+            ));
+        }
     }
 
     /**
@@ -143,13 +130,10 @@ class TransaksiController extends Controller
     public function create()
     {
         $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
-        $all_additionals = Additional::orderBy('name')->get();
+        $all_additionals = Additional::where('price', '>', 0)->orderBy('name')->get();
         return view('admin.transaction.create', compact('packets', 'all_additionals'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -211,44 +195,19 @@ class TransaksiController extends Controller
 
             $transaksi->receipt_code = "INV/" . Carbon::now()->format('Ymd') . "/" . $transaksi->transaction_id;
             $transaksi->save();
-            
-           
-            if ($validatedData['status'] === 'sudah dibayar') {
-               
-                $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
-                
-                
-                $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
-                
-               
-                \App\Models\Expense::create([
-                    'name' => $transaksi->receipt_code,
-                    'description' => $description,
-                    'amount' => $transaksi->total_price,
-                    'paid_amount' => $transaksi->total_price,
-                    'remaining_amount' => 0,
-                    'expense_date' => now(),
-                    'category_id' => $categoryId,
-                    'type' => 'income', 
-                    'is_paid' => true,
-                ]);
-            }
 
             DB::commit();
 
+            // UPDATED: Folder Creation Logic for local 'public' disk
             try {
-                $folderName = str_replace('/', '_', $transaksi->receipt_code);
-                $baseTransactionPath = storage_path('app/public/photos/' . $folderName);
+                $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
                 $subfolders = ['RAW', 'Pilih Edit', 'Result', 'Pilih Cetak'];
 
                 foreach ($subfolders as $subfolder) {
-                    $path = $baseTransactionPath . '/' . $subfolder;
-                    if (!File::isDirectory($path)) {
-                        File::makeDirectory($path, 0755, true, true);
-                    }
+                    Storage::disk('public')->makeDirectory($folderName . '/' . $subfolder);
                 }
             } catch (\Exception $e) {
-                Log::error('Failed to create photo directories for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+                Log::error('Failed to create local photo directories for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
             }
 
             return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully.');
@@ -384,6 +343,8 @@ class TransaksiController extends Controller
     /**
      * Handle inline status updates from the index page.
      */
+    // In app/Http/Controllers/TransaksiController.php
+
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
@@ -402,21 +363,25 @@ class TransaksiController extends Controller
             return redirect()->back()->with('error', 'Invalid process status value.');
         }
 
+        // --- CORRECTED LOGIC ---
+        // If the admin is setting the status to "Siap Cetak", we intercept it to prepare the files first.
+        if ($field === 'process_status' && $value === 'Siap Cetak') {
+            return $this->preparePrintFiles($transaksi);
+        }
+        // --- END OF CORRECTED LOGIC ---
+
         try {
             $transaksi->{$field} = $value;
 
+            // Your friend's code for creating expenses is preserved below.
             if ($field === 'status') {
                 $transaksi->dp_amount = ($value === 'dp') ? $validated['dp_amount'] : null;
                 
-               
                 if ($value === 'sudah dibayar') {
-                    
                     $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
                     
-                  
                     $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
                     
-                   
                     \App\Models\Expense::create([
                         'name' => $transaksi->receipt_code,
                         'description' => $description,
@@ -425,7 +390,7 @@ class TransaksiController extends Controller
                         'remaining_amount' => 0,
                         'expense_date' => now(),
                         'category_id' => $categoryId,
-                        'type' => 'income', // Transaksi adalah pemasukan
+                        'type' => 'income',
                         'is_paid' => true,
                     ]);
                 }
@@ -433,11 +398,9 @@ class TransaksiController extends Controller
 
             if ($field === 'process_status' && $value === 'Pilih Foto') {
                 $transaksi->selectedPhotos()->delete();
-                $folderName = str_replace('/', '_', $transaksi->receipt_code);
-                $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
-                if (File::isDirectory($pilihEditPath)) {
-                    File::cleanDirectory($pilihEditPath);
-                }
+                $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+                $pilihEditPath = $folderName . '/Pilih Edit';
+                Storage::disk('public')->delete(Storage::disk('public')->files($pilihEditPath));
             }
 
             $transaksi->save();
@@ -455,6 +418,17 @@ class TransaksiController extends Controller
     public function destroy(string $id)
     {
         $transaksi = Transaksi::findOrFail($id);
+        
+        try {
+            // Use the local 'public' disk
+            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            if (Storage::disk('public')->exists($folderName)) {
+                Storage::disk('public')->deleteDirectory($folderName);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to delete local photo directory for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+        }
+
         $transaksi->delete();
         return redirect()->route('transaksi.index')->with('success', 'Transaction deleted successfully.');
     }
@@ -465,23 +439,16 @@ class TransaksiController extends Controller
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
-            // Eager load all necessary relationships for efficiency
             $transaksi->load('packet.printOptions', 'selectedPhotos', 'selectedPrints');
 
             if (!$transaksi->packet) {
                 return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
             }
 
-            // Get all RAW photos from the filesystem
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
-
-            // Get the print allowances from the packet (e.g., ['8R + Frame' => 1, '4R' => 2])
             $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
-
-            // Get previous selections to pre-populate the form
             $selectedForEdit = $transaksi->selectedPhotos->pluck('file_url')->toArray();
             $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url')->toArray();
-
             $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
 
             return view('user.transaction.manage-photo', [
@@ -492,60 +459,137 @@ class TransaksiController extends Controller
                 'printAllowances'  => $printAllowances,
                 'selectedForEdit'  => $selectedForEdit,
                 'selectedForPrint' => $selectedForPrint,
-                'formAction'       => route('transaksi.handle-select-for-edit', $transaksi), // Action remains the same
+                'formAction'       => route('transaksi.handle-select-for-edit', $transaksi),
             ]);
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
-    // This method handles the submission from the "Select for Edit" page
 
-    // In TransaksiController.php
+    /**
+     * Handle the unified photo selection submission from the user.
+     */
     public function handleSelectForEdit(Request $request, Transaksi $transaksi)
     {
         if (!in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit'])) {
             return redirect()->back()->with('error', 'Photo selection is locked because the editing process has already begun.');
         }
 
-        $request->validate(['photo_urls' => 'sometimes|array', 'photo_urls.*' => 'string']);
-        $selectedUrls = $request->input('photo_urls', []);
+        $validated = $request->validate([
+            'selections' => 'nullable|array',
+            'selections.*.edit' => 'sometimes|in:1',
+            'selections.*.print' => 'sometimes|string|nullable',
+        ]);
 
-        DB::transaction(function () use ($transaksi, $selectedUrls) {
+        $selections = $validated['selections'] ?? [];
+
+        DB::transaction(function () use ($transaksi, $selections) {
+            // 1. Clear all previous selections
             $transaksi->selectedPhotos()->delete();
-            if (!empty($selectedUrls)) {
-                $dataToInsert = collect($selectedUrls)->map(function ($url) use ($transaksi) {
-                    return ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
-                })->all();
-                SelectedPhoto::insert($dataToInsert);
-            }
+            $transaksi->selectedPrints()->delete();
 
-            $folderName = str_replace('/', '_', $transaksi->receipt_code);
-            $pilihEditPath = storage_path("app/public/photos/{$folderName}/Pilih Edit");
-            File::cleanDirectory($pilihEditPath);
+            $dataToInsertForEdit = [];
+            $dataToInsertForPrint = [];
+            $filesToCopyToEdit = [];
 
-            foreach ($selectedUrls as $url) {
-                $rawFileName = basename($url);
-                $sourcePath = storage_path("app/public/photos/{$folderName}/RAW/{$rawFileName}");
-                $linkPath = "{$pilihEditPath}/{$rawFileName}";
-                if (File::exists($sourcePath) && !File::exists($linkPath)) {
-                    File::link($sourcePath, $linkPath);
+            foreach ($selections as $url => $selection) {
+                if (!empty($selection['edit'])) {
+                    $dataToInsertForEdit[] = ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
+                    $filesToCopyToEdit[] = $url;
+                }
+                if (!empty($selection['print'])) {
+                    $dataToInsertForPrint[] = ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'print_size' => $selection['print'], 'created_at' => now(), 'updated_at' => now()];
                 }
             }
 
+            // 2. Bulk insert new selections into the database
+            if (!empty($dataToInsertForEdit)) {
+                SelectedPhoto::insert($dataToInsertForEdit);
+            }
+            if (!empty($dataToInsertForPrint)) {
+                SelectedPrint::insert($dataToInsertForPrint);
+            }
+
+            // 3. Update the filesystem for the editor ONLY
+            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            $pilihEditPath = "{$folderName}/Pilih Edit";
+
+            Storage::disk('public')->delete(Storage::disk('public')->files($pilihEditPath));
+
+            foreach ($filesToCopyToEdit as $url) {
+                $rawFileName = basename($url);
+                $sourcePath = "{$folderName}/RAW/{$rawFileName}";
+                $destinationPath = "{$pilihEditPath}/{$rawFileName}";
+                if (Storage::disk('public')->exists($sourcePath)) {
+                    Storage::disk('public')->copy($sourcePath, $destinationPath);
+                }
+            }
+
+            // 4. Update the transaction status
             if ($transaksi->process_status === 'Pilih Foto') {
                 $transaksi->update(['process_status' => 'Siap Edit']);
             }
         });
 
-        // Data for the success pop-up
         $redirectData = [
             'success_title'   => 'Selection Submitted!',
-            'success_message' => 'Thank you. Your photos have been sent to our editor.',
+            'success_message' => 'Thank you. Your photo selections have been saved and sent to our editor.',
             'back_url'        => route('transaksi.index')
         ];
 
         return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with($redirectData);
+    }
+
+    public function preparePrintFiles(Transaksi $transaksi)
+    {
+        // Security check for admins
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        try {
+            DB::transaction(function () use ($transaksi) {
+                $printSelections = $transaksi->selectedPrints;
+
+                if ($printSelections->isEmpty()) {
+                    // If there's nothing to print, just move to the 'Selesai' status
+                    $transaksi->update(['process_status' => 'Selesai']);
+                    return;
+                }
+
+                $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+                $pilihCetakPath = "{$folderName}/Pilih Cetak";
+
+                // Clear the directory first
+                Storage::disk('public')->delete(Storage::disk('public')->files($pilihCetakPath));
+
+                foreach ($printSelections as $selection) {
+                    $fileName = basename($selection->file_url);
+                    $sourcePathResult = "{$folderName}/Result/{$fileName}";
+                    $sourcePathRaw = "{$folderName}/RAW/{$fileName}";
+                    
+                    $safeSize = preg_replace('/[^A-Za-z0-9\-]/', '_', $selection->print_size);
+                    $destinationPath = "{$pilihCetakPath}/{$safeSize}_{$fileName}";
+
+                    // Prioritize the edited 'Result' file if it exists
+                    $sourcePath = Storage::disk('public')->exists($sourcePathResult) ? $sourcePathResult : $sourcePathRaw;
+
+                    if (Storage::disk('public')->exists($sourcePath)) {
+                        Storage::disk('public')->copy($sourcePath, $destinationPath);
+                    }
+                }
+
+                // Update status to the next step in the workflow
+                $transaksi->update(['process_status' => 'Siap Cetak']);
+            });
+
+            return redirect()->back()->with('success', 'Print files have been prepared successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to prepare print files for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while preparing print files.');
+        }
     }
 
     // In app/Http/Controllers/TransaksiController.php
@@ -648,37 +692,33 @@ class TransaksiController extends Controller
         return redirect()->route('transaksi.view-select-for-print', $transaksi)->with($redirectData);
     }
 
-    /**
-     * @throws \Exception
-     */
     protected function getPhotoDirectoryData($transaksi, $status)
     {
-        $folderName = str_replace('/','_',$transaksi->receipt_code);
-        $relativePath = "photos/{$folderName}/{$status}";
-        $fullPath = storage_path("app/public/{$relativePath}");
+        $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+        $relativePath = "{$folderName}/{$status}";
 
-        if (!file_exists($fullPath)) {
-            throw new \Exception("No photos available for this transaction");
+        if (!Storage::disk('public')->exists($relativePath)) {
+            throw new \Exception("No photos available for this transaction in the '{$status}' folder.");
         }
+        
+        $files = Storage::disk('public')->files($relativePath);
 
-        $files = scandir($fullPath);
         $photoFiles = array_filter($files, function($file) {
-            return $this->isValidImageFile($file);
+            $extension = pathinfo($file, PATHINFO_EXTENSION);
+            return in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
         });
 
         if (empty($photoFiles)) {
-            throw new \Exception("No valid photos found in directory");
+            throw new \Exception("No valid photos found in the '{$status}' directory.");
         }
 
-        $photoFiles = array_values($photoFiles);
-
-        $photoUrls = array_map(function($file) use ($relativePath) {
-            return asset("storage/{$relativePath}/{$file}");
+        $photoUrls = array_map(function($file) {
+            return asset('storage/' . $file);
         }, $photoFiles);
 
         return [
             'folderName' => $folderName,
-            'urls' => $photoUrls,
+            'urls' => array_values($photoUrls),
             'count' => count($photoUrls)
         ];
     }
@@ -697,6 +737,13 @@ class TransaksiController extends Controller
         if ($transaksi->status != "sudah dibayar") {
             return back()->with('error', 'Only paid transactions can download invoices');
         }
+
+        $transaksi->load(
+            'packet.product',
+            'packet.additionalDefaults.additional',
+            'packet.printOptions',
+            'additionals'
+        );
 
         $data = [
             'transaksi' => $transaksi,
@@ -723,105 +770,8 @@ class TransaksiController extends Controller
         ];
 
         $pdf = Pdf::loadView('invoices.template', $data);
-
         $filename = "invoice_" . str_replace('/','-',$transaksi->receipt_code) . ".pdf";
-
         return $pdf->download($filename);
-    }
-
-/*     public function selectImage(Request $request, $transaction)
-    {
-        try {
-            $request->validate([
-                'photo_urls' => 'required|array',
-                'photo_urls.*' => 'required|string|max:255',
-            ]);
-
-            // Get the actual process_status value, not the entire object
-            $existingTransaction = Transaksi::findOrFail($transaction);
-            $currentStatus = $existingTransaction->process_status;
-
-            if(!in_array($currentStatus, ['Pilih Foto', 'Siap Edit'])) {
-                throw new \Exception("Status transaksi tidak valid untuk pemilihan foto");
-            }
-
-            $existingPhotos = SelectedPhoto::where('transaction_id', $transaction)
-                ->get(['id', 'file_url'])
-                ->pluck('file_url', 'id')
-                ->toArray();
-
-            $newPhotos = $request->photo_urls;
-
-            $photosToDelete = array_diff($existingPhotos, $newPhotos);
-
-            $photosToAdd = array_diff($newPhotos, $existingPhotos);
-
-            DB::transaction(function () use ($transaction, $photosToDelete, $photosToAdd, $newPhotos) {
-                if (!empty($photosToDelete)) {
-                    $deleteIds = array_keys(array_intersect($existingPhotos, $photosToDelete));
-                    SelectedPhoto::whereIn('id', $deleteIds)->delete();
-                }
-
-                foreach ($photosToAdd as $url) {
-                    SelectedPhoto::create([
-                        'transaction_id' => $transaction,
-                        'file_url' => $url
-                    ]);
-                }
-
-                Transaksi::where('transaction_id', $transaction)->update([
-                    'process_status' => 'Siap Edit',
-                    'updated_at' => now() // Explicit timestamp update
-                ]);
-            });
-
-            return redirect()
-                ->route('transaksi.view-select-photos', $transaction)
-                ->with('success', 'Foto yang dipilih berhasil diperbarui');
-
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', $e->getMessage());
-        }
-    } */
-
-    public function viewResultPhotos(Transaksi $transaksi, Request $request)
-    {
-        try {
-            // Ambil filter dari query string (default RAW)
-            $filter = $request->get('filter', 'raw');
-
-            // Tentukan nama filter untuk highlight tombol
-            switch ($filter) {
-                case "result":
-                    $currentFilter = "Result";
-                    break;
-                case "pilih_cetak":
-                    $currentFilter = "Pilih Cetak";
-                    break;
-                case "pilih_edit":
-                    $currentFilter = "Pilih Edit";
-                    break;
-                default:
-                    $currentFilter = "RAW";
-                    break;
-            }
-
-            $photos = $this->getPhotoDirectoryData($transaksi, $currentFilter);
-            return view('user.transaction.result-photo', [
-                'transaksi' => $transaksi,
-                'photoUrls' => $photos,
-                'photoCount' => $photos['count'],
-                'currentFilter' => $currentFilter
-            ]);
-
-        } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with('error', $e->getMessage());
-        }
     }
 
     public function viewSelectionsForAdmin(Transaksi $transaksi)
@@ -847,47 +797,213 @@ class TransaksiController extends Controller
     }
 
     /**
-     * Mark the editing process as complete and transition to the next status.
-     */
-    public function completeEditing(Transaksi $transaksi)
-    {
-        // Ensure this can only be done when editing is in progress or just finished
-        if (!in_array($transaksi->process_status, ['Proses Edit', 'Selesai Editing'])) {
-            return redirect()->back()->with('error', 'This action is not allowed at the current status.');
-        }
-
-        try {
-            // Check if the associated packet has any print options defined
-            if ($transaksi->packet && $transaksi->packet->printOptions()->exists()) {
-                $transaksi->process_status = 'Siap Cetak';
-            } else {
-                $transaksi->process_status = 'Selesai';
-            }
-
-            $transaksi->save();
-
-            return redirect()->back()->with('success', 'Transaction status has been updated.');
-
-        } catch (\Exception $e) {
-            report($e);
-            return redirect()->back()->with('error', 'Failed to update transaction status.');
-        }
-    }
-
-    /**
      * Display a printer-friendly version of the invoice.
      */
     public function printInvoice(Transaksi $transaksi)
     {
-        // Eager load the actual relationships needed for the invoice.
-        // The 'combined_defaults' accessor will use these automatically.
+        // CORRECTED: Eager load all necessary relationships for printing
         $transaksi->load(
             'packet.product',
             'packet.additionalDefaults.additional',
-            'packet.printOptions.pivot',
+            'packet.printOptions', // Corrected relationship loading
             'additionals'
         );
 
         return view('invoices.print-template', ['transaksi' => $transaksi]);
+    }
+
+    public function downloadAllPhotosAsZip(Transaksi $transaksi)
+    {
+        // Security Check: Ensure the logged-in user owns this transaction or is an admin
+        if (!auth()->user()->isAdmin() && auth()->user()->username !== $transaksi->phone_number) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!class_exists('ZipArchive')) {
+            return redirect()->back()->with('error', 'The ZipArchive PHP extension is not installed or enabled on the server.');
+        }
+
+        try {
+            // UPDATED: Use local 'public' disk
+            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            $directory = "{$folderName}/RAW";
+            
+            $files = Storage::disk('public')->files($directory);
+
+            if (empty($files)) {
+                return redirect()->back()->with('error', 'No photos found to download.');
+            }
+
+            $zipPath = tempnam(sys_get_temp_dir(), 'zip');
+            $zip = new ZipArchive;
+            
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                throw new \Exception('Cannot create zip archive.');
+            }
+
+            foreach ($files as $file) {
+                $contents = Storage::disk('public')->get($file);
+                $zip->addFromString(basename($file), $contents);
+            }
+            
+            $zip->close();
+
+            $zipFileName = str_replace('/', '_', $transaksi->receipt_code) . '.zip';
+
+            return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create zip for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Could not create zip file. The photo directory may be empty.');
+        }
+    }
+
+    public function downloadSelectedPhotosAsZip(Transaksi $transaksi)
+    {
+        // Security Check: Only admins should access this
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!class_exists('ZipArchive')) {
+            return redirect()->back()->with('error', 'The ZipArchive PHP extension is not installed or enabled on the server.');
+        }
+
+        try {
+            $selectedPhotos = $transaksi->selectedPhotos;
+
+            if ($selectedPhotos->isEmpty()) {
+                return redirect()->back()->with('error', 'No photos have been selected for download.');
+            }
+
+            $zipPath = tempnam(sys_get_temp_dir(), 'zip');
+            $zip = new ZipArchive;
+            
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                throw new \Exception('Cannot create zip archive.');
+            }
+
+            foreach ($selectedPhotos as $photo) {
+                // Convert the public URL back to a storage path
+                $filePath = str_replace(asset('storage/'), '', $photo->file_url);
+                
+                if (Storage::disk('public')->exists($filePath)) {
+                    $contents = Storage::disk('public')->get($filePath);
+                    $zip->addFromString(basename($filePath), $contents);
+                }
+            }
+            
+            $zip->close();
+
+            $zipFileName = str_replace('/', '_', $transaksi->receipt_code) . '_Selected.zip';
+
+            return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create selected photos zip for transaction ' . $transaksi->receipt_code . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Could not create zip file.');
+        }
+    }
+
+    public function viewResultPhotos(Transaksi $transaksi, Request $request)
+    {
+        // --- NEW SECURITY CHECK ---
+        // Allow access only if the transaction is fully paid OR if the viewer is an admin.
+        if ($transaksi->status !== 'sudah dibayar' && !auth()->user()->isAdmin()) {
+            return redirect()->route('transaksi.index')->with('error', 'You must complete your payment before you can view the final photos.');
+        }
+        // --- END SECURITY CHECK ---
+
+        try {
+            $transaksi->load('packet.printOptions');
+            $printAllowances = $transaksi->packet ? $transaksi->packet->printOptions->isNotEmpty() : false;
+
+            $filter = $request->get('filter', 'raw');
+            $currentFilter = '';
+            switch (strtolower($filter)) {
+                case "result":
+                    $currentFilter = "Result";
+                    break;
+                case "pilih_cetak":
+                    $currentFilter = "Pilih Cetak";
+                    break;
+                case "pilih_edit":
+                    $currentFilter = "Pilih Edit";
+                    break;
+                default:
+                    $currentFilter = "RAW";
+                    break;
+            }
+
+            $photos = $this->getPhotoDirectoryData($transaksi, $currentFilter);
+            
+            return view('user.transaction.result-photo', [
+                'transaksi' => $transaksi,
+                'photoUrls' => $photos['urls'],
+                'photoCount' => $photos['count'],
+                'currentFilter' => $currentFilter,
+                'printAllowances' => $printAllowances
+            ]);
+
+        } catch (\Exception $e) {
+            return redirect()->route('transaksi.index')->with('error', $e->getMessage());
+        }
+    }
+    
+    public function downloadFolderAsZip(Transaksi $transaksi, $status)
+    {
+        // --- NEW SECURITY CHECK ---
+        // Allow download only if the transaction is fully paid OR if the viewer is an admin.
+        if ($transaksi->status !== 'sudah dibayar' && !auth()->user()->isAdmin()) {
+            abort(403, 'You must complete your payment to download photos.');
+        }
+        // --- END SECURITY CHECK ---
+
+        if (auth()->user()->username !== $transaksi->phone_number && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Validate the folder name to prevent directory traversal
+        $allowedFolders = ['RAW', 'Result', 'Pilih Edit', 'Pilih Cetak'];
+        if (!in_array($status, $allowedFolders)) {
+            abort(404, 'Folder not found.');
+        }
+
+        if (!class_exists('ZipArchive')) {
+            return redirect()->back()->with('error', 'The ZipArchive PHP extension is not enabled on the server.');
+        }
+
+        try {
+            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            $directory = "{$folderName}/{$status}";
+            
+            $files = Storage::disk('public')->files($directory);
+
+            if (empty($files)) {
+                return redirect()->back()->with('error', "No photos found in the '{$status}' folder to download.");
+            }
+
+            $zipPath = tempnam(sys_get_temp_dir(), 'zip');
+            $zip = new ZipArchive;
+            
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                throw new \Exception('Cannot create zip archive.');
+            }
+
+            foreach ($files as $file) {
+                $contents = Storage::disk('public')->get($file);
+                $zip->addFromString(basename($file), $contents);
+            }
+            
+            $zip->close();
+
+            $zipFileName = str_replace('/', '_', $transaksi->receipt_code) . "_{$status}.zip";
+
+            return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Log::error("Failed to create zip for folder '{$status}' in transaction " . $transaksi->receipt_code . ': ' . $e->getMessage());
+            return redirect()->back()->with('error', "Could not create zip file for the '{$status}' folder.");
+        }
     }
 }
