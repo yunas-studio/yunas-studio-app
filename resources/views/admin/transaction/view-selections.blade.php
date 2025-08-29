@@ -62,17 +62,18 @@
 
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
-                The user has selected <strong>{{ count($selectedUrls) }}</strong> out of <strong>{{ count($photoUrls) }}</strong> available photos for editing. Please take the photos from the "Pilih Edit" folder in the Photos Folder or click Download Selected and forward it to Editor.
+                The user has selected <strong>{{ count($selectedUrls) }}</strong> photos for editing and <strong>{{ $selectedForPrint->count() }}</strong> photos for printing.
             </div>
 
             @if(count($photoUrls) > 0)
                 <div class="row g-4">
                     @foreach ($photoUrls as $index => $url)
                         @php
-                            $isSelected = in_array($url, $selectedUrls);
+                            $isSelectedForEdit = in_array($url, $selectedUrls);
+                            $printSize = $selectedForPrint[$url] ?? null;
                         @endphp
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                            <div class="card photo-card h-100 mx-auto {{ $isSelected ? 'selected' : '' }}">
+                            <div class="card photo-card h-100 mx-auto {{ ($isSelectedForEdit || $printSize) ? 'selected' : '' }}">
                                 <div class="image-container ratio ratio-4x3 position-relative">
                                     <img src="{{ $url }}"
                                          class="fixed-image card-img-top"
@@ -83,9 +84,15 @@
                                 <div class="card-body d-flex flex-column">
                                     <h5 class="card-title fs-6 mb-1">Photo #{{ $index + 1 }}</h5>
                                     
-                                    @if($isSelected)
+                                    @if($isSelectedForEdit)
                                         <p class="text-primary fw-bold small mb-2">
-                                            <i class="bx bx-check-circle me-1"></i>Selected
+                                            <i class="bx bx-check-circle me-1"></i>Selected for Edit
+                                        </p>
+                                    @endif
+
+                                    @if($printSize)
+                                        <p class="text-success fw-bold small mb-2">
+                                            <i class="bx bx-printer me-1"></i>Print: {{ $printSize }}
                                         </p>
                                     @endif
 

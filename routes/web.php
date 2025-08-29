@@ -29,11 +29,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [HomeController::class, 'root']);
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
-    
+    // User Management
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
 
-    
+    // Additional and Packet
     Route::resource('additionals', AdditionalController::class);
     Route::resource('additional-defaults', AdditionalDefaultController::class);
     Route::resource('products', ProductController::class);
@@ -41,43 +41,33 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])->name('packets.toggle-status');
     Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
     Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
-    
-    
     Route::post('/packets/{packet}/print-options', [PacketController::class, 'addPrintOption'])->name('packets.addPrintOption');
     Route::delete('/packets/{packet}/print-options/{print_size}', [PacketController::class, 'removePrintOption'])->name('packets.removePrintOption');
 
-    
+    // Expense
     Route::resource('expenses', ExpenseController::class);
     Route::put('/expenses/{expense}/toggle-payment', [ExpenseController::class, 'togglePayment'])->name('expenses.toggle-payment');
     Route::post('/expenses/{expense}/partial-payment', [ExpenseController::class, 'makePartialPayment'])->name('expenses.partial-payment');
     Route::get('/expenses/{expense}/debt-payments', [ExpenseController::class, 'showDebtPayments'])->name('expenses.debt-payments');
-    
-   
     Route::resource('expense-categories', ExpenseCategoryController::class);
     Route::put('/expense-categories/{expenseCategory}/toggle-monthly-default', [ExpenseCategoryController::class, 'toggleMonthlyDefault'])->name('expense-categories.toggle-monthly-default');
     Route::post('/expenses/generate-monthly', [ExpenseController::class, 'generateMonthlyExpenses'])->name('expenses.generate-monthly');
     
-    
+    // Transaksi
     Route::resource('transaksi', TransaksiController::class);
     Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
 
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
         Route::get('/select-for-edit', [TransaksiController::class, 'viewSelectForEdit'])->name('view-select-for-edit');
         Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEdit'])->name('handle-select-for-edit');
-
         Route::get('/select-for-print', [TransaksiController::class, 'viewSelectForPrint'])->name('view-select-for-print');
         Route::post('/handle-select-for-print', [TransaksiController::class, 'handleSelectForPrint'])->name('handle-select-for-print');
-
         Route::get('/result-photos', [TransaksiController::class, 'viewResultPhotos'])->name('view-result-photos');
-
         Route::get('/download-invoice', [TransaksiController::class, 'downloadInvoice'])->name('download-invoice');
-
         Route::get('/view-selections', [TransaksiController::class, 'viewSelectionsForAdmin'])->name('view-selections');
         Route::get('/print-invoice', [TransaksiController::class, 'printInvoice'])->name('print-invoice');
-
         Route::get('/download-all', [TransaksiController::class, 'downloadAllPhotosAsZip'])->name('downloadAll');
         Route::get('/download-selected', [TransaksiController::class, 'downloadSelectedPhotosAsZip'])->name('downloadSelected');
-
         Route::get('/download-folder/{status}', [TransaksiController::class, 'downloadFolderAsZip'])->name('downloadFolder');
     });
 });
