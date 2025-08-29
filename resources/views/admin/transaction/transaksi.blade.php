@@ -21,6 +21,17 @@
     .sortable-header.active .sort-icon { opacity: 1; color: #556ee6; }
     .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
     a.disabled { pointer-events: none; opacity: 0.65; }
+    .clickable-card {
+        cursor: pointer;
+        transition: transform 0.2s;
+        display: block;
+        color: inherit; /* Ensures text color is inherited from parent */
+    }
+    .clickable-card:hover {
+        transform: scale(1.03);
+        color: inherit;
+        text-decoration: none;
+    }
 </style>
 @endsection
 
@@ -83,19 +94,25 @@
             </div>
         </div>
         <div class="col-lg-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex">
-                        <div class="flex-grow-1">
-                            <p class="fw-medium">Total Profit (Filtered)</p>
-                            <h4 class="mb-0 text-white">Rp {{ number_format($totalProfit, 0, ',', '.') }}</h4>
-                        </div>
-                        <div class="flex-shrink-0 align-self-center">
-                            <i class="bx bx-wallet font-size-24"></i>
+            <a href="javascript:void(0);" id="profit-card-toggler" 
+                data-filtered-profit="{{ $totalProfit }}" 
+                data-overall-profit="{{ $totalOverallProfit }}" 
+                class="clickable-card">
+                <div class="card bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex text-white">
+                            <div class="flex-grow-1">
+                                <p class="fw-medium text-white" id="profit-card-title">Total Profit (Filtered)</p>
+                                <h4 class="mb-0 text-white" id="profit-card-value">Rp {{ number_format($totalProfit, 0, ',', '.') }}</h4>
+                                <small class="mb-0 opacity-75" id="profit-card-subtitle">Click to see overall total</small>
+                            </div>
+                            <div class="flex-shrink-0 align-self-center">
+                                <i class="bx bx-wallet font-size-24"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -280,15 +297,34 @@
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
                                                 @php $canViewSelections = in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']); @endphp
-                                                <a href="{{ $canViewSelections ? route('transaksi.view-selections', $transaksi) : '#' }}" 
-                                                   class="text-warning {{ !$canViewSelections ? 'disabled' : '' }}" 
-                                                   data-bs-toggle="tooltip" 
-                                                   title="{{ $canViewSelections ? 'View User\'s Photo Selections' : 'Action not available until photos are selected' }}">
-                                                    <i class="uil uil-camera-change font-size-18"></i>
-                                                </a>
+                                                
+                                                @if($canViewSelections)
+                                                    <a href="{{ route('transaksi.view-selections', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="View User's Photo Selections">
+                                                        <i class="uil uil-camera-change font-size-18"></i>
+                                                    </a>
+                                                @else
+                                                    {{-- This is the wrapper for the disabled tooltip --}}
+                                                    <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Photos have not been selected by the user yet">
+                                                        <a href="#" class="text-muted disabled" style="pointer-events: none;">
+                                                            <i class="uil uil-camera-change font-size-18"></i>
+                                                        </a>
+                                                    </span>
+                                                @endif
                                                 
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
-                                                
+
+                                                <form id="delete-form-{{ $transaksi->transaction_id }}" action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="button" class="btn btn-link text-danger p-0 delete-btn" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#confirmDeleteModal" 
+                                                            data-form-id="delete-form-{{ $transaksi->transaction_id }}"
+                                                            data-bs-toggle="tooltip" title="Delete Transaction">
+                                                        <i class="uil uil-trash-alt font-size-18"></i>
+                                                    </button>
+                                                </form>
+
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
                                                         $waMessages = [
@@ -314,12 +350,6 @@
                                                         <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WhatsApp"><i class="uil uil-whatsapp"></i></a>
                                                     @endif
                                                 @endif
-
-                                                <form action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" onsubmit="return confirm('Are you sure?');" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-link text-danger p-0" data-bs-toggle="tooltip" title="Delete Transaction"><i class="uil uil-trash-alt font-size-18"></i></button>
-                                                </form>
                                             </div>
                                         </td>
                                     </tr>
@@ -408,6 +438,28 @@
         </div>
     @endforeach
 
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <i class="bx bx-error-circle bx-lg text-danger mb-2"></i>
+                        <p>Are you sure you want to delete this transaction?</p>
+                        <p class="text-muted">This action is irreversible and will also delete associated photo folders.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Yes, Delete It</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('script')
@@ -416,6 +468,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const dpModal = new bootstrap.Modal(document.getElementById('dpAmountModal'));
     const dpForm = document.getElementById('dpAmountForm');
     const dpInput = document.getElementById('dp_amount_modal');
+
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    if (confirmDeleteModal) {
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        let formToSubmit = null;
+
+        confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+            // Get the button that triggered the modal
+            const button = event.relatedTarget;
+            // Get the form ID from the data attribute
+            const formId = button.getAttribute('data-form-id');
+            formToSubmit = document.getElementById(formId);
+        });
+
+        confirmDeleteBtn.addEventListener('click', function () {
+            if (formToSubmit) {
+                formToSubmit.submit();
+            }
+        });
+    }
 
     document.querySelectorAll('.payment-status-select').forEach(selectElement => {
         selectElement.addEventListener('change', function (e) {
@@ -433,6 +510,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('dpAmountModal').addEventListener('shown.bs.modal', function () {
         dpInput.focus();
+    });
+
+    const profitToggles = document.querySelectorAll('.profit-toggle');
+    const profitAmountEl = document.getElementById('profit-card-amount');
+    const profitTitleEl = document.getElementById('profit-card-title');
+
+    profitToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Get data from clicked link
+            const newAmount = parseFloat(this.dataset.amount);
+            const newTitle = this.dataset.title;
+
+            // Update the card
+            profitAmountEl.textContent = 'Rp ' + newAmount.toLocaleString('id-ID');
+            profitTitleEl.textContent = newTitle;
+
+            // Update active class
+            profitToggles.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+        });
     });
 });
 </script>
@@ -503,6 +602,39 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('hideCompleted', isCompletedHidden);
             updateView(isCompletedHidden);
         });
+
+        const profitCard = document.getElementById('profit-card-toggler');
+        if (profitCard) {
+            const titleEl = document.getElementById('profit-card-title');
+            const valueEl = document.getElementById('profit-card-value');
+            const subtitleEl = document.getElementById('profit-card-subtitle');
+
+            const filteredProfit = parseFloat(profitCard.dataset.filteredProfit);
+            const overallProfit = parseFloat(profitCard.dataset.overallProfit);
+            
+            let isShowingFiltered = true;
+
+            const formatter = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            });
+
+            profitCard.addEventListener('click', function(event) {
+                event.preventDefault(); // This is the key fix for the click action
+                isShowingFiltered = !isShowingFiltered;
+
+                if (isShowingFiltered) {
+                    titleEl.textContent = 'Total Profit (Filtered)';
+                    valueEl.textContent = formatter.format(filteredProfit);
+                    subtitleEl.textContent = 'Click to see overall total';
+                } else {
+                    titleEl.textContent = 'Total Profit (Overall)';
+                    valueEl.textContent = formatter.format(overallProfit);
+                    subtitleEl.textContent = 'Click to see filtered total';
+                }
+            });
+        }
     });
 </script>
 @endsection

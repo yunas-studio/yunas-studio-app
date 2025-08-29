@@ -110,15 +110,21 @@ class TransaksiController extends Controller
             $countSudahDibayar = (clone $financialQuery)->where('status', 'sudah dibayar')->count();
 
             $totalProfit = $totalDpPaid + $totalSudahDibayar;
+            
+            // Calculate the overall, unfiltered profit
+            $totalOverallProfit = Transaksi::sum('total_price');
 
+            // Data for filters
             $packetsForFilter = Packet::with('product')->whereHas('product')->orderBy('name')->get()->groupBy('product.name');
+            $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
+            $processStatuses = ['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'];
 
             return view('admin.transaction.transaksi', compact(
                 'transactions', 'perPageOptions',
                 'totalBelumDibayar', 'countBelumDibayar',
                 'totalDpPaid', 'countDp',
                 'totalSudahDibayar', 'countSudahDibayar',
-                'totalProfit',
+                'totalProfit', 'totalOverallProfit',
                 'packetsForFilter', 'paymentStatuses', 'processStatuses'
             ));
         }
@@ -226,10 +232,11 @@ class TransaksiController extends Controller
     public function edit(string $id)
     {
         $transaksi = Transaksi::with(['packet', 'additionals'])->findOrFail($id);
-        $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
-        $all_additionals = Additional::orderBy('name')->get();
         
-        // Use our new model method to determine if print statuses should be available
+        // This now matches the 'create' method
+        $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
+        
+        $all_additionals = Additional::where('price', '>', 0)->orderBy('name')->get();
         $canPrint = $transaksi->hasPrintableItems();
 
         return view('admin.transaction.edit', compact('transaksi', 'packets', 'all_additionals', 'canPrint'));
@@ -485,25 +492,24 @@ class TransaksiController extends Controller
         $selections = $validated['selections'] ?? [];
 
         DB::transaction(function () use ($transaksi, $selections) {
-            // 1. Clear all previous selections
+            // 1. Clear all previous database selections
             $transaksi->selectedPhotos()->delete();
             $transaksi->selectedPrints()->delete();
 
             $dataToInsertForEdit = [];
             $dataToInsertForPrint = [];
-            $filesToCopyToEdit = [];
 
+            // 2. Prepare selection data for database insertion
             foreach ($selections as $url => $selection) {
                 if (!empty($selection['edit'])) {
                     $dataToInsertForEdit[] = ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'created_at' => now(), 'updated_at' => now()];
-                    $filesToCopyToEdit[] = $url;
                 }
                 if (!empty($selection['print'])) {
                     $dataToInsertForPrint[] = ['transaction_id' => $transaksi->transaction_id, 'file_url' => $url, 'print_size' => $selection['print'], 'created_at' => now(), 'updated_at' => now()];
                 }
             }
 
-            // 2. Bulk insert new selections into the database
+            // 3. Bulk insert new selections into the database
             if (!empty($dataToInsertForEdit)) {
                 SelectedPhoto::insert($dataToInsertForEdit);
             }
@@ -511,22 +517,51 @@ class TransaksiController extends Controller
                 SelectedPrint::insert($dataToInsertForPrint);
             }
 
-            // 3. Update the filesystem for the editor ONLY
+            // 4. Update the filesystem with the new logic
             $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
             $pilihEditPath = "{$folderName}/Pilih Edit";
+            $pilihCetakPath = "{$folderName}/Pilih Cetak";
 
+            // Clear both directories to ensure a clean state
             Storage::disk('public')->delete(Storage::disk('public')->files($pilihEditPath));
+            Storage::disk('public')->delete(Storage::disk('public')->files($pilihCetakPath));
 
-            foreach ($filesToCopyToEdit as $url) {
-                $rawFileName = basename($url);
-                $sourcePath = "{$folderName}/RAW/{$rawFileName}";
-                $destinationPath = "{$pilihEditPath}/{$rawFileName}";
-                if (Storage::disk('public')->exists($sourcePath)) {
-                    Storage::disk('public')->copy($sourcePath, $destinationPath);
+            foreach ($selections as $url => $selection) {
+                $isForEdit = !empty($selection['edit']);
+                $isForPrint = !empty($selection['print']);
+                $fileName = basename($url);
+                $sourcePath = "{$folderName}/RAW/{$fileName}";
+
+                // Handle files for the editor
+                if ($isForEdit) {
+                    $newFileNameForEditor = $fileName;
+
+                    // If it's also for print, rename it for the editor
+                    if ($isForPrint) {
+                        $printSize = $selection['print'];
+                        $safeSize = preg_replace('/[^A-Za-z0-9\-]/', '_', $printSize);
+                        $newFileNameForEditor = "selected_for_print_{$safeSize}_{$fileName}";
+                    }
+
+                    $destinationPath = "{$pilihEditPath}/{$newFileNameForEditor}";
+                    if (Storage::disk('public')->exists($sourcePath)) {
+                        Storage::disk('public')->copy($sourcePath, $destinationPath);
+                    }
+                } 
+                // Handle files that are ONLY for printing (not editing)
+                elseif ($isForPrint && !$isForEdit) {
+                    $printSize = $selection['print'];
+                    $safeSize = preg_replace('/[^A-Za-z0-9\-]/', '_', $printSize);
+                    $newFileNameForPrinter = "selected_for_print_{$safeSize}_{$fileName}";
+                    $destinationPath = "{$pilihCetakPath}/{$newFileNameForPrinter}";
+
+                    if (Storage::disk('public')->exists($sourcePath)) {
+                        Storage::disk('public')->copy($sourcePath, $destinationPath);
+                    }
                 }
             }
 
-            // 4. Update the transaction status
+            // 5. Update the transaction status
             if ($transaksi->process_status === 'Pilih Foto') {
                 $transaksi->update(['process_status' => 'Siap Edit']);
             }
@@ -534,7 +569,7 @@ class TransaksiController extends Controller
 
         $redirectData = [
             'success_title'   => 'Selection Submitted!',
-            'success_message' => 'Thank you. Your photo selections have been saved and sent to our editor.',
+            'success_message' => 'Thank you. Your photo selections have been saved. Our team will begin the editing process shortly.',
             'back_url'        => route('transaksi.index')
         ];
 
@@ -777,18 +812,20 @@ class TransaksiController extends Controller
     public function viewSelectionsForAdmin(Transaksi $transaksi)
     {
         try {
-            // Fetch photos from the source directory
+            // Fetch photos from the source directory using our helper method
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
 
-            // Fetch the URLs that the user has selected
-            $selectedUrls = SelectedPhoto::where('transaction_id', $transaksi->transaction_id)
-                ->pluck('file_url')
-                ->toArray();
+            // Fetch the URLs that the user has selected from the database for editing
+            $selectedUrls = $transaksi->selectedPhotos->pluck('file_url')->toArray();
+            
+            // NEW: Fetch the photos and their assigned sizes for printing
+            $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url');
 
             return view('admin.transaction.view-selections', [
                 'transaksi' => $transaksi,
                 'photoUrls' => $photoData['urls'],
                 'selectedUrls' => $selectedUrls,
+                'selectedForPrint' => $selectedForPrint, // Pass the new data to the view
             ]);
 
         } catch (\Exception $e) {

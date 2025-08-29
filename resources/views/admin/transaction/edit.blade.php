@@ -66,25 +66,34 @@
                             </div>
                         </div>
 
-                        {{-- Packet and Status Row --}}
+                        {{-- UPDATED: Packet and Status Row --}}
                         <div class="row">
-                            <div class="col-md-5">
+                            <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="packet_id" class="form-label">Packet</label>
-                                    <select class="form-select" id="packet_id" name="packet_id" required>
+                                    <label for="product_id" class="form-label">Product</label>
+                                    <select class="form-select @error('product_id') is-invalid @enderror" id="product_id">
+                                        <option value="" disabled selected>-- Select a Product --</option>
                                         @foreach($packets as $productName => $packetGroup)
-                                            <optgroup label="{{ $productName }}">
-                                                @foreach($packetGroup as $packet)
-                                                    <option value="{{ $packet->id }}" data-price="{{ $packet->price }}" {{ old('packet_id', $transaksi->packet_id) == $packet->id ? 'selected' : '' }}>
-                                                        {{ $packet->name }} (Rp {{ number_format($packet->price, 0, ',', '.') }})
-                                                    </option>
-                                                @endforeach
-                                            </optgroup>
+                                            <option value="{{ $packetGroup->first()->product_id }}"
+                                                    data-product-name="{{ $productName }}">
+                                                {{ $productName }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
-                             <div class="col-md-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="packet_id" class="form-label">Packet</label>
+                                    <select class="form-select @error('packet_id') is-invalid @enderror" id="packet_id" name="packet_id" required>
+                                        <option value="" data-price="0" disabled selected>-- Select a Packet --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
                                 <div class="mb-3">
                                     <label for="process_status" class="form-label">Process Status</label>
                                     <select class="form-select" id="process_status" name="process_status" required>
@@ -101,7 +110,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="discount-input">Discount (Rp)</label>
                                     <input type="number" class="form-control" id="discount-input" name="discount" value="{{ old('discount', $transaksi->discount) }}" min="0">
@@ -124,7 +133,7 @@
                                     <select id="add_additional_select" class="form-select">
                                         <option value="">Choose an additional...</option>
                                         @foreach($all_additionals as $additional)
-                                            <option value="{{ $additional->id }}" data-name="{{ $additional->name }}" data-price="{{ $additional->price }}">{{ $additional->name }}</option>
+                                            <option value="{{ $additional->id }}" data-name="{{ $additional->name }}" data-price="{{ $additional->price }}">{{ $additional->name }} (Rp {{ number_format($additional->price, 0, ',', '.') }})</option>
                                         @endforeach
                                     </select>
                                     <button class="btn btn-success" type="button" id="add-additional-btn">Add</button>
@@ -140,7 +149,6 @@
                     </div>
                 </div>
             </div>
-            {{-- Price Summary Column --}}
             <div class="col-lg-4">
                 <div class="card price-summary-card">
                     <div class="card-body">
@@ -173,6 +181,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Form Elements
+    const productSelect = document.getElementById('product_id');
     const packetSelect = document.getElementById('packet_id');
     const discountInput = document.getElementById('discount-input');
     const includedContainer = document.getElementById('included-additionals-container');
@@ -183,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dpAmountContainer = document.getElementById('dp-amount-container');
     const dpAmountInput = document.getElementById('dp_amount');
 
-    // Summary Card Elements
     const summary = {
         packetEl: document.getElementById('summary-packet-price'),
         additionalsEl: document.getElementById('summary-additionals-price'),
@@ -197,10 +205,17 @@ document.addEventListener('DOMContentLoaded', function() {
         remainingRow: document.getElementById('summary-remaining-row'),
     };
 
+    const productPackets = {!! json_encode($packets) !!};
+    const existingExtraAdditionals = @json($transaksi->additionals->mapWithKeys(function ($item) {
+        return [$item->id => ['name' => $item->name, 'price' => $item->pivot->price, 'quantity' => $item->pivot->quantity]];
+    }));
+
     const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
     function updateSummary() {
-        const packetPrice = parseFloat(packetSelect.options[packetSelect.selectedIndex].dataset.price) || 0;
+        const selectedPacketOption = packetSelect.options[packetSelect.selectedIndex];
+        const packetPrice = parseFloat(selectedPacketOption ? selectedPacketOption.dataset.price : 0) || 0;
+
         let extraAdditionalsPrice = 0;
         document.querySelectorAll('.extra-additional-row').forEach(row => {
             const price = parseFloat(row.querySelector('.price-input').value) || 0;
@@ -239,22 +254,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const template = `
             <div class="row align-items-center mb-2 extra-additional-row" id="extra-additional-row-${id}">
                 <div class="col-md-5"><input type="text" class="form-control" value="${name}" readonly></div>
-                <div class="col-md-3"><div class="input-group"><span class="input-group-text">Rp</span><input type="text" name="additionals[${id}][price]" class="form-control price-input" value="${price}" readonly></div></div>
+                <div class="col-md-3"><div class="input-group"><span class="input-group-text">Rp</span><input type="number" name="additionals[${id}][price]" class="form-control price-input" value="${price}" readonly></div></div>
                 <div class="col-md-2"><input type="number" name="additionals[${id}][quantity]" class="form-control quantity-input" value="${quantity}" min="1"></div>
                 <div class="col-md-2"><button type="button" class="btn btn-sm btn-danger remove-additional-btn w-100">X</button></div>
             </div>`;
-        if (extraContainer.querySelector('.text-muted')) extraContainer.innerHTML = '';
+        if (extraContainer.innerHTML.includes('No extra additionals added.')) extraContainer.innerHTML = '';
         extraContainer.insertAdjacentHTML('beforeend', template);
     }
 
     function toggleDpField() {
         const selectedStatus = document.querySelector('.payment-status-radio:checked').value;
-        if (selectedStatus === 'dp') {
-            dpAmountContainer.style.display = 'block';
-        } else {
-            dpAmountContainer.style.display = 'none';
-            dpAmountInput.value = ''; // Clear value when hidden
-        }
+        dpAmountContainer.style.display = selectedStatus === 'dp' ? 'block' : 'none';
+        if (selectedStatus !== 'dp') dpAmountInput.value = '';
         updateSummary();
     }
 
@@ -264,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!packetId) {
             includedContainer.innerHTML = '<p class="text-muted">Select a packet to see its included items.</p>';
             return;
-        };
+        }
 
         fetch(`/packets/${packetId}/default-additionals`)
             .then(response => response.json())
@@ -273,46 +284,97 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.length === 0) {
                     includedContainer.innerHTML = '<p class="text-muted">This packet has no included additionals.</p>';
                 } else {
-                    // --- THIS IS THE UPDATED BLOCK ---
                     data.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'included-item d-inline-block border rounded-pill px-2 py-1 me-2 mb-2';
-                        // The property is now just 'name' because of our new accessor in the Packet model
-                        div.textContent = `${item.quantity}x ${item.name}`; 
+                        div.textContent = `${item.quantity}x ${item.name}`;
                         includedContainer.appendChild(div);
                     });
-                    // --- END OF UPDATED BLOCK ---
                 }
-                updateSummary();
             })
             .catch(() => includedContainer.innerHTML = '<p class="text-danger">Could not load included items.</p>');
     }
 
-    // Event Listeners
-    packetSelect.addEventListener('change', fetchAndDisplayDefaults);
+    productSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const productName = selectedOption ? selectedOption.dataset.productName : null;
+        packetSelect.innerHTML = '<option value="" data-price="0" disabled selected>-- Select a Packet --</option>';
+
+        if (productName && productPackets[productName]) {
+            productPackets[productName].forEach(packet => {
+                const option = document.createElement('option');
+                option.value = packet.id;
+                option.textContent = `${packet.name} (Rp ${new Intl.NumberFormat('id-ID').format(packet.price)})`;
+                option.dataset.price = packet.price;
+                packetSelect.appendChild(option);
+            });
+            packetSelect.disabled = false;
+        } else {
+            packetSelect.disabled = true;
+        }
+        fetchAndDisplayDefaults();
+        updateSummary();
+    });
+
+    packetSelect.addEventListener('change', () => {
+        fetchAndDisplayDefaults();
+        updateSummary();
+    });
+
     addBtn.addEventListener('click', () => {
         const selected = addSelect.options[addSelect.selectedIndex];
         if (!selected.value) return;
         addExtraRow(selected.value, selected.dataset.name, selected.dataset.price, 1);
-        addSelect.value = '';
         updateSummary();
+        addSelect.value = '';
     });
+
     extraContainer.addEventListener('click', e => {
-        if (e.target.classList.contains('remove-additional-btn')) {
+        if (e.target.matches('.remove-additional-btn, .remove-additional-btn *')) {
             e.target.closest('.extra-additional-row').remove();
             updateSummary();
         }
     });
+
     extraContainer.addEventListener('input', e => {
         if (e.target.classList.contains('quantity-input')) updateSummary();
     });
+    
     statusRadios.forEach(radio => radio.addEventListener('change', toggleDpField));
     discountInput.addEventListener('input', updateSummary);
     dpAmountInput.addEventListener('input', updateSummary);
 
-    // Initial State
-    toggleDpField();
-    updateSummary();
+    // --- INITIALIZATION FOR EDIT PAGE ---
+    function initializeEditForm() {
+        const initialProductId = "{{ $transaksi->packet->product_id ?? '' }}";
+        const initialPacketId = "{{ $transaksi->packet_id ?? '' }}";
+
+        // Populate existing extra additionals
+        const existingExtraAdditionals = @json($transaksi->additionals->mapWithKeys(function ($item) {
+            return [$item->id => ['name' => $item->name, 'price' => $item->pivot->price, 'quantity' => $item->pivot->quantity]];
+        }));
+        
+        for (const id in existingExtraAdditionals) {
+            const item = existingExtraAdditionals[id];
+            addExtraRow(id, item.name, item.price, item.quantity);
+        }
+
+        if (initialProductId) {
+            productSelect.value = initialProductId;
+            
+            // Manually trigger the change event to populate packets
+            const event = new Event('change');
+            productSelect.dispatchEvent(event);
+            
+            // Set the selected packet after packets are populated
+            packetSelect.value = initialPacketId;
+        }
+        
+        toggleDpField();
+        fetchAndDisplayDefaults(); // This will also trigger updateSummary
+    }
+
+    initializeEditForm();
 });
 </script>
 @endsection
