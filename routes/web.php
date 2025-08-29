@@ -7,7 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PacketController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ExpenseController;
-use App\Http\Controllers\ExpenseCategoryController; 
+use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\AdditionalController;
 use App\Http\Controllers\AdditionalDefaultController;
@@ -28,10 +28,11 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
     Route::get('/', [HomeController::class, 'root']);
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
-
+  
     // User Management
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('/change-password', [UserController::class, 'changePassword'])->name('change.password.post');
 
     // Additional and Packet
     Route::resource('additionals', AdditionalController::class);
