@@ -25,14 +25,6 @@
             <button type="button" class="btn btn-sm px-3 font-size-16 header-item waves-effect vertical-menu-btn">
                 <i class="fa fa-fw fa-bars"></i>
             </button>
-
-            <!-- App Search-->
-            <form class="app-search d-none d-lg-block">
-                <div class="position-relative">
-                    <input type="text" class="form-control" placeholder="@lang('translation.Search')...">
-                    <span class="uil-search"></span>
-                </div>
-            </form>
         </div>
 
         <div class="d-flex">
@@ -42,11 +34,10 @@
                     <i class="uil-search"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-search-dropdown">
-
                     <form class="p-3">
                         <div class="form-group m-0">
                             <div class="input-group">
-                                <input type="text" class="form-control" placeholder="@lang('translation.Search')..." aria-label="Recipient's username">
+                                <input type="text" class="form-control" placeholder="Search..." aria-label="Recipient's username">
                                 <div class="input-group-append">
                                     <button class="btn btn-primary" type="submit"><i class="mdi mdi-magnify"></i></button>
                                 </div>
@@ -56,217 +47,24 @@
                 </div>
             </div>
 
-            <div class="dropdown d-inline-block language-switch">
-                <button type="button" class="btn header-item waves-effect" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    @switch(Session::get('lang'))
-                    @case('ru')
-                    <img src="{{ URL::asset('/assets/images/flags/russia.jpg')}}" alt="Header Language" height="16"> <span class="align-middle"></span>
-                    @break
-                    @case('it')
-                    <img src="{{ URL::asset('/assets/images/flags/italy.jpg')}}" alt="Header Language" height="16"> <span class="align-middle"></span>
-                    @break
-                    @case('de')
-                    <img src="{{ URL::asset('/assets/images/flags/germany.jpg')}}" alt="Header Language" height="16"> <span class="align-middle"></span>
-                    @break
-                    @case('es')
-                    <img src="{{ URL::asset('/assets/images/flags/spain.jpg')}}" alt="Header Language" height="16"> <span class="align-middle"></span>
-                    @break
-                    @default
-                    <img src="{{ URL::asset('/assets/images/flags/us.jpg')}}" alt="Header Language" height="16"> <span class="align-middle"></span>
-                    @endswitch
-                </button>
-                <div class="dropdown-menu dropdown-menu-end">
-
-                    <!-- item-->
-                    <a href="{{ url('index/en') }}" class="dropdown-item notify-item">
-                        <img src="{{ URL::asset('assets/images/flags/us.jpg')}}" alt="user-image" class="me-1" height="12"> <span class="align-middle">English</span>
-                    </a>
-
-                    <!-- item-->
-                    <a href="{{ url('index/es') }}" class="dropdown-item notify-item">
-                        <img src="{{ URL::asset('assets/images/flags/spain.jpg')}}" alt="user-image" class="me-1" height="12"> <span class="align-middle">Spanish</span>
-                    </a>
-
-                    <!-- item-->
-                    <a href="{{ url('index/de') }}" class="dropdown-item notify-item">
-                        <img src="{{ URL::asset('assets/images/flags/germany.jpg')}}" alt="user-image" class="me-1" height="12"> <span class="align-middle">German</span>
-                    </a>
-
-                    <!-- item-->
-                    <a href="{{ url('index/it') }}" class="dropdown-item notify-item">
-                        <img src="{{ URL::asset('assets/images/flags/italy.jpg')}}" alt="user-image" class="me-1" height="12"> <span class="align-middle">Italian</span>
-                    </a>
-
-                    <!-- item-->
-                    <a href="{{ url('index/ru') }}" class="dropdown-item notify-item">
-                        <img src="{{ URL::asset('assets/images/flags/russia.jpg')}}" alt="user-image" class="me-1" height="12"> <span class="align-middle">Russian</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="dropdown d-none d-lg-inline-block ms-1">
-                <button type="button" class="btn header-item noti-icon waves-effect" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="uil-apps"></i>
-                </button>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                    <div class="px-lg-2">
-                        <div class="row g-0">
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/github.png') }}" alt="Github">
-                                    <span>GitHub</span>
-                                </a>
-                            </div>
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/bitbucket.png') }}" alt="bitbucket">
-                                    <span>Bitbucket</span>
-                                </a>
-                            </div>
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/dribbble.png') }}" alt="dribbble">
-                                    <span>Dribbble</span>
-                                </a>
-                            </div>
-                        </div>
-
-                        <div class="row g-0">
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/dropbox.png') }}" alt="dropbox">
-                                    <span>Dropbox</span>
-                                </a>
-                            </div>
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/mail_chimp.png') }}" alt="mail_chimp">
-                                    <span>Mail Chimp</span>
-                                </a>
-                            </div>
-                            <div class="col">
-                                <a class="dropdown-icon-item" href="#">
-                                    <img src="{{ URL::asset('/assets/images/brands/slack.png') }}" alt="slack">
-                                    <span>Slack</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="dropdown d-none d-lg-inline-block ms-1">
-                <button type="button" class="btn header-item noti-icon waves-effect" data-bs-toggle="fullscreen">
-                    <i class="uil-minus-path"></i>
-                </button>
-            </div>
-
-            <div class="dropdown d-inline-block">
-                <button type="button" class="btn header-item noti-icon waves-effect" id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="uil-bell"></i>
-                    <span class="badge bg-danger rounded-pill">3</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-notifications-dropdown">
-                    <div class="p-3">
-                        <div class="row align-items-center">
-                            <div class="col">
-                                <h5 class="m-0 font-size-16"> @lang('translation.Notifications') </h5>
-                            </div>
-                            <div class="col-auto">
-                                <a href="#!" class="small"> @lang('translation.Mark_read')</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div data-simplebar style="max-height: 230px;">
-                        <a href="" class="text-dark notification-item">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0 me-3">
-                                    <div class="avatar-xs">
-                                        <span class="avatar-title bg-primary rounded-circle font-size-16">
-                                            <i class="uil-shopping-basket"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mt-0 mb-1">@lang('translation.order_placed')</h6>
-                                    <div class="font-size-12 text-muted">
-                                        <p class="mb-1">@lang('translation.languages_grammar')</p>
-                                        <p class="mb-0"><i class="mdi mdi-clock-outline"></i> @lang('translation.3_min_ago')</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                        <a href="" class="text-dark notification-item">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0 me-3">
-                                    <img src="{{ URL::asset('/assets/images/users/avatar-3.jpg') }}" class="rounded-circle avatar-xs" alt="user-pic">
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mt-0 mb-1">James Lemire</h6>
-                                    <div class="font-size-12 text-muted">
-                                        <p class="mb-1">@lang('translation.simplified_English')</p>
-                                        <p class="mb-0"><i class="mdi mdi-clock-outline"></i> @lang('translation.1_hours_ago')</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                        <a href="" class="text-dark notification-item">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0 me-3">
-                                    <div class="avatar-xs">
-                                        <span class="avatar-title bg-success rounded-circle font-size-16">
-                                            <i class="uil-truck"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mt-0 mb-1">@lang('translation.item_shipped')</h6>
-                                    <div class="font-size-12 text-muted">
-                                        <p class="mb-1">@lang('translation.languages_grammar')</p>
-                                        <p class="mb-0"><i class="mdi mdi-clock-outline"></i> @lang('translation.3_min_ago')</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-
-                        <a href="" class="text-dark notification-item">
-                            <div class="d-flex align-items-start">
-                                <div class="flex-shrink-0 me-3">
-                                    <img src="{{ URL::asset('/assets/images/users/avatar-4.jpg') }}" class="rounded-circle avatar-xs" alt="user-pic">
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mt-0 mb-1">Salena Layfield</h6>
-                                    <div class="font-size-12 text-muted">
-                                        <p class="mb-1">@lang('translation.friend_occidental')</p>
-                                        <p class="mb-0"><i class="mdi mdi-clock-outline"></i> @lang('translation.1_hours_ago')</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="p-2 border-top">
-                        <div class="d-grid">
-                            <a class="btn btn-sm btn-link font-size-14 text-center" href="javascript:void(0)">
-                                <i class="uil-arrow-circle-right me-1"></i> @lang('translation.View_More')..
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item waves-effect" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <img class="rounded-circle header-profile-user" src="{{ URL::asset('/assets/images/users/avatar-4.jpg') }}" alt="Header Avatar">
-                    <span class="d-none d-xl-inline-block ms-1 fw-medium font-size-15">{{Str::ucfirst(Auth::user()->name)}}</span>
+                    <span class="d-none d-xl-inline-block ms-1 fw-medium font-size-15">{{ Auth::user()->name }}</span>
                     <i class="uil-angle-down d-none d-xl-inline-block font-size-15"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">
-                    <!-- item-->
-                    <a class="dropdown-item" href="#"><i class="uil uil-user-circle font-size-18 align-middle text-muted me-1"></i> <span class="align-middle">@lang('translation.View_Profile')</span></a>
-                    <a class="dropdown-item" href="#"><i class="uil uil-wallet font-size-18 align-middle me-1 text-muted"></i> <span class="align-middle">@lang('translation.My_Wallet')</span></a>
-                    <a class="dropdown-item d-block" href="#"><i class="uil uil-cog font-size-18 align-middle me-1 text-muted"></i> <span class="align-middle">@lang('translation.Settings')</span> <span class="badge bg-success-subtle text-success rounded-pill mt-1 ms-2">03</span></a>
-                    <a class="dropdown-item" href="#"><i class="uil uil-lock-alt font-size-18 align-middle me-1 text-muted"></i> <span class="align-middle">@lang('translation.Lock_screen')</span></a>
-                    <a class="dropdown-item" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">z<i class="uil uil-sign-out-alt font-size-18 align-middle me-1 text-muted"></i> <span class="align-middle">@lang('translation.Sign_out')</span></a>
+                    <!-- Change Password Modal Trigger -->
+                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="uil uil-lock-alt font-size-18 align-middle me-1 text-muted"></i>
+                        <span class="align-middle">Change Password</span>
+                    </a>
+
+                    <!-- Logout Link -->
+                    <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                        <i class="uil uil-sign-out-alt font-size-18 align-middle me-1 text-muted"></i>
+                        <span class="align-middle">Sign Out</span>
+                    </a>
+
                     <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                         @csrf
                     </form>
@@ -282,3 +80,208 @@
         </div>
     </div>
 </header>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true" style="z-index: 99999;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changePasswordModalLabel">
+                    <i class="uil uil-lock-alt me-2"></i>Change Password
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('change.password.post') }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password *</label>
+                        <input type="password" class="form-control @error('current_password') is-invalid @enderror" id="current_password" name="current_password" required>
+                        @error('current_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password *</label>
+                        <input type="password" class="form-control @error('new_password') is-invalid @enderror" id="new_password" name="new_password" required>
+                        <small class="form-text text-muted">Minimum 8 characters</small>
+                        @error('new_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="new_password_confirmation" class="form-label">Confirm New Password *</label>
+                        <input type="password" class="form-control" id="new_password_confirmation" name="new_password_confirmation" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header text-white">
+                <h5 class="modal-title" id="successModalLabel">
+                    <i class="uil uil-check-circle me-2"></i>Success
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="uil uil-check-circle text-success" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">{{ session('success') }}</h4>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header text-white">
+                <h5 class="modal-title" id="errorModalLabel">
+                    <i class="uil uil-exclamation-triangle me-2"></i>Error
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="uil uil-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">{{ session('error') }}</h4>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal {
+        z-index: 99999 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 99998 !important;
+    }
+
+    #changePasswordModal .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    #changePasswordModal .modal-header {
+        color: white;
+        border-bottom: none;
+        border-radius: 12px 12px 0 0;
+    }
+
+    #changePasswordModal .modal-title {
+        font-weight: 600;
+    }
+
+    #changePasswordModal .btn-close {
+        filter: invert(1);
+        opacity: 0.8;
+    }
+
+    #changePasswordModal .btn-close:hover {
+        opacity: 1;
+    }
+
+    #changePasswordModal .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    #changePasswordModal .form-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    /* Success Modal Styles */
+    #successModal .modal-content {
+        border-radius: 15px;
+    }
+
+    #successModal .modal-header {
+        border-bottom: none;
+        border-radius: 15px 15px 0 0;
+    }
+
+    /* Error Modal Styles */
+    #errorModal .modal-content {
+        border-radius: 15px;
+    }
+
+    #errorModal .modal-header {
+        border-bottom: none;
+        border-radius: 15px 15px 0 0;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto show modals based on session messages
+        @if(session('success'))
+        var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+        successModal.show();
+        @endif
+
+        @if(session('error'))
+        var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        errorModal.show();
+        @endif
+
+        // Auto close modals after 3 seconds
+        setTimeout(function() {
+            var successModalEl = document.getElementById('successModal');
+            var errorModalEl = document.getElementById('errorModal');
+
+            if (successModalEl) {
+                var successModalInstance = bootstrap.Modal.getInstance(successModalEl);
+                if (successModalInstance) {
+                    setTimeout(function() {
+                        successModalInstance.hide();
+                    }, 3000);
+                }
+            }
+
+            if (errorModalEl) {
+                var errorModalInstance = bootstrap.Modal.getInstance(errorModalEl);
+                if (errorModalInstance) {
+                    setTimeout(function() {
+                        errorModalInstance.hide();
+                    }, 3000);
+                }
+            }
+        }, 100);
+
+        // Clear form when password modal is hidden
+        $('#changePasswordModal').on('hidden.bs.modal', function () {
+            $(this).find('form')[0].reset();
+            // Clear validation errors
+            $('.is-invalid').removeClass('is-invalid');
+            $('.invalid-feedback').remove();
+        });
+
+        // Auto open change password modal if there are validation errors
+        @if($errors->has('current_password') || $errors->has('new_password'))
+        var changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+        changePasswordModal.show();
+        @endif
+    });
+</script>

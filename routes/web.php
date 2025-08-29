@@ -7,7 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PacketController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ExpenseController;
-use App\Http\Controllers\ExpenseCategoryController; 
+use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\AdditionalController;
 use App\Http\Controllers\AdditionalDefaultController;
@@ -29,11 +29,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [HomeController::class, 'root']);
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
-    
+
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('/change-password', [UserController::class, 'changePassword'])->name('change.password.post');
 
-    
     Route::resource('additionals', AdditionalController::class);
     Route::resource('additional-defaults', AdditionalDefaultController::class);
     Route::resource('products', ProductController::class);
@@ -41,23 +41,23 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/packets/{packet}/toggle-status', [PacketController::class, 'toggleStatus'])->name('packets.toggle-status');
     Route::get('packets/product/{id}', [PacketController::class, 'product'])->name('packets.product');
     Route::get('/packets/{packet}/default-additionals', [TransaksiController::class, 'getDefaultAdditionals'])->name('packets.default-additionals');
-    
-    
+
+
     Route::post('/packets/{packet}/print-options', [PacketController::class, 'addPrintOption'])->name('packets.addPrintOption');
     Route::delete('/packets/{packet}/print-options/{print_size}', [PacketController::class, 'removePrintOption'])->name('packets.removePrintOption');
 
-    
+
     Route::resource('expenses', ExpenseController::class);
     Route::put('/expenses/{expense}/toggle-payment', [ExpenseController::class, 'togglePayment'])->name('expenses.toggle-payment');
     Route::post('/expenses/{expense}/partial-payment', [ExpenseController::class, 'makePartialPayment'])->name('expenses.partial-payment');
     Route::get('/expenses/{expense}/debt-payments', [ExpenseController::class, 'showDebtPayments'])->name('expenses.debt-payments');
-    
-   
+
+
     Route::resource('expense-categories', ExpenseCategoryController::class);
     Route::put('/expense-categories/{expenseCategory}/toggle-monthly-default', [ExpenseCategoryController::class, 'toggleMonthlyDefault'])->name('expense-categories.toggle-monthly-default');
     Route::post('/expenses/generate-monthly', [ExpenseController::class, 'generateMonthlyExpenses'])->name('expenses.generate-monthly');
-    
-    
+
+
     Route::resource('transaksi', TransaksiController::class);
     Route::put('/transaksi/{id}/update-status', [TransaksiController::class, 'updateStatus'])->name('transaksi.update-status');
 

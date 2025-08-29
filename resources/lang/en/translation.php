@@ -149,7 +149,8 @@ return [
   "Offcanvas" => "Offcanvas",
   "Placeholders" => "Placeholders",
   "Utilities" => "Utilities",
-  "Toasts" => "Toasts"
+  "Toasts" => "Toasts",
+  "ChangePassword"=> "Change Password"
 ];
 
 ?>
