@@ -183,28 +183,6 @@
         </div>
     </div>
 </div>
-
-<div class="row">
-    <div class="col-xl-8">
-        <div class="card">
-            <div class="card-body">
-                <div class="float-end">
-                    <div class="dropdown">
-                        <a class="dropdown-toggle text-reset" href="#" id="dropdownMenuButton5" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <span class="fw-semibold">Sort By:</span> <span class="text-muted">Yearly<i class="mdi mdi-chevron-down ms-1"></i></span>
-                        </a>
-
-                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton5">
-                            <a class="dropdown-item" href="#">Monthly</a>
-                            <a class="dropdown-item" href="#">Yearly</a>
-                            <a class="dropdown-item" href="#">Weekly</a>
-                        </div>
-                    </div>
-                </div>
-            </div> 
-        </div> 
-    </div> 
-</div> <!-- end row-->
 <!-- end row -->
 
 @endsection
