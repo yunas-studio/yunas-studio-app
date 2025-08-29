@@ -5,7 +5,7 @@
     <div class="navbar-brand-box">
         <a href="{{url('index')}}" class="logo logo-dark">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="12">
             </span>
             <span class="logo-lg">
                 <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
@@ -14,7 +14,7 @@
 
         <a href="{{url('index')}}" class="logo logo-light">
             <span class="logo-sm">
-                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
+                <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="12">
             </span>
             <span class="logo-lg">
                 <img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="" height="50">
@@ -34,12 +34,14 @@
             <ul class="metismenu list-unstyled" id="side-menu">
                 <li class="menu-title">@lang('translation.Menu')</li>
 
-                <li>
-                    <a href="{{url('index')}}">
-                        <i class="uil-home-alt"></i><span class="badge rounded-pill bg-primary float-end">01</span>
-                        <span>@lang('translation.Dashboard')</span>
-                    </a>
-                </li>
+                @can('viewAny', App\Models\Expense::class)
+                    <li>
+                        <a href="{{url('index')}}">
+                            <i class="uil-home-alt"></i><span class="badge rounded-pill bg-primary float-end">01</span>
+                            <span>@lang('translation.Dashboard')</span>
+                        </a>
+                    </li>
+                @endcan
 
                 <li>
                     <a href="{{url('transaksi')}}" class="waves-effect">

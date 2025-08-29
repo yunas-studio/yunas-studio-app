@@ -14,8 +14,7 @@ class UserController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:Super Admin, Admin')->except(['index', 'show']);
-
+        $this->middleware('role:Super Admin, Admin')->except(['index', 'show', 'changePassword']);
     }
 
     public function index()
