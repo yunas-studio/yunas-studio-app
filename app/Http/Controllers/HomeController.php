@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use App\Models\Expense;
 use App\Models\Transaksi;
@@ -44,45 +45,45 @@ class HomeController extends Controller
             $currentYear = date('Y');
             $period = $request->input('period', 'monthly'); // Default to monthly
             $chartType = $period; // For passing to view
-            
+
             if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
-               
+
                 $totalExpenses = Expense::where('type', 'expense')->sum('amount');
-                
-                
+
+
                 $totalIncome = Expense::where('type', 'income')->sum('amount');
-                
-               
+
+
                 $printingCosts = Transaksi::join('additional_transaksi', 'transaksi.transaction_id', '=', 'additional_transaksi.transaksi_id')
                     ->join('additionals', 'additional_transaksi.additional_id', '=', 'additionals.id')
                     ->where('additionals.name', 'LIKE', '%Cetak%')
                     ->sum('additional_transaksi.price');
-                
+
                 // Get total unique customers by phone number
                 $totalCustomers = Transaksi::distinct('phone_number')->count('phone_number');
-                
+
                 // Get transaction payment statistics
                 $unpaidDebts = Transaksi::where('status', 'unpaid')->count();
-                    
+
                 $paidDebts = Transaksi::where('status', 'paid')->count();
-                
+
                 // Get current balance from expenses
                 $currentBalance = Expense::where('type', 'income')->sum('amount') - Expense::where('type', 'expense')->sum('amount');
-                
+
                 $isKasir = auth()->user()->isKasir();
-                
-                
+
+
                 if ($isKasir) {
                     $period = 'daily';
                     $chartType = 'daily';
                 }
-                
+
                 // Get chart data based on period
                 $chartData = $this->getChartData($period, $isKasir);
                 $chartLabels = $chartData['labels'];
                 $monthlyExpenses = $chartData['expenses'];
                 $monthlyIncome = $chartData['income'];
-                
+
                 // Get expenses by category
                 $expensesByCategory = Expense::join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
                     ->selectRaw('expense_categories.name as category_name, SUM(expenses.amount) as total')
@@ -95,7 +96,7 @@ class HomeController extends Controller
                 // Initialize empty data for non-authorized users
                 $monthlyExpenses = [];
                 $monthlyIncome = [];
-                
+
                 if ($period == 'daily') {
                     // Last 7 days
                     for ($i = 6; $i >= 0; $i--) {
@@ -122,10 +123,10 @@ class HomeController extends Controller
                     }
                 }
             }
-            
+
             return view($request->path(), compact(
-                'totalExpenses', 
-                'monthlyExpenses', 
+                'totalExpenses',
+                'monthlyExpenses',
                 'chartLabels',
                 'expensesByCategory',
                 'totalIncome',
@@ -141,7 +142,7 @@ class HomeController extends Controller
         }
         return abort(404);
     }
-    
+
     /**
      * Get chart data based on period
      *
@@ -155,21 +156,21 @@ class HomeController extends Controller
         $expenses = [];
         $income = [];
         $currentYear = date('Y');
-        
+
         if ($period == 'daily') {
             // Last 7 days data
             for ($i = 6; $i >= 0; $i--) {
                 $day = Carbon::today()->subDays($i);
                 $labels[] = $day->format('d M');
-                
+
                 $expenseAmount = Expense::where('type', 'expense')
                     ->whereDate('expense_date', $day)
                     ->sum('amount');
-                    
+
                 $incomeAmount = Expense::where('type', 'income')
                     ->whereDate('expense_date', $day)
                     ->sum('amount');
-                
+
                 $expenses[] = $expenseAmount;
                 $income[] = $incomeAmount;
             }
@@ -178,15 +179,15 @@ class HomeController extends Controller
             for ($i = 4; $i >= 0; $i--) {
                 $year = Carbon::now()->subYears($i)->year;
                 $labels[] = $year;
-                
+
                 $expenseAmount = Expense::where('type', 'expense')
                     ->whereYear('expense_date', $year)
                     ->sum('amount');
-                    
+
                 $incomeAmount = Expense::where('type', 'income')
                     ->whereYear('expense_date', $year)
                     ->sum('amount');
-                
+
                 $expenses[] = $expenseAmount;
                 $income[] = $incomeAmount;
             }
@@ -195,7 +196,7 @@ class HomeController extends Controller
             for ($i = 1; $i <= 12; $i++) {
                 $month = Carbon::create($currentYear, $i, 1);
                 $labels[] = $month->format('M'); // Jan, Feb, etc.
-                
+
                 if ($isKasir) {
                     // Today's data only for kasir
                     $today = Carbon::today();
@@ -203,7 +204,7 @@ class HomeController extends Controller
                         $expenseAmount = Expense::where('type', 'expense')
                             ->whereDate('expense_date', $today)
                             ->sum('amount');
-                            
+
                         $incomeAmount = Expense::where('type', 'income')
                             ->whereDate('expense_date', $today)
                             ->sum('amount');
@@ -217,18 +218,18 @@ class HomeController extends Controller
                         ->whereYear('expense_date', $currentYear)
                         ->whereMonth('expense_date', $i)
                         ->sum('amount');
-                        
+
                     $incomeAmount = Expense::where('type', 'income')
                         ->whereYear('expense_date', $currentYear)
                         ->whereMonth('expense_date', $i)
                         ->sum('amount');
                 }
-                
+
                 $expenses[] = $expenseAmount;
                 $income[] = $incomeAmount;
             }
         }
-        
+
         return [
             'labels' => $labels,
             'expenses' => $expenses,
@@ -238,6 +239,9 @@ class HomeController extends Controller
 
     public function root()
     {
+        if(Auth::user()->isUser()){
+            return redirect('transaksi');
+        }
         // Initialize variables
         $totalExpenses = 0;
         $monthlyExpenses = [];
@@ -250,41 +254,41 @@ class HomeController extends Controller
         $paidDebts = 0;
         $currentBalance = 0;
         $currentYear = date('Y');
-        
+
         // Only show data if user is authorized
         if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isKasir())) {
             // Get total expenses from expenses with type 'expense'
             $totalExpenses = Expense::where('type', 'expense')->sum('amount');
-            
+
             // Get total income from expenses with type 'income'
             $totalIncome = Expense::where('type', 'income')->sum('amount');
-            
+
             // Get printing costs from additionals that contain 'Cetak'
             $printingCosts = Transaksi::join('additional_transaksi', 'transaksi.transaction_id', '=', 'additional_transaksi.transaksi_id')
                 ->join('additionals', 'additional_transaksi.additional_id', '=', 'additionals.id')
                 ->where('additionals.name', 'LIKE', '%Cetak%')
                 ->sum('additional_transaksi.price');
-            
+
             // Get total unique customers by phone number
             $totalCustomers = Transaksi::distinct('phone_number')->count('phone_number');
-            
+
             // Get transaction payment statistics
             $unpaidDebts = Transaksi::where('status', 'unpaid')->count();
-                
+
             $paidDebts = Transaksi::where('status', 'paid')->count();
-            
+
             // Get current balance from expenses
             $currentBalance = Expense::where('type', 'income')->sum('amount') - Expense::where('type', 'expense')->sum('amount');
-            
+
             // Get monthly expenses and income for current year
             $monthlyIncome = [];
             $isKasir = auth()->user()->isKasir();
-            
+
             for ($i = 1; $i <= 12; $i++) {
                 $month = Carbon::create($currentYear, $i, 1);
                 $monthlyLabels[] = $month->format('M'); // Jan, Feb, etc.
-                
-                
+
+
                 if ($isKasir) {
                     // Today's data only
                     $today = Carbon::today();
@@ -292,7 +296,7 @@ class HomeController extends Controller
                         $expenseAmount = Expense::where('type', 'expense')
                             ->whereDate('expense_date', $today)
                             ->sum('amount');
-                            
+
                         $incomeAmount = Expense::where('type', 'income')
                             ->whereDate('expense_date', $today)
                             ->sum('amount');
@@ -306,17 +310,17 @@ class HomeController extends Controller
                         ->whereYear('expense_date', $currentYear)
                         ->whereMonth('expense_date', $i)
                         ->sum('amount');
-                        
+
                     $incomeAmount = Expense::where('type', 'income')
                         ->whereYear('expense_date', $currentYear)
                         ->whereMonth('expense_date', $i)
                         ->sum('amount');
                 }
-                
+
                 $monthlyExpenses[] = $expenseAmount;
                 $monthlyIncome[] = $incomeAmount;
             }
-            
+
             // Get expenses by category
             $expensesByCategory = Expense::join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
                 ->selectRaw('expense_categories.name as category_name, SUM(expenses.amount) as total')
@@ -333,10 +337,10 @@ class HomeController extends Controller
                 $monthlyExpenses[] = 0;
             }
         }
-        
+
         return view('index', compact(
-            'totalExpenses', 
-            'monthlyExpenses', 
+            'totalExpenses',
+            'monthlyExpenses',
             'monthlyLabels',
             'expensesByCategory',
             'totalIncome',
