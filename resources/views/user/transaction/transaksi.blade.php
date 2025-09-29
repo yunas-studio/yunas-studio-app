@@ -18,6 +18,22 @@
     .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
     .error-container { position: fixed; top: 20px; right: 20px; z-index: 1100; max-width: 400px; }
     .error-message { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s ease; }
+    .amount-container {
+        position: relative;
+        display: inline-block;
+    }
+    .amount-hidden {
+        filter: blur(5px);
+        -webkit-filter: blur(5px);
+    }
+    .toggle-amount-visibility {
+        cursor: pointer;
+        margin-left: 5px;
+        color: #556ee6;
+    }
+    .toggle-amount-visibility:hover {
+        color: #4458b8;
+    }
 </style>
 @endsection
 
@@ -162,7 +178,14 @@
                                             <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                         @endif
                                     </td>
-                                    <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
+                                    <td class="fw-bold">
+                                        <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
+                                            <span class="amount-container" data-amount="Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}">
+                                                <span class="amount-value">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</span>
+                                                <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                            </span>
+                                        </a>
+                                    </td>
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                     <td><span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">{{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}</span></td>
                                     <td><span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">{{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}</span></td>
@@ -325,6 +348,36 @@
             if (document.getElementById('paymentAlertModal')) {
                 paymentAlertModal = new bootstrap.Modal(document.getElementById('paymentAlertModal'));
             }
+            
+            // Handle amount visibility toggle
+            document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent event bubbling
+                    const amountContainer = this.closest('.amount-container');
+                    const amountValue = amountContainer.querySelector('.amount-value');
+                    
+                    if (amountValue.classList.contains('amount-hidden')) {
+                        // Show amount
+                        amountValue.classList.remove('amount-hidden');
+                        this.classList.remove('bx-hide');
+                        this.classList.add('bx-show-alt');
+                    } else {
+                        // Hide amount
+                        amountValue.classList.add('amount-hidden');
+                        this.classList.remove('bx-show-alt');
+                        this.classList.add('bx-hide');
+                    }
+                });
+            });
+
+            // Initialize all amounts as hidden
+            document.querySelectorAll('.amount-value').forEach(el => {
+                el.classList.add('amount-hidden');
+            });
+            document.querySelectorAll('.toggle-amount-visibility').forEach(el => {
+                el.classList.remove('bx-show-alt');
+                el.classList.add('bx-hide');
+            });
         });
 
         function showPaymentAlertModal(remainingAmount) {
