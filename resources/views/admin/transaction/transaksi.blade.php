@@ -32,6 +32,23 @@
         color: inherit;
         text-decoration: none;
     }
+    /* blur */
+    .amount-container {
+        position: relative;
+        display: inline-block;
+    }
+    .amount-hidden {
+        filter: blur(5px);
+        -webkit-filter: blur(5px);
+    }
+    .toggle-amount-visibility {
+        cursor: pointer;
+        margin-left: 5px;
+        color: #556ee6;
+    }
+    .toggle-amount-visibility:hover {
+        color: #4458b8;
+    }
 </style>
 @endsection
 
@@ -49,7 +66,12 @@
                             <div class="d-flex">
                                 <div class="flex-grow-1">
                                     <p class="text-muted fw-medium">Total Belum Dibayar</p>
-                                    <h4 class="mb-0 text-warning">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</h4>
+                                    <h4 class="mb-0 text-warning">
+                                        <span class="amount-container" data-amount="Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}">
+                                            <span class="amount-value">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</span>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                        </span>
+                                    </h4>
                                     <p class="text-muted mb-0 font-size-12">from {{ $countBelumDibayar }} {{ Str::plural('transaction', $countBelumDibayar) }}</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
@@ -65,7 +87,12 @@
                             <div class="d-flex">
                                 <div class="flex-grow-1">
                                     <p class="text-muted fw-medium">Total DP (Paid)</p>
-                                    <h4 class="mb-0 text-info">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</h4>
+                                    <h4 class="mb-0 text-info">
+                                        <span class="amount-container" data-amount="Rp {{ number_format($totalDpPaid, 0, ',', '.') }}">
+                                            <span class="amount-value">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</span>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                        </span>
+                                    </h4>
                                     <p class="text-muted mb-0 font-size-12">from {{ $countDp }} {{ Str::plural('transaction', $countDp) }}</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
@@ -81,7 +108,12 @@
                             <div class="d-flex">
                                 <div class="flex-grow-1">
                                     <p class="text-muted fw-medium">Total Sudah Dibayar</p>
-                                    <h4 class="mb-0 text-success">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</h4>
+                                    <h4 class="mb-0 text-success">
+                                        <span class="amount-container" data-amount="Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}">
+                                            <span class="amount-value">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</span>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                        </span>
+                                    </h4>
                                     <p class="text-muted mb-0 font-size-12">from {{ $countSudahDibayar }} {{ Str::plural('transaction', $countSudahDibayar) }}</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
@@ -103,7 +135,12 @@
                         <div class="d-flex text-white">
                             <div class="flex-grow-1">
                                 <p class="fw-medium text-white" id="profit-card-title">Total Profit (Filtered)</p>
-                                <h4 class="mb-0 text-white" id="profit-card-value">Rp {{ number_format($totalProfit, 0, ',', '.') }}</h4>
+                                <h4 class="mb-0 text-white" id="profit-card-value">
+                                    <span class="amount-container" data-amount="Rp {{ number_format($totalProfit, 0, ',', '.') }}">
+                                        <span class="amount-value">Rp {{ number_format($totalProfit, 0, ',', '.') }}</span>
+                                        <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                                    </span>
+                                </h4>
                                 <small class="mb-0 opacity-75" id="profit-card-subtitle">Click to see overall total</small>
                             </div>
                             <div class="flex-shrink-0 align-self-center">
@@ -532,6 +569,36 @@ document.addEventListener('DOMContentLoaded', function () {
             profitToggles.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
         });
+    });
+    
+    // Handle amount visibility toggle
+    document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling
+            const amountContainer = this.closest('.amount-container');
+            const amountValue = amountContainer.querySelector('.amount-value');
+            
+            if (amountValue.classList.contains('amount-hidden')) {
+                // Show amount
+                amountValue.classList.remove('amount-hidden');
+                this.classList.remove('bx-hide');
+                this.classList.add('bx-show-alt');
+            } else {
+                // Hide amount
+                amountValue.classList.add('amount-hidden');
+                this.classList.remove('bx-show-alt');
+                this.classList.add('bx-hide');
+            }
+        });
+    });
+
+    // Initialize all amounts as hidden
+    document.querySelectorAll('.amount-value').forEach(el => {
+        el.classList.add('amount-hidden');
+    });
+    document.querySelectorAll('.toggle-amount-visibility').forEach(el => {
+        el.classList.remove('bx-show-alt');
+        el.classList.add('bx-hide');
     });
 });
 </script>
