@@ -23,12 +23,21 @@
         display: inline-block;
     }
     .amount-hidden {
-        filter: blur(5px);
-        -webkit-filter: blur(5px);
+        visibility: hidden;
+        position: relative;
+    }
+    .amount-hidden::after {
+        content: '*******';
+        visibility: visible;
+        position: absolute;
+        top: 0;
+        left: 0;
     }
     .toggle-amount-visibility {
+        position: relative;
+        z-index: 2;
         cursor: pointer;
-        margin-left: 5px;
+        margin-left: 20px;
         color: #556ee6;
     }
     .toggle-amount-visibility:hover {
