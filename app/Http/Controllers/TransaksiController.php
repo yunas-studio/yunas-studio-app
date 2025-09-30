@@ -732,8 +732,13 @@ class TransaksiController extends Controller
         $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
         $relativePath = "{$folderName}/{$status}";
 
+        // If the folder doesn't exist, it's not an error, it's just empty.
         if (!Storage::disk('public')->exists($relativePath)) {
-            throw new \Exception("No photos available for this transaction in the '{$status}' folder.");
+            return [
+                'folderName' => $folderName,
+                'urls' => [],
+                'count' => 0
+            ];
         }
         
         $files = Storage::disk('public')->files($relativePath);
@@ -743,8 +748,13 @@ class TransaksiController extends Controller
             return in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
         });
 
+        // If the folder exists but is empty of valid photos, also not an error.
         if (empty($photoFiles)) {
-            throw new \Exception("No valid photos found in the '{$status}' directory.");
+            return [
+                'folderName' => $folderName,
+                'urls' => [],
+                'count' => 0
+            ];
         }
 
         $photoUrls = array_map(function($file) {
@@ -809,23 +819,38 @@ class TransaksiController extends Controller
         return $pdf->download($filename);
     }
 
-    public function viewSelectionsForAdmin(Transaksi $transaksi)
+    public function viewSelectionsForAdmin(Transaksi $transaksi, Request $request)
     {
         try {
-            // Fetch photos from the source directory using our helper method
-            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
+            // This method also now works correctly
+            $filter = $request->get('filter', 'raw');
+            $currentFilter = '';
+            switch (strtolower($filter)) {
+                case "result":
+                    $currentFilter = "Result";
+                    break;
+                case "pilih_cetak":
+                    $currentFilter = "Pilih Cetak";
+                    break;
+                case "pilih_edit":
+                    $currentFilter = "Pilih Edit";
+                    break;
+                default:
+                    $currentFilter = "RAW";
+                    break;
+            }
 
-            // Fetch the URLs that the user has selected from the database for editing
+            $photoData = $this->getPhotoDirectoryData($transaksi, $currentFilter);
             $selectedUrls = $transaksi->selectedPhotos->pluck('file_url')->toArray();
-            
-            // NEW: Fetch the photos and their assigned sizes for printing
             $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url');
 
             return view('admin.transaction.view-selections', [
                 'transaksi' => $transaksi,
                 'photoUrls' => $photoData['urls'],
+                'photoCount' => $photoData['count'],
+                'currentFilter' => $currentFilter,
                 'selectedUrls' => $selectedUrls,
-                'selectedForPrint' => $selectedForPrint, // Pass the new data to the view
+                'selectedForPrint' => $selectedForPrint,
             ]);
 
         } catch (\Exception $e) {
@@ -952,6 +977,7 @@ class TransaksiController extends Controller
         // --- END SECURITY CHECK ---
 
         try {
+            // This method now works correctly because of the change to getPhotoDirectoryData
             $transaksi->load('packet.printOptions');
             $printAllowances = $transaksi->packet ? $transaksi->packet->printOptions->isNotEmpty() : false;
 
@@ -983,6 +1009,7 @@ class TransaksiController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // This catch block will now only trigger for truly unexpected errors.
             return redirect()->route('transaksi.index')->with('error', $e->getMessage());
         }
     }
