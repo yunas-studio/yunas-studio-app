@@ -38,12 +38,22 @@
         display: inline-block;
     }
     .amount-hidden {
-        filter: blur(5px);
-        -webkit-filter: blur(5px);
+        visibility: hidden;
+        position: relative;
+    }
+    .amount-hidden::after {
+        content: '******';
+        visibility: visible;
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: inline-block;
     }
     .toggle-amount-visibility {
+        position: relative;
+        z-index: 2;
         cursor: pointer;
-        margin-left: 5px;
+        margin-left: 20px;
         color: #556ee6;
     }
     .toggle-amount-visibility:hover {
@@ -693,12 +703,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (isShowingFiltered) {
                     titleEl.textContent = 'Total Profit (Filtered)';
-                    valueEl.textContent = formatter.format(filteredProfit);
+                    
+                    // Preserve the eye icon when updating the value
+                    const amountContainer = valueEl.querySelector('.amount-container');
+                    if (amountContainer) {
+                        const amountValue = amountContainer.querySelector('.amount-value');
+                        if (amountValue) {
+                            amountValue.textContent = formatter.format(filteredProfit);
+                        } else {
+                            valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}">
+                                <span class="amount-value">${formatter.format(filteredProfit)}</span>
+                                <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                            </span>`;
+                        }
+                    } else {
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}">
+                            <span class="amount-value">${formatter.format(filteredProfit)}</span>
+                            <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                        </span>`;
+                    }
+                    
                     subtitleEl.textContent = 'Click to see overall total';
                 } else {
                     titleEl.textContent = 'Total Profit (Overall)';
-                    valueEl.textContent = formatter.format(overallProfit);
+                    
+                    // Preserve the eye icon when updating the value
+                    const amountContainer = valueEl.querySelector('.amount-container');
+                    if (amountContainer) {
+                        const amountValue = amountContainer.querySelector('.amount-value');
+                        if (amountValue) {
+                            amountValue.textContent = formatter.format(overallProfit);
+                        } else {
+                            valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}">
+                                <span class="amount-value">${formatter.format(overallProfit)}</span>
+                                <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                            </span>`;
+                        }
+                    } else {
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}">
+                            <span class="amount-value">${formatter.format(overallProfit)}</span>
+                            <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                        </span>`;
+                    }
+                    
                     subtitleEl.textContent = 'Click to see filtered total';
+                    
+                    // Hide the toggle button after showing overall profit
+                    const hideCompletedBtn = document.getElementById('hide-completed-btn');
+                    if (hideCompletedBtn) {
+                        hideCompletedBtn.style.display = 'none';
+                    }
                 }
             });
         }
