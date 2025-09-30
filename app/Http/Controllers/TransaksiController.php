@@ -206,7 +206,7 @@ class TransaksiController extends Controller
 
             // UPDATED: Folder Creation Logic for local 'public' disk
             try {
-                $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+                $folderName = 'photos/' . $transaksi->customer_name . "_" . str_replace('/', '_', $transaksi->receipt_code);
                 $subfolders = ['RAW', 'Pilih Edit', 'Result', 'Pilih Cetak'];
 
                 foreach ($subfolders as $subfolder) {
