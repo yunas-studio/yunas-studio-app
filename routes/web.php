@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::post('/change-password', [UserController::class, 'changePassword'])->name('change.password.post');
+    Route::put('/user/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset.password.post');
 
     // Additional and Packet
     Route::resource('additionals', AdditionalController::class);
