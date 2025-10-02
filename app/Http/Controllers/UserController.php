@@ -123,4 +123,15 @@ class UserController extends Controller
 
         return back()->with('success', 'Password changed successfully');
     }
+
+    public function resetPassword(User $user) {
+        try {
+            $user->password = Hash::make($user->username);
+            $user->save();
+    
+            return back()->with('success', 'Password reset successfully');
+        } catch (\Throwable $th) {
+            return back()->with('failed', 'Password reset successfully');
+        }
+    }
 }

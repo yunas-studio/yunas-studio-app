@@ -85,11 +85,16 @@
                                             </div>
                                         </form>
                                     </td>
-                                    <td>
+                                    <td align='center'>
                                         @can('update', $user)
                                             <a href="{{ route('users.edit', $user) }}" class="px-2 text-primary">
                                                 <i class="uil uil-pen font-size-18"></i>
                                             </a>
+                                            <form action="{{ route('reset.password.post', $user->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('PUT')
+                                                <input type="submit" class="btn btn-danger" id="statusToggle{{ $user->id }}" value="Reset Password">
+                                            </form>
                                         @endcan
                                     </td>
                                 </tr>
