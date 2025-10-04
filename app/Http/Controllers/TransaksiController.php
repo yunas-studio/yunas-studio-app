@@ -24,6 +24,15 @@ use ZipArchive;
 
 class TransaksiController extends Controller
 {
+
+    /**
+     * Helper function to get the consistent folder name for a transaction.
+     */
+    private function getTransactionFolderName(Transaksi $transaksi): string
+    {
+        return 'photos/' . $transaksi->customer_name . "_" . str_replace('/', '_', $transaksi->receipt_code);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -114,6 +123,18 @@ class TransaksiController extends Controller
             // Calculate the overall, unfiltered profit
             $totalOverallProfit = Transaksi::sum('total_price');
 
+            // NEW: Get a list of all transaction directories that have a non-empty RAW folder
+            $allPhotoDirs = collect(Storage::disk('public')->directories('photos'))
+                ->mapWithKeys(function ($dir) {
+                    // Extract the folder name part (e.g., 'Verindra_INV_20250829_18')
+                    $folderName = basename($dir);
+                    // Check if the RAW subdirectory within this folder is not empty
+                    if (!empty(Storage::disk('public')->files($dir . '/RAW'))) {
+                        return [$folderName => true];
+                    }
+                    return [$folderName => false];
+                })->filter();
+
             // Data for filters
             $packetsForFilter = Packet::with('product')->whereHas('product')->orderBy('name')->get()->groupBy('product.name');
             $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
@@ -125,7 +146,8 @@ class TransaksiController extends Controller
                 'totalDpPaid', 'countDp',
                 'totalSudahDibayar', 'countSudahDibayar',
                 'totalProfit', 'totalOverallProfit',
-                'packetsForFilter', 'paymentStatuses', 'processStatuses'
+                'packetsForFilter', 'paymentStatuses', 'processStatuses',
+                'allPhotoDirs'
             ));
         }
     }
@@ -206,7 +228,7 @@ class TransaksiController extends Controller
 
             // UPDATED: Folder Creation Logic for local 'public' disk
             try {
-                $folderName = 'photos/' . $transaksi->customer_name . "_" . str_replace('/', '_', $transaksi->receipt_code);
+                $folderName = $this->getTransactionFolderName($transaksi);
                 $subfolders = ['RAW', 'Pilih Edit', 'Result', 'Pilih Cetak'];
 
                 foreach ($subfolders as $subfolder) {
@@ -428,7 +450,7 @@ class TransaksiController extends Controller
         
         try {
             // Use the local 'public' disk
-            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            $folderName = $this->getTransactionFolderName($transaksi);
             if (Storage::disk('public')->exists($folderName)) {
                 Storage::disk('public')->deleteDirectory($folderName);
             }
@@ -518,7 +540,8 @@ class TransaksiController extends Controller
             }
 
             // 4. Update the filesystem with the new logic
-            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            // THIS IS THE CORRECTED FOLDER NAME
+            $folderName = $this->getTransactionFolderName($transaksi);
             $pilihEditPath = "{$folderName}/Pilih Edit";
             $pilihCetakPath = "{$folderName}/Pilih Cetak";
 
@@ -567,13 +590,7 @@ class TransaksiController extends Controller
             }
         });
 
-        $redirectData = [
-            'success_title'   => 'Selection Submitted!',
-            'success_message' => 'Thank you. Your photo selections have been saved. Our team will begin the editing process shortly.',
-            'back_url'        => route('transaksi.index')
-        ];
-
-        return redirect()->route('transaksi.view-select-for-edit', $transaksi)->with($redirectData);
+        return redirect()->route('transaksi.index')->with('success', 'Your photo selections have been saved successfully!');
     }
 
     public function preparePrintFiles(Transaksi $transaksi)
@@ -729,7 +746,7 @@ class TransaksiController extends Controller
 
     protected function getPhotoDirectoryData($transaksi, $status)
     {
-        $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+        $folderName = $this->getTransactionFolderName($transaksi);
         $relativePath = "{$folderName}/{$status}";
 
         // If the folder doesn't exist, it's not an error, it's just empty.
@@ -1038,7 +1055,7 @@ class TransaksiController extends Controller
         }
 
         try {
-            $folderName = 'photos/' . str_replace('/', '_', $transaksi->receipt_code);
+            $folderName = $this->getTransactionFolderName($transaksi);
             $directory = "{$folderName}/{$status}";
             
             $files = Storage::disk('public')->files($directory);

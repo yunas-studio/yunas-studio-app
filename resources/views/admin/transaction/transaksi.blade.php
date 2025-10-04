@@ -5,6 +5,20 @@
 
 @php
     use Illuminate\Support\Str;
+
+    // Helper function to shorten a URL using TinyURL API
+    function getShortUrl($url) {
+        // Use a cached value if available to avoid calling the API on every page load
+        return cache()->remember('short_url_' . md5($url), now()->addHours(24), function () use ($url) {
+            try {
+                $apiUrl = "http://tinyurl.com/api-create.php?url=" . urlencode($url);
+                $shortUrl = @file_get_contents($apiUrl);
+                return $shortUrl ?: $url; // Fallback to the original URL if API fails
+            } catch (\Exception $e) {
+                return $url; // Fallback on any error
+            }
+        });
+    }
 @endphp
 
 @section('css')
@@ -343,20 +357,28 @@
                                         </td>
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
-                                                @php $canViewSelections = in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']); @endphp
+                                                @php
+                                                    $canViewSelections = in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']);
+                                                    $folderName = $transaksi->customer_name . "_" . str_replace('/', '_', $transaksi->receipt_code);
+                                                    $photosExist = isset($allPhotoDirs[$folderName]);
+                                                    
+                                                    $tooltipMessage = "View User's Photo Selections"; // Default message
+                                                    if (!$canViewSelections) {
+                                                        if (!$photosExist) {
+                                                            $tooltipMessage = 'RAW photos have not been uploaded to the folder yet.';
+                                                        } else {
+                                                            $tooltipMessage = 'Photos have not been selected by the user yet.';
+                                                        }
+                                                    }
+                                                @endphp
                                                 
-                                                @if($canViewSelections)
-                                                    <a href="{{ route('transaksi.view-selections', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="View User's Photo Selections">
+                                                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="{{ $tooltipMessage }}">
+                                                    <a href="{{ $canViewSelections ? route('transaksi.view-selections', $transaksi) : '#' }}" 
+                                                       class="text-warning {{ !$canViewSelections ? 'disabled text-muted' : '' }}" 
+                                                       style="{{ !$canViewSelections ? 'pointer-events: none;' : '' }}">
                                                         <i class="uil uil-camera-change font-size-18"></i>
                                                     </a>
-                                                @else
-                                                    {{-- This is the wrapper for the disabled tooltip --}}
-                                                    <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Photos have not been selected by the user yet">
-                                                        <a href="#" class="text-muted disabled" style="pointer-events: none;">
-                                                            <i class="uil uil-camera-change font-size-18"></i>
-                                                        </a>
-                                                    </span>
-                                                @endif
+                                                </span>
                                                 
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
 
@@ -374,12 +396,15 @@
 
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
+                                                        $selectionUrl = route('transaksi.view-select-for-edit', $transaksi);
+                                                        $shortSelectionUrl = getShortUrl($selectionUrl);
+
                                                         $waMessages = [
                                                             'Belum Foto' => "Halo kak {$transaksi->customer_name}, kami ingin mengingatkan bahwa jadwal foto anda belum terlaksana. Silakan hubungi kami untuk penjadwalan ulang. Terima kasih.",
                                                             'Pilih Foto' => "Halo kak {$transaksi->customer_name}, terima kasih telah melakukan sesi foto. Silakan pilih foto yang akan diedit melalui link di bawah ini. Login menggunakan username dan password berikut:\n\n" .
                                                                             "Username: {$transaksi->user->username}\n" .
                                                                             "Password: {$transaksi->user->username}\n\n" .
-                                                                            "Link Pemilihan Foto:\n" . route('transaksi.view-select-for-edit', $transaksi),
+                                                                            "Link Pemilihan Foto:\n" . $shortSelectionUrl, // Menggunakan URL pendek
                                                             'Selesai Editing' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai diedit. Silakan datang untuk proses pencetakan atau konfirmasi kepada kami.",
                                                             'Selesai' => "Terima kasih atas kunjungannya, kami sampaikan bahwa foto anda telah selesai dicetak. Silakan anda ambil hasil cetak anda di Yuna's Studio, Kota Sukabumi.\n\nBerikan rating terbaik anda melalui link berikut:\nhttps://share.google/hbH82FzldhrdNS53M"
                                                         ];
