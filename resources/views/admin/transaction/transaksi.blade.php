@@ -5,20 +5,6 @@
 
 @php
     use Illuminate\Support\Str;
-
-    // Helper function to shorten a URL using TinyURL API
-    function getShortUrl($url) {
-        // Use a cached value if available to avoid calling the API on every page load
-        return cache()->remember('short_url_' . md5($url), now()->addHours(24), function () use ($url) {
-            try {
-                $apiUrl = "http://tinyurl.com/api-create.php?url=" . urlencode($url);
-                $shortUrl = @file_get_contents($apiUrl);
-                return $shortUrl ?: $url; // Fallback to the original URL if API fails
-            } catch (\Exception $e) {
-                return $url; // Fallback on any error
-            }
-        });
-    }
 @endphp
 
 @section('css')
@@ -394,18 +380,14 @@
                                                     </button>
                                                 </form>
 
-                                                {{-- WhatsApp Button Logic --}}
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
-                                                        $selectionUrl = route('transaksi.view-select-for-edit', $transaksi);
-                                                        $shortSelectionUrl = getShortUrl($selectionUrl);
-
                                                         $waMessages = [
                                                             'Belum Foto' => "Halo kak {$transaksi->customer_name}, kami ingin mengingatkan bahwa jadwal foto anda belum terlaksana. Silakan hubungi kami untuk penjadwalan ulang. Terima kasih.",
                                                             'Pilih Foto' => "Halo kak {$transaksi->customer_name}, terima kasih telah melakukan sesi foto. Silakan pilih foto yang akan diedit melalui link di bawah ini. Login menggunakan username dan password berikut:\n\n" .
                                                                             "Username: {$transaksi->user->username}\n" .
                                                                             "Password: {$transaksi->user->username}\n\n" .
-                                                                            "Link Pemilihan Foto:\n" . $shortSelectionUrl, // Menggunakan URL pendek
+                                                                            "Link Pemilihan Foto:\nhttps://dashboard.yunas-studio.com/",
                                                             'Selesai Editing' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai diedit. Silakan datang untuk proses pencetakan atau konfirmasi kepada kami.",
                                                             'Selesai' => "Terima kasih atas kunjungannya, kami sampaikan bahwa foto anda telah selesai dicetak. Silakan anda ambil hasil cetak anda di Yuna's Studio, Kota Sukabumi.\n\nBerikan rating terbaik anda melalui link berikut:\nhttps://share.google/hbH82FzldhrdNS53M"
                                                         ];
