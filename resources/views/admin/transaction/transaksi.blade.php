@@ -394,6 +394,7 @@
                                                     </button>
                                                 </form>
 
+                                                {{-- WhatsApp Button Logic --}}
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
                                                         $selectionUrl = route('transaksi.view-select-for-edit', $transaksi);
