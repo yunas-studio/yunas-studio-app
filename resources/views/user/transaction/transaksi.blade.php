@@ -18,31 +18,7 @@
     .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
     .error-container { position: fixed; top: 20px; right: 20px; z-index: 1100; max-width: 400px; }
     .error-message { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s ease; }
-    .amount-container {
-        position: relative;
-        display: inline-block;
-    }
-    .amount-hidden {
-        visibility: hidden;
-        position: relative;
-    }
-    .amount-hidden::after {
-        content: '*******';
-        visibility: visible;
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-    .toggle-amount-visibility {
-        position: relative;
-        z-index: 2;
-        cursor: pointer;
-        margin-left: 20px;
-        color: #556ee6;
-    }
-    .toggle-amount-visibility:hover {
-        color: #4458b8;
-    }
+    /* Removed amount hiding styles */
 </style>
 @endsection
 
@@ -106,11 +82,8 @@
                                         @endif
                                     </td>
                                     <td class="fw-bold">
-                                        <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
-                                            <span class="amount-container" data-amount="Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}">
-                                                <span class="amount-value">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</span>
-                                                <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
-                                            </span>
+                                        
+                                            Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
                                         </a>
                                     </td>
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
