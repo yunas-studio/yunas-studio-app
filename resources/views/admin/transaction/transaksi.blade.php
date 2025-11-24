@@ -387,7 +387,7 @@
                                                             'Pilih Foto' => "Halo kak {$transaksi->customer_name}, terima kasih telah melakukan sesi foto. Silakan pilih foto yang akan diedit melalui link di bawah ini. Login menggunakan username dan password berikut:\n\n" .
                                                                             "Username: {$transaksi->user->username}\n" .
                                                                             "Password: {$transaksi->user->username}\n\n" .
-                                                                            "Link Pemilihan Foto:\nhttps://dashboard.yunas-studio.com/",
+                                                                            "Link Pemilihan Foto:\n" . route('transaksi.view-select-for-edit', $transaksi),
                                                             'Selesai Editing' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai diedit. Silakan datang untuk proses pencetakan atau konfirmasi kepada kami.",
                                                             'Selesai' => "Terima kasih atas kunjungannya, kami sampaikan bahwa foto anda telah selesai dicetak. Silakan anda ambil hasil cetak anda di Yuna's Studio, Kota Sukabumi.\n\nBerikan rating terbaik anda melalui link berikut:\nhttps://share.google/hbH82FzldhrdNS53M"
                                                         ];
@@ -458,9 +458,57 @@
                                     <table class="table table-nowrap">
                                         <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
                                         <tbody>
-                                            @if($transaksi->packet)<tr><td>1</td><td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td><td class="text-center">1</td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td></tr>@endif
-                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Included Items:</strong></td></tr>@foreach($transaksi->packet->additionalDefaults as $default)<tr><td><i class="mdi mdi-circle-small text-muted"></i></td><td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td></tr>@endforeach @endif
-                                            @if($transaksi->additionals->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Extra Items:</strong></td></tr>@foreach($transaksi->additionals as $additional)<tr><td><i class="mdi mdi-circle-small text-muted"></td><td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td><td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td><td class="text-center">{{ $additional->pivot->quantity }}</td><td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td></tr>@endforeach @endif
+                                            <!-- 1. Main Packet -->
+                                            @if($transaksi->packet)
+                                                <tr>
+                                                    <td>1</td>
+                                                    <td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                    <td class="text-center">1</td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                </tr>
+                                            @endif
+
+                                            <!-- 2. INCLUDED PRINTS -->
+                                            @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Prints:</strong></td></tr>
+                                                @foreach($transaksi->packet->printOptions as $printOption)
+                                                    <tr class="bg-light">
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td>
+                                                            <span class="text-dark">Include Cetak {{ $printOption->name }}</span>
+                                                        </td>
+                                                        <td class="text-end text-muted small">(Included)</td>
+                                                        <td class="text-center">{{ $printOption->pivot->quantity }}</td>
+                                                        <td class="text-end">-</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+
+                                            <!-- 3. Included Extras -->
+                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Extras:</strong></td></tr>
+                                                @foreach($transaksi->packet->additionalDefaults as $default)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
+
+                                            <!-- 4. Extra Items -->
+                                            @if($transaksi->additionals->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Extra Items:</strong></td></tr>
+                                                @foreach($transaksi->additionals as $additional)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></td>
+                                                        <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
+                                                        <td class="text-center">{{ $additional->pivot->quantity }}</td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
                                         </tbody>
                                     </table>
                                 </div>

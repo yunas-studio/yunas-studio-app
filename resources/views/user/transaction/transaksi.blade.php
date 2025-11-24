@@ -18,30 +18,42 @@
     .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
     .error-container { position: fixed; top: 20px; right: 20px; z-index: 1100; max-width: 400px; }
     .error-message { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s ease; }
-    .amount-container {
-        position: relative;
-        display: inline-block;
+    
+    /* --- MODIFIKASI STYLE UNTUK HARGA --- */
+    .price-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* Jarak antara teks harga dan ikon mata */
     }
+    
+    .amount-value {
+        display: inline-block;
+        position: relative;
+        min-width: 60px; /* Menjaga layout tidak bergeser drastis */
+    }
+
     .amount-hidden {
         visibility: hidden;
-        position: relative;
     }
+    
     .amount-hidden::after {
         content: '*******';
         visibility: visible;
         position: absolute;
         top: 0;
         left: 0;
+        color: #999;
+        letter-spacing: 2px;
     }
+
     .toggle-amount-visibility {
-        position: relative;
-        z-index: 2;
         cursor: pointer;
-        margin-left: 20px;
         color: #556ee6;
+        font-size: 1.2em;
+        transition: color 0.2s;
     }
     .toggle-amount-visibility:hover {
-        color: #4458b8;
+        color: #344079;
     }
 </style>
 @endsection
@@ -105,14 +117,19 @@
                                             <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                         @endif
                                     </td>
+                                    
+                                    {{-- KOLOM HARGA YANG DIPERBAIKI STRUKTUR HTML-NYA --}}
                                     <td class="fw-bold">
-                                        <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
-                                            <span class="amount-container" data-amount="Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}">
+                                        <div class="price-wrapper">
+                                            <!-- Link hanya membungkus teks harga -->
+                                            <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
                                                 <span class="amount-value">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</span>
-                                                <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
-                                            </span>
-                                        </a>
+                                            </a>
+                                            <!-- Ikon berada DI LUAR tag <a> -->
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                        </div>
                                     </td>
+
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                     <td><span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">{{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}</span></td>
                                     <td><span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">{{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}</span></td>
@@ -163,6 +180,7 @@
                                     @foreach (request()->except(['per_page', 'page']) as $key => $value)
                                         <input type="hidden" name="{{ $key }}" value="{{ is_array($value) ? http_build_query($value) : $value }}">
                                     @endforeach
+                                    
                                     <label for="per_page" class="form-label me-2 mb-0">Show:</label>
                                     <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: 70px;" onchange="this.form.submit()">
                                         @foreach($perPageOptions as $option)
@@ -198,9 +216,57 @@
                                     <table class="table table-nowrap">
                                         <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
                                         <tbody>
-                                            @if($transaksi->packet)<tr><td>1</td><td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td><td class="text-center">1</td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td></tr>@endif
-                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Included Items:</strong></td></tr>@foreach($transaksi->packet->additionalDefaults as $default)<tr><td><i class="mdi mdi-circle-small text-muted"></i></td><td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td></tr>@endforeach @endif
-                                            @if($transaksi->additionals->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Extra Items:</strong></td></tr>@foreach($transaksi->additionals as $additional)<tr><td><i class="mdi mdi-circle-small text-muted"></td><td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td><td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td><td class="text-center">{{ $additional->pivot->quantity }}</td><td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td></tr>@endforeach @endif
+                                            <!-- 1. Main Packet -->
+                                            @if($transaksi->packet)
+                                                <tr>
+                                                    <td>1</td>
+                                                    <td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                    <td class="text-center">1</td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                </tr>
+                                            @endif
+
+                                            <!-- 2. INCLUDED PRINTS -->
+                                            @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Prints:</strong></td></tr>
+                                                @foreach($transaksi->packet->printOptions as $printOption)
+                                                    <tr class="bg-light">
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td>
+                                                            <span class="text-dark">Include Cetak {{ $printOption->name }}</span>
+                                                        </td>
+                                                        <td class="text-end text-muted small">(Included)</td>
+                                                        <td class="text-center">{{ $printOption->pivot->quantity }}</td>
+                                                        <td class="text-end">-</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+
+                                            <!-- 3. Included Extras -->
+                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Extras:</strong></td></tr>
+                                                @foreach($transaksi->packet->additionalDefaults as $default)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
+
+                                            <!-- 4. Extra Items -->
+                                            @if($transaksi->additionals->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Extra Items:</strong></td></tr>
+                                                @foreach($transaksi->additionals as $additional)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></td>
+                                                        <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
+                                                        <td class="text-center">{{ $additional->pivot->quantity }}</td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
                                         </tbody>
                                     </table>
                                 </div>
@@ -233,7 +299,7 @@
                             <a href="{{ route('transaksi.download-invoice', $transaksi) }}"
                                class="btn btn-primary"
                                target="_blank">
-                                <i class="mdi mdi-file-pdf-box me-1"></i> Download PDF
+                                 <i class="mdi mdi-file-pdf-box me-1"></i> Download PDF
                             </a>
                         @endif
                     </div>
@@ -242,7 +308,6 @@
         </div>
     @endforeach
 
-    <!-- Payment Alert Modal -->
     <div class="modal fade" id="paymentAlertModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -279,20 +344,24 @@
             // Handle amount visibility toggle
             document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
                 toggle.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Prevent event bubbling
-                    const amountContainer = this.closest('.amount-container');
-                    const amountValue = amountContainer.querySelector('.amount-value');
+                    // Hentikan event bubbling agar tidak memicu trigger modal di elemen parent
+                    e.preventDefault();
+                    e.stopPropagation(); 
+
+                    // Cari container terdekat
+                    const container = this.closest('.price-wrapper');
+                    const amountValue = container.querySelector('.amount-value');
                     
                     if (amountValue.classList.contains('amount-hidden')) {
                         // Show amount
                         amountValue.classList.remove('amount-hidden');
-                        this.classList.remove('bx-hide');
-                        this.classList.add('bx-show-alt');
+                        this.classList.remove('bx-show-alt');
+                        this.classList.add('bx-hide');
                     } else {
                         // Hide amount
                         amountValue.classList.add('amount-hidden');
-                        this.classList.remove('bx-show-alt');
-                        this.classList.add('bx-hide');
+                        this.classList.remove('bx-hide');
+                        this.classList.add('bx-show-alt');
                     }
                 });
             });
@@ -301,9 +370,11 @@
             document.querySelectorAll('.amount-value').forEach(el => {
                 el.classList.add('amount-hidden');
             });
+            
+            // Set initial icon state
             document.querySelectorAll('.toggle-amount-visibility').forEach(el => {
-                el.classList.remove('bx-show-alt');
-                el.classList.add('bx-hide');
+                el.classList.add('bx-show-alt');
+                el.classList.remove('bx-hide');
             });
         });
 

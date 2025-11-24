@@ -146,6 +146,12 @@
                         <div class="mb-3">
                             <textarea class="form-control" id="note" name="note" rows="3" placeholder="Add an internal note for this transaction...">{{ old('note', $transaksi->note) }}</textarea>
                         </div>
+                        
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-pencil-outline text-primary me-1"></i> Transaction Note</h5>
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" id="url_images" name="url_images" value="{{ old('url_images', $transaksi->url_images) }}" placeholder="URL Images">
+                        </div>
                     </div>
                 </div>
             </div>

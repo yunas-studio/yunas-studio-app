@@ -24,6 +24,9 @@ class Transaksi extends Model
         'dp_amount',
         'discount',
         'note',
+        'url_images',
+        'select_edit_photo',
+        'select_print_photo',
     ];
 
     public function user()

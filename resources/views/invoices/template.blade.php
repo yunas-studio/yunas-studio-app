@@ -1,201 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice {{ $transaksi->receipt_code }}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Invoice #{{ $transaksi->receipt_code }}</title>
+
+    <!-- Invoice styling -->
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.35;
-            color: #333;
-            padding: 5mm;
-            margin: 0;
-            font-size: 12pt;
+            font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+            text-align: center;
+            color: #777;
         }
-        .invoice-container {
-            width: 100%;
-            max-width: 100%;
+
+        body h1 {
+            font-weight: 300;
+            margin-bottom: 0px;
+            padding-bottom: 0px;
+            color: #000;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 5px 0;
+
+        body h3 {
+            font-weight: 300;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: #555;
         }
-        th, td {
-            padding: 6px 8px;
+
+        body a {
+            color: #06f;
+        }
+
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+            font-size: 16px;
+            line-height: 24px;
+            font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
+            color: #555;
             text-align: left;
         }
-        th {
-            background-color: #f5f5f5;
-            font-weight: bold;
+
+        .invoice-box table {
+            width: 100%;
+            line-height: inherit;
+            text-align: left;
+            border-collapse: collapse;
         }
-        .text-right {
+
+        .invoice-box table td {
+            padding: 5px;
+            vertical-align: top;
+        }
+
+        .invoice-box table tr td:nth-child(2) {
             text-align: right;
         }
-        .text-center {
-            text-align: center;
+
+        .invoice-box table tr.top table td {
+            padding-bottom: 20px;
         }
-        .summary-container {
-            width: 100%;
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 10px;
+
+        .invoice-box table tr.top table td.title {
+            font-size: 45px;
+            line-height: 45px;
+            color: #333;
         }
-        .summary-table {
-            width: auto;
-            min-width: 250px;
-            margin-left: auto;
+
+        .invoice-box table tr.information table td {
+            padding-bottom: 40px;
         }
-        .summary-table td {
-            white-space: nowrap;
+
+        .invoice-box table tr.heading td {
+            background: #eee;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
         }
-        .no-border td {
-            border: none;
+
+        .invoice-box table tr.details td {
+            padding-bottom: 20px;
         }
-        .invoice-logo {
-            max-height: 60px;
-            margin-bottom: 10px;
+
+        .invoice-box table tr.item td {
+            border-bottom: 1px solid #eee;
         }
-        @media print {
-            body {
-                padding: 0;
-                margin: 0;
+
+        .invoice-box table tr.item.last td {
+            border-bottom: none;
+        }
+
+        .invoice-box table tr.total td:nth-child(2) {
+            border-top: 2px solid #eee;
+            font-weight: bold;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .invoice-box table tr.top table td {
+                width: 100%;
+                display: block;
+                text-align: center;
             }
-            table {
-                page-break-inside: avoid;
+
+            .invoice-box table tr.information table td {
+                width: 100%;
+                display: block;
+                text-align: center;
             }
         }
     </style>
 </head>
+
 <body>
-<div class="invoice-container">
-    <!-- Header -->
-    <table class="no-border">
-        <tr>
-            <td style="text-align: center;">
-                @if(file_exists(public_path('assets/images/yunas_dark.png')))
-                    <img src="{{ public_path('assets/images/yunas_dark.png') }}" alt="Company Logo" class="invoice-logo">
-                @endif
-                <p>Jalan Lingkar Selatan, Sukabumi</p>
-            </td>
-        </tr>
-    </table>
+    <div class="invoice-box">
+        <table cellpadding="0" cellspacing="0">
+            <tr class="top">
+                <td colspan="4">
+                    <table>
+                        <tr>
+                            <td class="title">
+                                <!-- Ganti URL logo sesuai kebutuhan, pastikan accessible oleh DomPDF -->
+                                @if(isset($company['logo']) && file_exists($company['logo']))
+                                    <img src="{{ $company['logo'] }}" style="width: 100%; max-width: 150px" />
+                                @else
+                                    <h2>Yunas Studio</h2>
+                                @endif
+                            </td>
 
-    <!-- Customer and Invoice Info -->
-    <table style="margin-bottom: 15px;">
-        <tr>
-            <td style="width: 70%; vertical-align: top;">
-                <strong>Invoice Details:</strong><br>
-                Invoice #: {{ $transaksi->receipt_code }}<br>
-                Date: {{ $transaksi->created_at->format('d M Y, H:i') }}<br>
-                Status: {{ $paymentStatusConfig[$transaksi->status] }}<br>
-                Process: {{ $processStatusConfig[$transaksi->process_status] }}
-            </td>
-            <td style="width: 30%; vertical-align: top;">
-                <strong>Billed To:</strong><br>
-                {{ $transaksi->customer_name }}<br>
-                @if($transaksi->phone_number)
-                    Phone: {{ $transaksi->phone_number }}
-                @endif
-            </td>
-        </tr>
-    </table>
-
-    <!-- Items Table -->
-    <table>
-        <thead>
-        <tr>
-            <th style="width: 5%;">No.</th>
-            <th style="width: 45%;">Item</th>
-            <th style="width: 15%;" class="text-right">Price</th>
-            <th style="width: 10%;" class="text-center">Qty</th>
-            <th style="width: 15%;" class="text-right">Total</th>
-        </tr>
-        </thead>
-        <tbody>
-        @if($transaksi->packet)
-            <tr>
-                <td>1</td>
-                <td>
-                    <strong>{{ $transaksi->packet->name }}</strong><br>
-                    {{ $transaksi->packet->product->name ?? '' }}
+                            <td>
+                                <strong>Invoice #:</strong> {{ $transaksi->receipt_code }}<br />
+                                <strong>Created:</strong> {{ $transaksi->created_at->format('d F Y') }}<br />
+                                <strong>Status:</strong> {{ strtoupper($transaksi->status) }}
+                            </td>
+                        </tr>
+                    </table>
                 </td>
-                <td class="text-right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
-                <td class="text-center">1</td>
-                <td class="text-right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
             </tr>
-        @endif
 
-        @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
-            <tr>
-                <td colspan="5"><strong>Included Items:</strong></td>
-            </tr>
-            @foreach($transaksi->packet->additionalDefaults as $default)
-                <tr>
-                    <td></td>
-                    <td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td>
-                </tr>
-            @endforeach
-        @endif
+            <tr class="information">
+                <td colspan="4">
+                    <table>
+                        <tr>
+                            <td>
+                                <strong>{{ $company['name'] ?? 'Yunas Studio' }}</strong><br />
+                                {{ $company['address'] ?? 'Jalan Lingkar Selatan' }}<br />
+                                Sukabumi, Indonesia
+                            </td>
 
-        @if($transaksi->additionals->isNotEmpty())
-            <tr>
-                <td colspan="5"><strong>Extra Items:</strong></td>
+                            <td>
+                                <strong>Billed To:</strong><br />
+                                {{ $transaksi->customer_name }}<br />
+                                {{ $transaksi->phone_number }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
             </tr>
-            @foreach($transaksi->additionals as $additional)
-                <tr>
-                    <td>{{ $loop->iteration + 1 }}</td>
-                    <td>{{ $additional->name }}</td>
-                    <td class="text-right">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
-                    <td class="text-center">{{ $additional->pivot->quantity }}</td>
-                    <td class="text-right">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
-                </tr>
-            @endforeach
-        @endif
-        </tbody>
-    </table>
 
-    <!-- Summary Table -->
-    <div class="summary-container">
-        <table class="summary-table">
-            <tr>
-                <td><strong>Subtotal</strong></td>
-                <td class="text-right">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td>
+            <tr class="heading">
+                <td style="width: 50%">Item Description</td>
+                <td style="text-align: center; width: 10%">Qty</td>
+                <td style="text-align: right; width: 20%">Price</td>
+                <td style="text-align: right; width: 20%">Total</td>
             </tr>
-            @if($transaksi->discount > 0)
-                <tr class="text-danger">
-                    <td><strong>Discount</strong></td>
-                    <td class="text-right">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td>
+
+            <!-- 1. PAKET UTAMA -->
+            <tr class="item">
+                <td>
+                    <strong>{{ $transaksi->packet->product->name ?? 'Product' }}</strong><br>
+                    <span style="color: #777; font-size: 0.9em;">Package: {{ $transaksi->packet->name }}</span>
+                </td>
+                <td style="text-align: center">1</td>
+                <td style="text-align: right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                <td style="text-align: right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+            </tr>
+
+            <!-- 2. [FIX] INCLUDED PRINTS (Cetak Bawaan Paket) -->
+            @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
+                @foreach($transaksi->packet->printOptions as $printOption)
+                <tr class="item" style="background-color: #fdfdfd;">
+                    <td style="padding-left: 25px; font-style: italic; color: #666;">
+                        <span>&bull; Include Cetak {{ $printOption->name }}</span>
+                    </td>
+                    <td style="text-align: center; color: #666;">{{ $printOption->pivot->quantity }}</td>
+                    <td style="text-align: right; color: #999; font-size: 0.85em;">(Included)</td>
+                    <td style="text-align: right; color: #999;">-</td>
                 </tr>
+                @endforeach
             @endif
-            <tr class="total-row">
-                <td><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</strong></td>
-            </tr>
-        </table>
-    </div>
 
-    @if($transaksi->note)
-        <table style="margin-top: 15px; width: 100%;">
-            <tr>
+            <!-- 3. ADDITIONAL ITEMS (Tambahan) -->
+            @foreach($transaksi->additionals as $additional)
+            <tr class="item">
                 <td>
-                    <strong>Note:</strong><br>
-                    {{ $transaksi->note }}
+                    {{ $additional->name }} <span style="font-size: 0.8em; color: #888;">(Additional)</span>
+                </td>
+                <td style="text-align: center">{{ $additional->pivot->quantity }}</td>
+                <td style="text-align: right">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
+                <td style="text-align: right">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
+            </tr>
+            @endforeach
+
+            <!-- SUBTOTAL -->
+            <tr class="total" style="border-top: 2px solid #eee;">
+                <td colspan="2"></td>
+                <td style="text-align: right; padding-top: 10px;">Subtotal:</td>
+                <td style="text-align: right; padding-top: 10px;">
+                    @php
+                        $subtotalPacket = $transaksi->packet->price;
+                        $subtotalAdditional = $transaksi->additionals->sum(function($add) {
+                            return $add->pivot->price * $add->pivot->quantity;
+                        });
+                        $grandTotalBeforeDiscount = $subtotalPacket + $subtotalAdditional;
+                    @endphp
+                    Rp {{ number_format($grandTotalBeforeDiscount, 0, ',', '.') }}
                 </td>
             </tr>
-        </table>
-    @endif
 
-    <!-- Footer -->
-    <table style="margin-top: 20px; width: 100%;" class="no-border">
-        <tr>
-            <td style="text-align: center;">
-                <p>Thank you for your business!</p>
-                <p>Invoice generated on {{ now()->format('d M Y H:i') }}</p>
-            </td>
-        </tr>
-    </table>
-</div>
+            <!-- DISCOUNT -->
+            @if($transaksi->discount > 0)
+            <tr class="total">
+                <td colspan="2"></td>
+                <td style="text-align: right; color: #d9534f;">Discount:</td>
+                <td style="text-align: right; color: #d9534f;">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td>
+            </tr>
+            @endif
+
+            <!-- GRAND TOTAL -->
+            <tr class="total">
+                <td colspan="2"></td>
+                <td style="text-align: right; font-size: 1.1em;"><strong>Total:</strong></td>
+                <td style="text-align: right; font-size: 1.1em;"><strong>Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</strong></td>
+            </tr>
+
+            <!-- DP & REMAINING -->
+            @if($transaksi->dp_amount > 0)
+            <tr class="total">
+                <td colspan="2"></td>
+                <td style="text-align: right;">DP / Paid:</td>
+                <td style="text-align: right;">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td>
+            </tr>
+            <tr class="total">
+                <td colspan="2"></td>
+                <td style="text-align: right; font-weight: bold; color: {{ ($transaksi->total_price - $transaksi->dp_amount) > 0 ? '#d9534f' : '#5cb85c' }}">Remaining:</td>
+                <td style="text-align: right; font-weight: bold; color: {{ ($transaksi->total_price - $transaksi->dp_amount) > 0 ? '#d9534f' : '#5cb85c' }}">
+                    Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}
+                </td>
+            </tr>
+            @endif
+        </table>
+
+        @if($transaksi->note)
+        <div style="margin-top: 30px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #eee; text-align: left;">
+            <strong>Note:</strong><br>
+            <i style="color: #666;">{{ $transaksi->note }}</i>
+        </div>
+        @endif
+
+        <div style="margin-top: 40px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px;">
+            Terima kasih telah mempercayakan momen spesial Anda kepada Yunas Studio.<br>
+            Harap simpan bukti pembayaran ini sebagai referensi.
+        </div>
+    </div>
 </body>
 </html>

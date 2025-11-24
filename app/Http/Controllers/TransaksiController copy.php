@@ -20,6 +20,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image;
 use ZipArchive;
 
 class TransaksiController extends Controller
@@ -175,9 +176,6 @@ class TransaksiController extends Controller
             'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'           => ['nullable', 'string'],
-            'url_images'     => ['nullable', 'string'],
-            'select_edit_photo' => ['nullable', 'string'],
-            'select_print_photo' => ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
@@ -214,9 +212,6 @@ class TransaksiController extends Controller
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
-                'url_images'      => $validatedData['url_images'] ?? null,
-                'select_edit_photo' => $validatedData['select_edit_photo'] ?? null,
-                'select_print_photo' => $validatedData['select_print_photo'] ?? null,
             ]);
 
             if (!empty($validatedData['additionals'])) {
@@ -289,9 +284,6 @@ class TransaksiController extends Controller
             'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'           => ['nullable', 'string'],
-            'url_images'     => ['nullable', 'string'],
-            'select_edit_photo' => ['nullable', 'string'],
-            'select_print_photo' => ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
@@ -328,9 +320,6 @@ class TransaksiController extends Controller
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
-                'url_images'      => $validatedData['url_images'] ?? null,
-                'select_edit_photo' => $validatedData['select_edit_photo'] ?? null,
-                'select_print_photo' => $validatedData['select_print_photo'] ?? null,
             ]);
             
             
@@ -480,14 +469,48 @@ class TransaksiController extends Controller
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
-            $transaksi->load('packet.printOptions', 'selectedPhotos', 'selectedPrints');
+            $transaksi->load('packet.printOptions', 'selectedPhotos', 'selectedPrints', 'additionals');
 
             if (!$transaksi->packet) {
                 return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
             }
 
             $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
+            
+            // 1. Ambil kuota dari Paket Utama
             $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+
+            // 2. Tambahkan kuota dari Additional (Cetak)
+            foreach ($transaksi->additionals as $additional) {
+                // Filter hanya yang mengandung kata "Cetak" atau "Print"
+                if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                    $name = $additional->name;
+                    $qty = $additional->pivot->quantity;
+
+                    // Jika nama sudah ada di daftar paket (misal: "4R"), tambahkan qty
+                    // Kita coba cari apakah ada key yang cocok sebagian
+                    $merged = false;
+                    foreach ($printAllowances as $key => $val) {
+                        // Jika nama additional (misal "Cetak 4R") mengandung nama paket ("4R")
+                        if (stripos($name, $key) !== false) {
+                            $printAllowances[$key] += $qty;
+                            $merged = true;
+                            break;
+                        }
+                    }
+
+                    // Jika tidak ada yang cocok, tambahkan sebagai entry baru
+                    if (!$merged) {
+                        // Jika key sudah ada (persis sama stringnya), tambahkan qty
+                        if (isset($printAllowances[$name])) {
+                            $printAllowances[$name] += $qty;
+                        } else {
+                            $printAllowances[$name] = $qty;
+                        }
+                    }
+                }
+            }
+
             $selectedForEdit = $transaksi->selectedPhotos->pluck('file_url')->toArray();
             $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url')->toArray();
             $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
@@ -662,7 +685,7 @@ class TransaksiController extends Controller
     {
         try {
             // Eager load the packet and its print options relationship
-            $transaksi->load('packet.printOptions');
+            $transaksi->load('packet.printOptions', 'additionals');
 
             if (!$transaksi->packet) {
                 return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
@@ -670,6 +693,31 @@ class TransaksiController extends Controller
 
             // Get the print allowances from the packet (e.g., ['8R + Frame' => 2, '4R' => 5])
             $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+
+            // 2. Tambahkan kuota dari Additional (Cetak) - LOGIKA SAMA DENGAN VIEW SELECT FOR EDIT
+            foreach ($transaksi->additionals as $additional) {
+                if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                    $name = $additional->name;
+                    $qty = $additional->pivot->quantity;
+
+                    $merged = false;
+                    foreach ($printAllowances as $key => $val) {
+                        if (stripos($name, $key) !== false) {
+                            $printAllowances[$key] += $qty;
+                            $merged = true;
+                            break;
+                        }
+                    }
+
+                    if (!$merged) {
+                        if (isset($printAllowances[$name])) {
+                            $printAllowances[$name] += $qty;
+                        } else {
+                            $printAllowances[$name] = $qty;
+                        }
+                    }
+                }
+            }
 
             // Get photos available for printing
             $rawPhotos = $this->getPhotoDirectoryData($transaksi, 'RAW');
@@ -701,8 +749,32 @@ class TransaksiController extends Controller
         $selections = $request->input('selected_photos', []);
 
         // --- NEW: Validation against allowances ---
-        $transaksi->load('packet.printOptions');
+        $transaksi->load('packet.printOptions', 'additionals');
         $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
+
+        // RE-CALCULATE ALLOWANCES (SAME LOGIC AS VIEW)
+        foreach ($transaksi->additionals as $additional) {
+            if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                $name = $additional->name;
+                $qty = $additional->pivot->quantity;
+                $merged = false;
+                foreach ($printAllowances as $key => $val) {
+                    if (stripos($name, $key) !== false) {
+                        $printAllowances[$key] += $qty;
+                        $merged = true;
+                        break;
+                    }
+                }
+                if (!$merged) {
+                    if (isset($printAllowances[$name])) {
+                        $printAllowances[$name] += $qty;
+                    } else {
+                        $printAllowances[$name] = $qty;
+                    }
+                }
+            }
+        }
+
         $selectionCounts = array_count_values(array_filter($selections));
 
         foreach ($selectionCounts as $size => $count) {
@@ -759,10 +831,16 @@ class TransaksiController extends Controller
     protected function getPhotoDirectoryData($transaksi, $status)
     {
         $folderName = $this->getTransactionFolderName($transaksi);
-        $relativePath = "{$folderName}/{$status}";
+        
+        // Path folder ASLI (Source)
+        $sourceRelativePath = "{$folderName}/{$status}";
+        
+        // Path folder THUMBNAIL (Target)
+        // Pastikan huruf besar/kecil sesuai dengan folder yang dibuat Command
+        $thumbRelativePath = "{$folderName}/Thumbnails/{$status}";
 
-        // If the folder doesn't exist, it's not an error, it's just empty.
-        if (!Storage::disk('public')->exists($relativePath)) {
+        // Cek keberadaan folder asli
+        if (!Storage::disk('public')->exists($sourceRelativePath)) {
             return [
                 'folderName' => $folderName,
                 'urls' => [],
@@ -770,14 +848,14 @@ class TransaksiController extends Controller
             ];
         }
         
-        $files = Storage::disk('public')->files($relativePath);
+        $files = Storage::disk('public')->files($sourceRelativePath);
 
+        // Filter hanya file gambar
         $photoFiles = array_filter($files, function($file) {
             $extension = pathinfo($file, PATHINFO_EXTENSION);
             return in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
         });
 
-        // If the folder exists but is empty of valid photos, also not an error.
         if (empty($photoFiles)) {
             return [
                 'folderName' => $folderName,
@@ -786,8 +864,44 @@ class TransaksiController extends Controller
             ];
         }
 
-        $photoUrls = array_map(function($file) {
-            return asset('storage/' . $file);
+        // LOGIKA UTAMA: Pilih Thumbnail jika ada, atau GENERATE jika belum ada
+        $photoUrls = array_map(function($file) use ($thumbRelativePath, $folderName, $status) {
+            $filename = basename($file);
+            $thumbnailFile = $thumbRelativePath . '/' . $filename;
+            
+            // 1. Cek apakah Thumbnail sudah ada?
+            if (Storage::disk('public')->exists($thumbnailFile)) {
+                return asset('storage/' . $thumbnailFile);
+            } 
+            
+            // 2. Jika belum ada, coba GENERATE ON-THE-FLY
+            try {
+                // Pastikan folder tujuan ada
+                $fullThumbPath = storage_path('app/public/' . $thumbnailFile);
+                $thumbDir = dirname($fullThumbPath);
+                
+                if (!File::exists($thumbDir)) {
+                    File::makeDirectory($thumbDir, 0755, true);
+                }
+
+                // Ambil file asli (absolute path)
+                $realPath = storage_path('app/public/' . $file);
+
+                // Generate Thumbnail (Resize 400px)
+                // Menggunakan Intervention Image
+                Image::make($realPath)
+                    ->resize(400, null, function ($constraint) {
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    })
+                    ->save($fullThumbPath, 60); // Quality 60
+
+                return asset('storage/' . $thumbnailFile);
+
+            } catch (\Exception $e) {
+                // 3. Fallback: Jika gagal generate (misal error memory), gunakan URL Asli
+                return asset('storage/' . $folderName . '/' . $status . '/' . $filename);
+            }
         }, $photoFiles);
 
         return [
@@ -933,8 +1047,9 @@ class TransaksiController extends Controller
             }
 
             foreach ($files as $file) {
-                $contents = Storage::disk('public')->get($file);
-                $zip->addFromString(basename($file), $contents);
+                // Use addFile to stream file content directly into zip without loading into memory
+                $absolutePath = Storage::disk('public')->path($file);
+                $zip->addFile($absolutePath, basename($file));
             }
             
             $zip->close();
@@ -979,8 +1094,9 @@ class TransaksiController extends Controller
                 $filePath = str_replace(asset('storage/'), '', $photo->file_url);
                 
                 if (Storage::disk('public')->exists($filePath)) {
-                    $contents = Storage::disk('public')->get($filePath);
-                    $zip->addFromString(basename($filePath), $contents);
+                    // Use addFile to avoid memory exhaustion
+                    $absolutePath = Storage::disk('public')->path($filePath);
+                    $zip->addFile($absolutePath, basename($filePath));
                 }
             }
             
@@ -1084,8 +1200,9 @@ class TransaksiController extends Controller
             }
 
             foreach ($files as $file) {
-                $contents = Storage::disk('public')->get($file);
-                $zip->addFromString(basename($file), $contents);
+                // Use addFile instead of addFromString to be memory efficient
+                $absolutePath = Storage::disk('public')->path($file);
+                $zip->addFile($absolutePath, basename($file));
             }
             
             $zip->close();
