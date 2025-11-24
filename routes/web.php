@@ -61,7 +61,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
         Route::get('/select-for-edit', [TransaksiController::class, 'viewSelectForEdit'])->name('view-select-for-edit');
-        Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEdit'])->name('handle-select-for-edit');
+        Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEditUser'])->name('handle-select-for-edit');
         Route::get('/select-for-print', [TransaksiController::class, 'viewSelectForPrint'])->name('view-select-for-print');
         Route::post('/handle-select-for-print', [TransaksiController::class, 'handleSelectForPrint'])->name('handle-select-for-print');
         Route::get('/result-photos', [TransaksiController::class, 'viewResultPhotos'])->name('view-result-photos');

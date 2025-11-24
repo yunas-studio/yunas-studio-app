@@ -1,5 +1,5 @@
-@extends('layouts.app')
-
+@extends('layouts.master')
+@section('title', 'Photo Gallery')
 @section('content')
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -10,61 +10,34 @@
                 </div>
                 <div class="card-body">
                     {{-- Menampilkan foto yang sudah diupload --}}
-                    @if($transaction->photos && $transaction->photos->count() > 0)
-                        <div class="mb-4">
-                            <h5>Foto yang Sudah Diupload:</h5>
-                            <div class="list-group">
-                                @foreach($transaction->photos as $photo)
-                                    <a href="{{ $photo->url_images }}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center">
-                                        <i class="fas fa-image me-2"></i>
-                                        {{-- Menampilkan nama file dari URL --}}
-                                        {{ basename(parse_url($photo->url_images, PHP_URL_PATH)) }}
-                                        <i class="fas fa-external-link-alt ms-auto text-muted small"></i>
-                                    </a>
-                                @endforeach
-                            </div>
+                    <div class="mb-4">
+                        <h5>Foto yang Sudah Diupload:</h5>
+                        <div>
+                            <a href="{{ $transaksi->url_images }}" target="_blank">
+                                <i class="fas fa-image me-2"></i>
+                                {{ $transaksi->url_images }}
+                                <i class="fas fa-external-link-alt ms-auto text-muted small"></i>
+                            </a>
                         </div>
-                        <hr>
-                    @endif
+                    </div>
+                    <hr>
 
                     <p class="card-text">Silakan pilih foto yang ingin Anda sertakan dalam paket ini.</p>
 
-                    {{-- Ganti 'transaction.photos.upload' dengan nama route yang sesuai --}}
-                    <form action="{{ route('transaction.photos.upload', ['transaction' => $transaction->id]) }}" method="POST" enctype="multipart/form-data">
+                    {{-- Form untuk upload foto baru dan memilih foto untuk diedit/dicetak --}}
+                    <form action="{{ route('transaksi.handle-select-for-edit', ['transaksi' => $transaksi->transaction_id]) }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
                         <div class="mb-3">
-                            <label for="photos" class="form-label">Upload File Foto Baru</label>
-                            <input
-                                type="file"
-                                class="form-control @error('photos.*') is-invalid @enderror @error('photos') is-invalid @enderror"
-                                id="photos"
-                                name="photos[]"
-                                multiple
-                                accept="image/jpeg,image/png,image/jpg"
-                            >
-                            <div class="form-text">Anda dapat memilih lebih dari satu file. Format yang didukung: JPG, PNG.</div>
-
-                            @error('photos')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            @error('photos.*')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <label for="select_edit_photo" class="form-label">Pilihan Foto untuk Diedit</label>
+                            <textarea class="form-control" id="select_edit_photo" name="select_edit_photo" rows="3" placeholder="Tuliskan nama file foto yang ingin diedit, pisahkan dengan koma. Contoh: IMG_001.jpg, IMG_002.jpg">{{ old('select_edit_photo', $transaksi->select_edit_photo) }}</textarea>
+                            <div class="form-text">Isi jika ada permintaan edit foto tambahan.</div>
                         </div>
-
-                        {{-- Bagian ini akan tampil jika transaksi memiliki opsi cetak tambahan --}}
-                        {{-- Ganti 'has_additional_print' dengan kondisi yang sesuai dari data transaksi Anda --}}
-                        @if($transaction->has_additional_print)
+                        {{-- Tampilkan field ini jika transaksi memiliki opsi cetak/edit tambahan --}}
+                        @if($transaksi->hasPrintableItems())
                             <div class="mb-3">
-                                <label for="edit_photo_selection" class="form-label">Pilihan Foto untuk Diedit</label>
-                                <textarea class="form-control" id="edit_photo_selection" name="edit_photo_selection" rows="3" placeholder="Tuliskan nama file foto yang ingin diedit, pisahkan dengan koma. Contoh: IMG_001.jpg, IMG_002.jpg">{{ old('edit_photo_selection', $transaction->edit_photo_selection) }}</textarea>
-                                <div class="form-text">Isi jika ada permintaan edit foto tambahan.</div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="print_photo_selection" class="form-label">Pilihan Foto untuk Dicetak</label>
-                                <textarea class="form-control" id="print_photo_selection" name="print_photo_selection" rows="3" placeholder="Tuliskan nama file foto yang ingin dicetak, pisahkan dengan koma. Contoh: IMG_003.jpg, IMG_004.jpg">{{ old('print_photo_selection', $transaction->print_photo_selection) }}</textarea>
+                                <label for="select_print_photo" class="form-label">Pilihan Foto untuk Dicetak</label>
+                                <textarea class="form-control" id="select_print_photo" name="select_print_photo" rows="3" placeholder="Tuliskan nama file foto yang ingin dicetak, pisahkan dengan koma. Contoh: IMG_003.jpg, IMG_004.jpg">{{ old('select_print_photo', $transaksi->select_print_photo) }}</textarea>
                                 <div class="form-text">Isi jika ada permintaan cetak foto tambahan.</div>
                             </div>
                         @endif

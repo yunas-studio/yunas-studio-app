@@ -480,31 +480,41 @@ class TransaksiController extends Controller
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
-            $transaksi->load('packet.printOptions', 'selectedPhotos', 'selectedPrints');
+            $transaksi->load('packet.printOptions');
 
             if (!$transaksi->packet) {
                 return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
             }
-
-            $photoData = $this->getPhotoDirectoryData($transaksi, 'RAW');
-            $printAllowances = $transaksi->packet->printOptions->pluck('pivot.quantity', 'name')->toArray();
-            $selectedForEdit = $transaksi->selectedPhotos->pluck('file_url')->toArray();
-            $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url')->toArray();
-            $photoLimit = $transaksi->packet->max_photos_for_edit ?? 10;
-
-            return view('user.transaction.manage-photo', [
+            return view('user.transaction.select-photo', [
                 'transaksi'        => $transaksi,
-                'photoUrls'        => $photoData['urls'],
-                'photoCount'       => $photoData['count'],
-                'photoLimit'       => $photoLimit,
-                'printAllowances'  => $printAllowances,
-                'selectedForEdit'  => $selectedForEdit,
-                'selectedForPrint' => $selectedForPrint,
-                'formAction'       => route('transaksi.handle-select-for-edit', $transaksi),
             ]);
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function handleSelectForEditUser(Request $request, Transaksi $transaksi)
+    {
+            // This method is deprecated in favor of handleSelectForEdit
+            $transaksi = Transaksi::with('user')->findOrFail($transaksi->transaction_id);
+
+        $validatedData = $request->validate([
+            'select_edit_photo' => ['nullable', 'string'],
+            'select_print_photo' => ['nullable', 'string'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $transaksi->update([
+                'select_edit_photo' => $validatedData['select_edit_photo'] ?? null,
+                'select_print_photo' => $validatedData['select_print_photo'] ?? null,
+            ]);
+            DB::commit();
+            return redirect()->route('transaksi.index')->with('success', 'Transaction updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to update transaction: ' . $e->getMessage());
         }
     }
 
@@ -851,35 +861,11 @@ class TransaksiController extends Controller
     public function viewSelectionsForAdmin(Transaksi $transaksi, Request $request)
     {
         try {
-            // This method also now works correctly
-            $filter = $request->get('filter', 'raw');
-            $currentFilter = '';
-            switch (strtolower($filter)) {
-                case "result":
-                    $currentFilter = "Result";
-                    break;
-                case "pilih_cetak":
-                    $currentFilter = "Pilih Cetak";
-                    break;
-                case "pilih_edit":
-                    $currentFilter = "Pilih Edit";
-                    break;
-                default:
-                    $currentFilter = "RAW";
-                    break;
-            }
-
-            $photoData = $this->getPhotoDirectoryData($transaksi, $currentFilter);
-            $selectedUrls = $transaksi->selectedPhotos->pluck('file_url')->toArray();
-            $selectedForPrint = $transaksi->selectedPrints->pluck('print_size', 'file_url');
-
+            $rawString = $transaksi->select_edit_photo;
             return view('admin.transaction.view-selections', [
                 'transaksi' => $transaksi,
-                'photoUrls' => $photoData['urls'],
-                'photoCount' => $photoData['count'],
-                'currentFilter' => $currentFilter,
-                'selectedUrls' => $selectedUrls,
-                'selectedForPrint' => $selectedForPrint,
+                'selectedPhotos' => $transaksi->select_edit_photo && $transaksi->select_edit_photo.trim() ? explode(',', $transaksi->select_edit_photo) : [],
+                'selectedPrints' => $transaksi->select_print_photo && $transaksi->select_print_photo.trim() ? explode(',', $transaksi->select_print_photo) : [],
             ]);
 
         } catch (\Exception $e) {
