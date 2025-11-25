@@ -47,7 +47,7 @@
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="phone_number">Phone Number</label>
-                                    <input type="text" class="form-control form-control-sm" id="phone_number" name="phone_number" value="{{ old('phone_number') }}">
+                                    <input type="text" class="form-control form-control-sm" id="phone_number" name="phone_number" value="{{ old('phone_number') }}" required>
                                 </div>
                             </div>
                             <div class="col-md-5">

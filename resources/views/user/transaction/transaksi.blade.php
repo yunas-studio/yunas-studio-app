@@ -60,7 +60,7 @@
 
 @php
     $paymentStatusConfig = ['belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],];
-    $processStatusConfig = ['Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
+    $processStatusConfig = ['Pelanggan Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pelanggan Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit dan Cetak' => ['icon' => '✏️🖨️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit dan Cetak' => ['icon' => '⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
 @endphp
 
 @section('content')
@@ -118,14 +118,12 @@
                                         @endif
                                     </td>
                                     
-                                    {{-- KOLOM HARGA YANG DIPERBAIKI STRUKTUR HTML-NYA --}}
+                                    {{-- KOLOM HARGA --}}
                                     <td class="fw-bold">
                                         <div class="price-wrapper">
-                                            <!-- Link hanya membungkus teks harga -->
                                             <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
                                                 <span class="amount-value">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</span>
                                             </a>
-                                            <!-- Ikon berada DI LUAR tag <a> -->
                                             <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
                                         </div>
                                     </td>
@@ -136,30 +134,21 @@
                                     <td><button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button></td>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
-                                            @if (in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit']))
-                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="Select photos for editing and printing">
+                                            {{-- Link ke Galeri Foto External --}}
+                                            @if($transaksi->url_images && !in_array($transaksi->process_status, ['Pelanggan Belum Foto', 'Pelanggan Pilih Foto']))
+                                                <a href="{{ $transaksi->url_images }}" target="_blank" class="text-info" data-bs-toggle="tooltip" title="Lihat Galeri Foto">
+                                                    <i class="uil uil-image-search font-size-18"></i>
+                                                </a>
+                                            @endif
+
+                                            {{-- Link Pilih Foto --}}
+                                            @if (in_array($transaksi->process_status, ['Pelanggan Pilih Foto', 'Siap Edit dan Cetak']))
+                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="Pilih foto untuk diedit/dicetak">
                                                     <i class="uil uil-edit-alt font-size-18"></i>
                                                 </a>
                                             @endif
                                             
-                                            @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
-                                                @if ($transaksi->status === 'sudah dibayar')
-                                                    <a href="{{ route('transaksi.view-result-photos', $transaksi) }}" class="text-success" data-bs-toggle="tooltip" title="View and download your final photos">
-                                                        <i class="uil uil-camera font-size-18"></i>
-                                                    </a>
-                                                @else
-                                                    @php
-                                                        $remaining = $transaksi->total_price - ($transaksi->dp_amount ?? 0);
-                                                    @endphp
-                                                    <a href="javascript:void(0);" 
-                                                       class="text-muted" 
-                                                       data-bs-toggle="tooltip" 
-                                                       title="Please complete your payment to view final photos" 
-                                                       onclick="showPaymentAlertModal('Rp {{ number_format($remaining, 0, ',', '.') }}')">
-                                                        <i class="uil uil-camera font-size-18"></i>
-                                                    </a>
-                                                @endif
-                                            @endif
+                                            {{-- FITUR LIHAT HASIL FOTO DIHAPUS DARI SINI --}}
                                         </div>
                                     </td>
                                 </tr>
@@ -295,38 +284,12 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        @if($transaksi->status == "sudah dibayar")
-                            <a href="{{ route('transaksi.download-invoice', $transaksi) }}"
-                               class="btn btn-primary"
-                               target="_blank">
-                                 <i class="mdi mdi-file-pdf-box me-1"></i> Download PDF
-                            </a>
-                        @endif
                     </div>
                 </div>
             </div>
         </div>
     @endforeach
 
-    <div class="modal fade" id="paymentAlertModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="paymentAlertModalLabel">Payment Required</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center">
-                        <i class="bx bx-lock-alt bx-lg text-warning mb-2"></i>
-                        <p id="alertModalBody"></p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('script')
@@ -335,11 +298,7 @@
             $('[data-bs-toggle="tooltip"]').tooltip();
         });
 
-        let paymentAlertModal;
         document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('paymentAlertModal')) {
-                paymentAlertModal = new bootstrap.Modal(document.getElementById('paymentAlertModal'));
-            }
             
             // Handle amount visibility toggle
             document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
@@ -377,15 +336,5 @@
                 el.classList.remove('bx-hide');
             });
         });
-
-        function showPaymentAlertModal(remainingAmount) {
-            const modalBody = document.getElementById('alertModalBody');
-            if (modalBody) {
-                modalBody.textContent = `You must complete your remaining payment of ${remainingAmount} to access your final photos. Please contact us to complete your payment.`;
-            }
-            if (paymentAlertModal) {
-                paymentAlertModal.show();
-            }
-        }
     </script>
 @endsection

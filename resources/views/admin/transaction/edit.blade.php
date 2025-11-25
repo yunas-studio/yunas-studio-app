@@ -1,4 +1,5 @@
 @extends('layouts.master')
+
 @section('title')
     Edit Transaction
 @endsection
@@ -22,6 +23,20 @@
     @component('common-components.breadcrumb', ['title' => 'Transaksi', 'pagetitle' => 'Transactions', 'breadcrumbs' => [['text' => 'Transactions', 'url' => route('transaksi.index')], ['text' => 'Edit Transaction', 'url' => '']]])
     @endcomponent
 
+    {{-- Tampilkan Error Validasi Global jika ada --}}
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="mdi mdi-block-helper me-2"></i>
+            <strong>Terjadi Kesalahan!</strong> Silakan periksa inputan Anda.
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('transaksi.update', $transaksi->transaction_id) }}">
         @csrf
         @method('PUT')
@@ -36,13 +51,19 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="customer_name">Customer Name</label>
-                                    <input type="text" class="form-control form-control-sm" id="customer_name" name="customer_name" value="{{ old('customer_name', $transaksi->customer_name) }}" required>
+                                    <input type="text" class="form-control form-control-sm @error('customer_name') is-invalid @enderror" id="customer_name" name="customer_name" value="{{ old('customer_name', $transaksi->customer_name) }}" required>
+                                    @error('customer_name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="phone_number">Phone Number</label>
-                                    <input type="text" class="form-control form-control-sm" id="phone_number" name="phone_number" value="{{ old('phone_number', $transaksi->phone_number) }}">
+                                    <input type="text" class="form-control form-control-sm @error('phone_number') is-invalid @enderror" id="phone_number" name="phone_number" value="{{ old('phone_number', $transaksi->phone_number) }}">
+                                    @error('phone_number')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="col-md-5">
@@ -56,6 +77,9 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                    @error('status')
+                                        <div class="text-danger small">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                             <div class="col-md-5" id="dp-amount-container" style="display: none;">
@@ -88,6 +112,9 @@
                                     <select class="form-select @error('packet_id') is-invalid @enderror" id="packet_id" name="packet_id" required>
                                         <option value="" data-price="0" disabled selected>-- Select a Packet --</option>
                                     </select>
+                                    @error('packet_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -96,18 +123,39 @@
                             <div class="col-md-8">
                                 <div class="mb-3">
                                     <label for="process_status" class="form-label">Process Status</label>
-                                    <select class="form-select" id="process_status" name="process_status" required>
-                                        @foreach (['Belum Foto', 'Pilih Foto', 'Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai'] as $status)
+                                    <select class="form-select @error('process_status') is-invalid @enderror" id="process_status" name="process_status" required>
+                                        {{-- UPDATE STATUS LIST SESUAI CONTROLLER --}}
+                                        @foreach ([
+                                            'Pelanggan Belum Foto', 
+                                            'Pelanggan Pilih Foto', 
+                                            'Siap Edit dan Cetak', 
+                                            'Proses Edit dan Cetak', 
+                                            'Selesai'
+                                        ] as $status)
                                             @php
-                                                $isPrintStatus = in_array($status, ['Siap Cetak', 'Proses Cetak']);
+                                                $isPrintStatus = in_array($status, ['Siap Edit dan Cetak', 'Proses Edit dan Cetak']);
+                                                
+                                                // Cek apakah ada URL
+                                                $hasUrl = !empty($transaksi->url_images);
+                                                // Status selain 'Pelanggan Belum Foto' butuh URL
+                                                $statusNeedsUrl = $status !== 'Pelanggan Belum Foto';
+                                                
+                                                // Disabled logic: Jika butuh print tapi ga ada item print OR butuh URL tapi ga ada URL
+                                                $disabled = ($isPrintStatus && !$canPrint) || ($statusNeedsUrl && !$hasUrl);
                                             @endphp
                                             <option value="{{ $status }}" 
                                                 {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}
-                                                {{ $isPrintStatus && !$canPrint ? 'disabled' : '' }}>
-                                                {{ $status }} {{ $isPrintStatus && !$canPrint ? '(No printable items)' : '' }}
+                                                {{ $disabled ? 'disabled' : '' }}>
+                                                {{ $status }} {{ ($statusNeedsUrl && !$hasUrl) ? '(Isi URL dulu)' : (($isPrintStatus && !$canPrint) ? '(No Prints)' : '') }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    @error('process_status')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="text-danger small mt-1" id="process-status-warning" style="display: none;">
+                                        Status terkunci. Harap isi URL Photos terlebih dahulu.
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -148,9 +196,12 @@
                         </div>
                         
                         <hr>
-                        <h5 class="section-title"><i class="mdi mdi-pencil-outline text-primary me-1"></i> Transaction Note</h5>
+                        <h5 class="section-title"><i class="mdi mdi-image-multiple text-primary me-1"></i> URL Photos</h5>
                         <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm" id="url_images" name="url_images" value="{{ old('url_images', $transaksi->url_images) }}" placeholder="URL Images">
+                            <input type="url" class="form-control form-control-sm @error('url_images') is-invalid @enderror" id="url_images" name="url_images" value="{{ old('url_images', $transaksi->url_images) }}" placeholder="https://...">
+                            @error('url_images')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -197,6 +248,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusRadios = document.querySelectorAll('.payment-status-radio');
     const dpAmountContainer = document.getElementById('dp-amount-container');
     const dpAmountInput = document.getElementById('dp_amount');
+    const urlInput = document.getElementById('url_images');
+    const processSelect = document.getElementById('process_status');
+    const warningText = document.getElementById('process-status-warning');
+    const canPrint = @json($canPrint); // Value from backend
 
     const summary = {
         packetEl: document.getElementById('summary-packet-price'),
@@ -301,6 +356,41 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => includedContainer.innerHTML = '<p class="text-danger">Could not load included items.</p>');
     }
 
+    // --- LOGIC BARU: Toggle Status Dropdown berdasarkan URL ---
+    function checkUrlStatus() {
+        const hasUrl = urlInput.value.trim() !== '';
+        const options = processSelect.options;
+
+        // Jika URL kosong
+        if (!hasUrl) {
+            warningText.style.display = 'block'; // Tampilkan pesan peringatan
+            
+            for (let i = 0; i < options.length; i++) {
+                // Disable semua pilihan KECUALI 'Pelanggan Belum Foto'
+                // UPDATE: Sesuaikan dengan nama status baru di database
+                if (options[i].value !== 'Pelanggan Belum Foto') {
+                    options[i].disabled = true;
+                } else {
+                    options[i].disabled = false;
+                }
+            }
+
+            // Jika status yang terpilih saat ini BUKAN 'Pelanggan Belum Foto', force change visual (opsional)
+            // Tapi biarkan user tau dia harus isi URL dulu
+        } 
+        // Jika URL terisi
+        else {
+            warningText.style.display = 'none'; // Sembunyikan pesan peringatan
+
+            for (let i = 0; i < options.length; i++) {
+                options[i].disabled = false;
+            }
+        }
+    }
+
+    // Event Listener untuk input URL
+    urlInput.addEventListener('input', checkUrlStatus);
+
     productSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const productName = selectedOption ? selectedOption.dataset.productName : null;
@@ -378,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         toggleDpField();
         fetchAndDisplayDefaults(); // This will also trigger updateSummary
+        checkUrlStatus(); // Jalankan cek status URL saat inisialisasi halaman
     }
 
     initializeEditForm();

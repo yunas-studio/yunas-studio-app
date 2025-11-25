@@ -8,6 +8,7 @@
 @endphp
 
 @section('css')
+{{-- CSS Section --}}
 <style>
     .invoice-modal .modal-dialog { max-width: 800px; }
     .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
@@ -25,7 +26,7 @@
         cursor: pointer;
         transition: transform 0.2s;
         display: block;
-        color: inherit; /* Ensures text color is inherited from parent */
+        color: inherit; 
     }
     .clickable-card:hover {
         transform: scale(1.03);
@@ -289,8 +290,20 @@
                             </thead>
                             <tbody>
                                 @php
-                                    $paymentStatusConfig = ['belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],];
-                                    $processStatusConfig = ['Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
+                                    $paymentStatusConfig = [
+                                        'belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],
+                                        'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
+                                        'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
+                                    ];
+                                    
+                                    // KONFIGURASI STATUS BARU
+                                    $processStatusConfig = [
+                                        'Pelanggan Belum Foto' => ['icon' => '📷❌', 'class' => 'bg-light text-dark'],
+                                        'Pelanggan Pilih Foto' => ['icon' => '🖼️', 'class' => 'bg-info-subtle text-info-emphasis'],
+                                        'Siap Edit dan Cetak' => ['icon' => '✏️🖨️', 'class' => 'bg-primary-subtle text-primary-emphasis'],
+                                        'Proses Edit dan Cetak' => ['icon' => '⚙️', 'class' => 'bg-warning-subtle text-warning-emphasis'],
+                                        'Selesai' => ['icon' => '✅', 'class' => 'bg-success-subtle text-success-emphasis']
+                                    ];
                                 @endphp
                                 @forelse($transactions as $transaksi)
                                     <tr data-process-status="{{ $transaksi->process_status }}" data-payment-status="{{ $transaksi->status }}">
@@ -326,13 +339,16 @@
                                                 <select name="value" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
                                                      @foreach ($processStatusConfig as $status => $config)
                                                         @php
-                                                            $isPrintStatus = in_array($status, ['Siap Cetak', 'Proses Cetak']);
-                                                            $canPrint = $transaksi->hasPrintableItems();
+                                                            // Logic baru untuk URL Check
+                                                            $hasUrl = !empty($transaksi->url_images);
+                                                            // Jika status bukan 'Pelanggan Belum Foto', wajib ada URL
+                                                            $statusNeedsUrl = $status !== 'Pelanggan Belum Foto';
+                                                            $disabled = ($statusNeedsUrl && !$hasUrl);
                                                         @endphp
                                                          <option value="{{ $status }}" 
                                                             {{ $transaksi->process_status == $status ? 'selected' : '' }}
-                                                            {{ $isPrintStatus && !$canPrint ? 'disabled' : '' }}>
-                                                             {{ $config['icon'] }} {{ $status }}
+                                                            {{ $disabled ? 'disabled' : '' }}>
+                                                             {{ $config['icon'] }} {{ $status }} {{ ($statusNeedsUrl && !$hasUrl) ? '(URL Empty)' : '' }}
                                                          </option>
                                                      @endforeach
                                                 </select>
@@ -344,24 +360,32 @@
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
                                                 @php
-                                                    $canViewSelections = in_array($transaksi->process_status, ['Siap Edit', 'Proses Edit', 'Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']);
-                                                    $folderName = $transaksi->customer_name . "_" . str_replace('/', '_', $transaksi->receipt_code);
-                                                    $photosExist = isset($allPhotoDirs[$folderName]);
+                                                    $canViewSelections = in_array($transaksi->process_status, ['Siap Edit dan Cetak', 'Proses Edit dan Cetak', 'Selesai']);
                                                     
-                                                    $tooltipMessage = "View User's Photo Selections"; // Default message
-                                                    if (!$canViewSelections) {
-                                                        if (!$photosExist) {
-                                                            $tooltipMessage = 'RAW photos have not been uploaded to the folder yet.';
-                                                        } else {
-                                                            $tooltipMessage = 'Photos have not been selected by the user yet.';
-                                                        }
+                                                    $tooltipMessage = "View Selections"; 
+                                                    $isDisabledIcon = false;
+                                                    
+                                                    // Prioritas 1: URL Kosong (Admin wajib isi URL dulu)
+                                                    if (empty($transaksi->url_images)) {
+                                                        $tooltipMessage = "Photo URL missing. Please edit transaction and add gallery link.";
+                                                        $isDisabledIcon = true;
+                                                    }
+                                                    // Prioritas 2: Status masih 'Belum Foto'
+                                                    elseif ($transaksi->process_status === 'Pelanggan Belum Foto') {
+                                                        $tooltipMessage = "Photo session not done yet. Please Contact the Customer";
+                                                        $isDisabledIcon = true;
+                                                    }
+                                                    // Prioritas 3: User belum memilih foto
+                                                    elseif (!$canViewSelections) {
+                                                        $tooltipMessage = "Waiting for user selection. You can notify the Customer by sending the chat";
+                                                        $isDisabledIcon = true;
                                                     }
                                                 @endphp
                                                 
                                                 <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="{{ $tooltipMessage }}">
                                                     <a href="{{ $canViewSelections ? route('transaksi.view-selections', $transaksi) : '#' }}" 
-                                                       class="text-warning {{ !$canViewSelections ? 'disabled text-muted' : '' }}" 
-                                                       style="{{ !$canViewSelections ? 'pointer-events: none;' : '' }}">
+                                                       class="text-warning {{ $isDisabledIcon ? 'disabled text-muted' : '' }}" 
+                                                       style="{{ $isDisabledIcon ? 'pointer-events: none;' : '' }}">
                                                         <i class="uil uil-camera-change font-size-18"></i>
                                                     </a>
                                                 </span>
@@ -382,14 +406,11 @@
 
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
+                                                        // Update Pesan WA sesuai Status Baru
                                                         $waMessages = [
-                                                            'Belum Foto' => "Halo kak {$transaksi->customer_name}, kami ingin mengingatkan bahwa jadwal foto anda belum terlaksana. Silakan hubungi kami untuk penjadwalan ulang. Terima kasih.",
-                                                            'Pilih Foto' => "Halo kak {$transaksi->customer_name}, terima kasih telah melakukan sesi foto. Silakan pilih foto yang akan diedit melalui link di bawah ini. Login menggunakan username dan password berikut:\n\n" .
-                                                                            "Username: {$transaksi->user->username}\n" .
-                                                                            "Password: {$transaksi->user->username}\n\n" .
-                                                                            "Link Pemilihan Foto:\n" . route('transaksi.view-select-for-edit', $transaksi),
-                                                            'Selesai Editing' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai diedit. Silakan datang untuk proses pencetakan atau konfirmasi kepada kami.",
-                                                            'Selesai' => "Terima kasih atas kunjungannya, kami sampaikan bahwa foto anda telah selesai dicetak. Silakan anda ambil hasil cetak anda di Yuna's Studio, Kota Sukabumi.\n\nBerikan rating terbaik anda melalui link berikut:\nhttps://share.google/hbH82FzldhrdNS53M"
+                                                            'Pelanggan Belum Foto' => "Halo kak {$transaksi->customer_name}, jadwal foto belum terlaksana. Hubungi kami untuk info lebih lanjut.",
+                                                            'Pelanggan Pilih Foto' => "Halo kak {$transaksi->customer_name}, silakan pilih foto untuk diedit melalui link: " . route('transaksi.view-select-for-edit', $transaksi),
+                                                            'Selesai' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai. Silakan ambil di studio."
                                                         ];
                                                         $waLink = null;
                                                         if (isset($waMessages[$transaksi->process_status])) {
@@ -444,6 +465,7 @@
         </div>
     </div>
 
+    {{-- Modal Details, Delete Confirmation, DP Amount (Scripts at bottom) --}}
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -458,7 +480,6 @@
                                     <table class="table table-nowrap">
                                         <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
                                         <tbody>
-                                            <!-- 1. Main Packet -->
                                             @if($transaksi->packet)
                                                 <tr>
                                                     <td>1</td>
@@ -468,8 +489,6 @@
                                                     <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
                                                 </tr>
                                             @endif
-
-                                            <!-- 2. INCLUDED PRINTS -->
                                             @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
                                                 <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Prints:</strong></td></tr>
                                                 @foreach($transaksi->packet->printOptions as $printOption)
@@ -484,8 +503,6 @@
                                                     </tr>
                                                 @endforeach
                                             @endif
-
-                                            <!-- 3. Included Extras -->
                                             @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
                                                 <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Extras:</strong></td></tr>
                                                 @foreach($transaksi->packet->additionalDefaults as $default)
@@ -495,8 +512,6 @@
                                                     </tr>
                                                 @endforeach 
                                             @endif
-
-                                            <!-- 4. Extra Items -->
                                             @if($transaksi->additionals->isNotEmpty())
                                                 <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Extra Items:</strong></td></tr>
                                                 @foreach($transaksi->additionals as $additional)
@@ -583,9 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let formToSubmit = null;
 
         confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-            // Get the button that triggered the modal
             const button = event.relatedTarget;
-            // Get the form ID from the data attribute
             const formId = button.getAttribute('data-form-id');
             formToSubmit = document.getElementById(formId);
         });
@@ -622,35 +635,26 @@ document.addEventListener('DOMContentLoaded', function () {
     profitToggles.forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
-
-            // Get data from clicked link
             const newAmount = parseFloat(this.dataset.amount);
             const newTitle = this.dataset.title;
-
-            // Update the card
             profitAmountEl.textContent = 'Rp ' + newAmount.toLocaleString('id-ID');
             profitTitleEl.textContent = newTitle;
-
-            // Update active class
             profitToggles.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
         });
     });
     
-    // Handle amount visibility toggle
     document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
         toggle.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent event bubbling
+            e.stopPropagation();
             const amountContainer = this.closest('.amount-container');
             const amountValue = amountContainer.querySelector('.amount-value');
             
             if (amountValue.classList.contains('amount-hidden')) {
-                // Show amount
                 amountValue.classList.remove('amount-hidden');
                 this.classList.remove('bx-hide');
                 this.classList.add('bx-show-alt');
             } else {
-                // Hide amount
                 amountValue.classList.add('amount-hidden');
                 this.classList.remove('bx-show-alt');
                 this.classList.add('bx-hide');
@@ -658,7 +662,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Initialize all amounts as hidden
     document.querySelectorAll('.amount-value').forEach(el => {
         el.classList.add('amount-hidden');
     });
@@ -666,6 +669,99 @@ document.addEventListener('DOMContentLoaded', function () {
         el.classList.remove('bx-show-alt');
         el.classList.add('bx-hide');
     });
+
+    // Hide Completed Logic
+    const toggleBtn = document.getElementById('hide-completed-btn');
+    const processStatusToHide = 'Selesai';
+    const paymentStatusToHide = 'sudah dibayar';
+
+    function updateView(isHidden) {
+        const rows = document.querySelectorAll(`tr[data-process-status]`);
+        rows.forEach(row => {
+            const isCompleted = row.dataset.processStatus === processStatusToHide && row.dataset.paymentStatus === paymentStatusToHide;
+            if (isCompleted && isHidden) {
+                row.style.display = 'none';
+            } else {
+                row.style.display = '';
+            }
+        });
+
+        if (isHidden) {
+            toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Show Completed`;
+            toggleBtn.classList.remove('btn-secondary');
+            toggleBtn.classList.add('btn-info');
+        } else {
+            toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Hide Completed`;
+            toggleBtn.classList.remove('btn-info');
+            toggleBtn.classList.add('btn-secondary');
+        }
+    }
+
+    let isCompletedHidden = localStorage.getItem('hideCompleted') === 'true';
+    updateView(isCompletedHidden);
+
+    toggleBtn.addEventListener('click', function() {
+        isCompletedHidden = !isCompletedHidden;
+        localStorage.setItem('hideCompleted', isCompletedHidden);
+        updateView(isCompletedHidden);
+    });
+
+    const profitCard = document.getElementById('profit-card-toggler');
+    if (profitCard) {
+        const titleEl = document.getElementById('profit-card-title');
+        const valueEl = document.getElementById('profit-card-value');
+        const subtitleEl = document.getElementById('profit-card-subtitle');
+
+        const filteredProfit = parseFloat(profitCard.dataset.filteredProfit);
+        const overallProfit = parseFloat(profitCard.dataset.overallProfit);
+        
+        let isShowingFiltered = true;
+
+        const formatter = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        });
+
+        profitCard.addEventListener('click', function(event) {
+            event.preventDefault(); 
+            isShowingFiltered = !isShowingFiltered;
+
+            if (isShowingFiltered) {
+                titleEl.textContent = 'Total Profit (Filtered)';
+                const amountContainer = valueEl.querySelector('.amount-container');
+                if (amountContainer) {
+                    const amountValue = amountContainer.querySelector('.amount-value');
+                    if (amountValue) {
+                        amountValue.textContent = formatter.format(filteredProfit);
+                    } else {
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                    }
+                } else {
+                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                }
+                subtitleEl.textContent = 'Click to see overall total';
+            } else {
+                titleEl.textContent = 'Total Profit (Overall)';
+                const amountContainer = valueEl.querySelector('.amount-container');
+                if (amountContainer) {
+                    const amountValue = amountContainer.querySelector('.amount-value');
+                    if (amountValue) {
+                        amountValue.textContent = formatter.format(overallProfit);
+                    } else {
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                    }
+                } else {
+                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                }
+                subtitleEl.textContent = 'Click to see filtered total';
+                const hideCompletedBtn = document.getElementById('hide-completed-btn');
+                if (hideCompletedBtn) {
+                    hideCompletedBtn.style.display = 'none';
+                }
+            }
+        });
+    }
 });
 </script>
 @endsection
@@ -697,121 +793,4 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
     </div>
 </div>
-    
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const toggleBtn = document.getElementById('hide-completed-btn');
-        const processStatusToHide = 'Selesai';
-        const paymentStatusToHide = 'sudah dibayar';
-
-        function updateView(isHidden) {
-            const rows = document.querySelectorAll(`tr[data-process-status]`);
-            
-            rows.forEach(row => {
-                const isCompleted = row.dataset.processStatus === processStatusToHide && row.dataset.paymentStatus === paymentStatusToHide;
-                if (isCompleted && isHidden) {
-                    row.style.display = 'none';
-                } else {
-                    row.style.display = '';
-                }
-            });
-
-            if (isHidden) {
-                toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Show Completed`;
-                toggleBtn.classList.remove('btn-secondary');
-                toggleBtn.classList.add('btn-info');
-            } else {
-                toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Hide Completed`;
-                toggleBtn.classList.remove('btn-info');
-                toggleBtn.classList.add('btn-secondary');
-            }
-        }
-
-        let isCompletedHidden = localStorage.getItem('hideCompleted') === 'true';
-        updateView(isCompletedHidden);
-
-        toggleBtn.addEventListener('click', function() {
-            isCompletedHidden = !isCompletedHidden;
-            localStorage.setItem('hideCompleted', isCompletedHidden);
-            updateView(isCompletedHidden);
-        });
-
-        const profitCard = document.getElementById('profit-card-toggler');
-        if (profitCard) {
-            const titleEl = document.getElementById('profit-card-title');
-            const valueEl = document.getElementById('profit-card-value');
-            const subtitleEl = document.getElementById('profit-card-subtitle');
-
-            const filteredProfit = parseFloat(profitCard.dataset.filteredProfit);
-            const overallProfit = parseFloat(profitCard.dataset.overallProfit);
-            
-            let isShowingFiltered = true;
-
-            const formatter = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            });
-
-            profitCard.addEventListener('click', function(event) {
-                event.preventDefault(); // This is the key fix for the click action
-                isShowingFiltered = !isShowingFiltered;
-
-                if (isShowingFiltered) {
-                    titleEl.textContent = 'Total Profit (Filtered)';
-                    
-                    // Preserve the eye icon when updating the value
-                    const amountContainer = valueEl.querySelector('.amount-container');
-                    if (amountContainer) {
-                        const amountValue = amountContainer.querySelector('.amount-value');
-                        if (amountValue) {
-                            amountValue.textContent = formatter.format(filteredProfit);
-                        } else {
-                            valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}">
-                                <span class="amount-value">${formatter.format(filteredProfit)}</span>
-                                <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
-                            </span>`;
-                        }
-                    } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}">
-                            <span class="amount-value">${formatter.format(filteredProfit)}</span>
-                            <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
-                        </span>`;
-                    }
-                    
-                    subtitleEl.textContent = 'Click to see overall total';
-                } else {
-                    titleEl.textContent = 'Total Profit (Overall)';
-                    
-                    // Preserve the eye icon when updating the value
-                    const amountContainer = valueEl.querySelector('.amount-container');
-                    if (amountContainer) {
-                        const amountValue = amountContainer.querySelector('.amount-value');
-                        if (amountValue) {
-                            amountValue.textContent = formatter.format(overallProfit);
-                        } else {
-                            valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}">
-                                <span class="amount-value">${formatter.format(overallProfit)}</span>
-                                <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
-                            </span>`;
-                        }
-                    } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}">
-                            <span class="amount-value">${formatter.format(overallProfit)}</span>
-                            <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
-                        </span>`;
-                    }
-                    
-                    subtitleEl.textContent = 'Click to see filtered total';
-                    
-                    // Hide the toggle button after showing overall profit
-                    const hideCompletedBtn = document.getElementById('hide-completed-btn');
-                    if (hideCompletedBtn) {
-                        hideCompletedBtn.style.display = 'none';
-                    }
-                }
-            });
-        }
-    });
-</script>
 @endsection
