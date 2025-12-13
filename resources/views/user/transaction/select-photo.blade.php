@@ -8,6 +8,7 @@
     <!-- Sweet Alert-->
     <link href="{{ URL::asset('/assets/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
     <style>
+        /* Desktop Default Styles */
         .step-icon {
             width: 50px;
             height: 50px;
@@ -34,72 +35,80 @@
             border-color: #556ee6;
             background-color: #fff;
         }
-
-        /* Styles for Tag Input */
-        .tag-container {
-            border: 1px solid #ced4da;
-            padding: 5px;
-            border-radius: 0.25rem;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            min-height: 100px;
-            background-color: #fff;
-            cursor: text;
-            transition: all 0.3s;
-        }
-        .tag-container:focus-within {
-            border-color: #556ee6;
-            box-shadow: 0 0 0 0.15rem rgba(85, 110, 230, 0.25);
-        }
-        .tag-container.limit-reached {
-            background-color: #fff5f5;
-            border-color: #f46a6a;
-            cursor: not-allowed;
-        }
-        .tag {
-            background-color: #eff2f7;
-            color: #495057;
-            padding: 5px 10px;
-            margin: 4px;
-            border-radius: 3px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            border: 1px solid #e2e5e8;
-        }
-        .tag i {
-            margin-left: 8px;
-            cursor: pointer;
-            color: #adb5bd;
-        }
-        .tag i:hover {
-            color: #f46a6a;
-        }
-        .tag-input {
-            border: none;
-            outline: none;
-            padding: 5px;
-            flex-grow: 1;
-            min-width: 150px;
-            font-size: 13px;
-            background: transparent;
-        }
         
-        /* Style untuk input print individual */
-        .print-slot-item {
+        /* Optimized Textarea for ALL devices */
+        .custom-textarea {
+            font-family: 'Courier New', Courier, monospace; /* Monospace for file names */
             background-color: #f8f9fa;
-            border: 1px solid #eff2f7;
-            border-radius: 4px;
-            transition: all 0.2s;
+            border-color: #ced4da;
+            width: 100%;
+            resize: none; /* Disable manual resize */
+            overflow: hidden; /* Hide scrollbar initially */
+            min-height: 400px; /* Default large height */
         }
-        .print-slot-item:focus-within {
+        .custom-textarea:focus {
             background-color: #fff;
             border-color: #556ee6;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: none;
         }
-        .print-slot-item input:invalid {
-            border-color: #f46a6a;
+
+        /* Responsive & Mobile Optimization */
+        @media (min-width: 768px) {
+            .border-end-md {
+                border-right: 1px solid #eff2f7 !important;
+            }
+            .custom-textarea {
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            /* Mobile specific tweaks */
+            .step-item {
+                margin-bottom: 24px;
+                display: flex;
+                align-items: center;
+                text-align: left !important;
+                background: #fff;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }
+            .step-icon {
+                margin: 0 15px 0 0; /* Icon on the left */
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                flex-shrink: 0;
+            }
+            .step-content {
+                flex-grow: 1;
+            }
+            
+            /* Bigger font and touch targets for mobile */
+            .custom-textarea {
+                font-size: 16px !important; /* Prevents iOS zoom */
+                line-height: 1.6 !important;
+                padding: 12px;
+                min-height: 350px;
+            }
+            
+            /* Full width buttons */
+            .btn-mobile-block {
+                width: 100%;
+                margin-bottom: 10px;
+                padding: 12px;
+                font-size: 16px;
+            }
+            
+            .card-body {
+                padding: 1.25rem !important;
+            }
+            
+            .alert {
+                font-size: 14px;
+            }
         }
     </style>
 @endsection
@@ -114,74 +123,113 @@
         // --- LOGIKA PERHITUNGAN KUOTA FOTO (JATAH EDIT) ---
         $finalMaxPhotos = $transaksi->packet->max_photos_for_edit ?? 0;
         $displayMaxPhotos = $finalMaxPhotos > 0 ? $finalMaxPhotos . ' Foto' : 'Unlimited';
-        $jsLimitEdit = $finalMaxPhotos > 0 ? $finalMaxPhotos : 9999;
-        $isUnlimitedEdit = $finalMaxPhotos == 0;
 
-        // --- LOGIKA BUILD ARRAY SLOT CETAK ---
-        $printSlots = [];
-        
-        // 1. Dari Included Prints (bawaan paket)
+        // Hitung Total Kuota Cetak untuk Badge
+        $totalPrintQuota = 0;
         if($transaksi->packet->printOptions->isNotEmpty()) {
             foreach($transaksi->packet->printOptions as $print) {
-                for($i = 0; $i < $print->pivot->quantity; $i++) {
-                    $printSlots[] = 'Cetak ' . $print->name;
-                }
+                $totalPrintQuota += $print->pivot->quantity;
             }
         }
-
-        // 2. Dari Additional/Extra Items (jika mengandung kata Cetak/Print)
         if($transaksi->additionals->isNotEmpty()) {
             foreach($transaksi->additionals as $additional) {
                 if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
-                    for($i = 0; $i < $additional->pivot->quantity; $i++) {
-                        $printSlots[] = $additional->name;
+                    $totalPrintQuota += $additional->pivot->quantity;
+                }
+            }
+        }
+        $displayPrintQuota = $totalPrintQuota > 0 ? $totalPrintQuota . ' Lembar' : '0 Lembar';
+
+        // --- GENERATE TEMPLATE TEXTAREA JIKA BELUM ADA (FALLBACK) ---
+        // 1. Template Edit
+        // Cek apakah controller mengirim variabel $editValue, jika tidak, generate sendiri
+        if (!isset($editValue)) {
+            $editValue = $transaksi->select_edit_photo;
+            if (!$editValue) {
+                $editValue = "Daftar Foto untuk Diedit (Maks {$displayMaxPhotos}):\n";
+                if ($finalMaxPhotos > 0) {
+                    for ($i = 1; $i <= $finalMaxPhotos; $i++) {
+                        $editValue .= "{$i}. \n";
                     }
+                } else {
+                    $editValue .= "1. \n2. \n3. \n(Lanjutkan sendiri...)\n";
                 }
             }
         }
 
-        $totalPrintQuota = count($printSlots);
-        $displayPrintQuota = $totalPrintQuota > 0 ? $totalPrintQuota . ' Lembar' : '0 Lembar';
+        // 2. Template Print
+        // Cek apakah controller mengirim variabel $printValue, jika tidak, generate sendiri
+        if (!isset($printValue)) {
+            $printValue = $transaksi->select_print_photo;
+            if (!$printValue) {
+                $printValue = "Daftar Foto untuk Dicetak:\n";
+                
+                // Dari Paket
+                if($transaksi->packet->printOptions->isNotEmpty()) {
+                    foreach($transaksi->packet->printOptions as $print) {
+                        for($i = 0; $i < $print->pivot->quantity; $i++) {
+                            $printValue .= "- Cetak {$print->name} : \n";
+                        }
+                    }
+                }
+                
+                // Dari Additional
+                foreach($transaksi->additionals as $additional) {
+                    if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                        for($i = 0; $i < $additional->pivot->quantity; $i++) {
+                            $printValue .= "- (Add-on) {$additional->name} : \n";
+                        }
+                    }
+                }
 
-        // Ambil data cetak yang sudah tersimpan
-        $savedPrintFiles = $transaksi->select_print_photo ? array_map('trim', explode(',', $transaksi->select_print_photo)) : [];
+                if ($totalPrintQuota == 0) {
+                    $printValue = "Tidak ada item cetak dalam paket ini.";
+                }
+            }
+        }
     @endphp
 
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-10 col-12">
             
-            <!-- Panduan Langkah -->
+            <!-- Panduan Langkah (Mobile Optimized) -->
             <div class="row mb-4">
-                <div class="col-md-4 text-center step-item">
+                <div class="col-md-4 col-12 step-item">
                     <div class="step-icon"><i class="mdi mdi-google-drive"></i></div>
-                    <h5 class="font-size-14">1. Buka Galeri</h5>
-                    <p class="text-muted mb-0">Klik tombol di bawah untuk melihat semua foto Anda di Google Drive/Cloud.</p>
+                    <div class="step-content">
+                        <h5 class="font-size-14 mb-1">1. Buka Galeri</h5>
+                        <p class="text-muted mb-0 font-size-13">Lihat foto di Google Drive.</p>
+                    </div>
                 </div>
-                <div class="col-md-4 text-center step-item">
+                <div class="col-md-4 col-12 step-item">
                     <div class="step-icon"><i class="mdi mdi-file-document-edit-outline"></i></div>
-                    <h5 class="font-size-14">2. Catat Nama File</h5>
-                    <p class="text-muted mb-0">Catat nama file foto yang ingin Anda edit atau cetak (contoh: IMG_9921.jpg).</p>
+                    <div class="step-content">
+                        <h5 class="font-size-14 mb-1">2. Catat File</h5>
+                        <p class="text-muted mb-0 font-size-13">Pilih kode foto (mis: IMG_001).</p>
+                    </div>
                 </div>
-                <div class="col-md-4 text-center step-item">
+                <div class="col-md-4 col-12 step-item">
                     <div class="step-icon"><i class="mdi mdi-check-circle-outline"></i></div>
-                    <h5 class="font-size-14">3. Submit Pilihan</h5>
-                    <p class="text-muted mb-0">Isi formulir di bawah sesuai instruksi lalu simpan.</p>
+                    <div class="step-content">
+                        <h5 class="font-size-14 mb-1">3. Simpan</h5>
+                        <p class="text-muted mb-0 font-size-13">Isi formulir dan simpan.</p>
+                    </div>
                 </div>
             </div>
 
             <!-- DETAIL PAKET -->
-            <div class="card mb-4">
+            <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-light">
-                    <h5 class="mb-0 text-dark"><i class="mdi mdi-information-outline me-2"></i> Informasi Detail Paket</h5>
+                    <h5 class="mb-0 text-dark font-size-16"><i class="mdi mdi-information-outline me-2"></i> Detail Paket</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <!-- Kolom Kiri: Info Dasar -->
-                        <div class="col-md-5 border-end">
+                        <div class="col-md-5 col-12 border-end-md mb-3 mb-md-0">
                             <h6 class="font-size-14 text-muted mb-3">Ringkasan Pesanan</h6>
                             <table class="table table-borderless table-sm mb-0 font-size-14">
                                 <tr>
-                                    <th style="width: 120px;" class="text-muted fw-normal">Produk</th>
+                                    <th style="width: 110px;" class="text-muted fw-normal">Produk</th>
                                     <td class="fw-bold text-primary">: {{ $transaksi->packet->product->name ?? '-' }}</td>
                                 </tr>
                                 <tr>
@@ -189,14 +237,14 @@
                                     <td class="fw-bold">: {{ $transaksi->packet->name }}</td>
                                 </tr>
                                 <tr>
-                                    <th class="text-muted fw-normal">Kode Invoice</th>
+                                    <th class="text-muted fw-normal">Invoice</th>
                                     <td>: {{ $transaksi->receipt_code }}</td>
                                 </tr>
                                 <tr><td colspan="2"><hr class="my-2"></td></tr>
                                 <tr>
                                     <th class="text-muted fw-normal">Jatah Edit</th>
                                     <td>: 
-                                        <span class="badge bg-soft-primary text-primary font-size-13">
+                                        <span class="badge bg-soft-primary text-primary font-size-12">
                                             <i class="mdi mdi-image-edit"></i> {{ $displayMaxPhotos }}
                                         </span>
                                     </td>
@@ -204,7 +252,7 @@
                                 <tr>
                                     <th class="text-muted fw-normal">Jatah Cetak</th>
                                     <td>: 
-                                        <span class="badge bg-soft-success text-success font-size-13">
+                                        <span class="badge bg-soft-success text-success font-size-12">
                                             <i class="mdi mdi-printer"></i> {{ $displayPrintQuota }}
                                         </span>
                                     </td>
@@ -213,46 +261,42 @@
                         </div>
 
                         <!-- Kolom Kanan: Tabel Rincian Item -->
-                        <div class="col-md-7">
-                            <h6 class="font-size-14 text-muted mb-2">Rincian Item Paket & Tambahan:</h6>
-                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                                <table class="table table-sm table-striped mb-0 font-size-13">
+                        <div class="col-md-7 col-12">
+                            <h6 class="font-size-14 text-muted mb-2">Item Paket & Tambahan:</h6>
+                            <div class="table-responsive bg-light rounded p-2" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-borderless mb-0 font-size-13">
                                     <tbody>
                                         {{-- Included Prints --}}
                                         @if($transaksi->packet->printOptions->isNotEmpty())
-                                            <tr><td colspan="2" class="px-3 py-1 fw-bold text-muted small bg-soft-light">Included Prints</td></tr>
+                                            <tr><td colspan="2" class="fw-bold text-dark small border-bottom pb-1 mb-1 d-block w-100">Included Prints</td></tr>
                                             @foreach($transaksi->packet->printOptions as $print)
                                                 <tr>
-                                                    <td class="px-3 py-1 ps-4"><i class="bx bx-printer me-2 text-secondary"></i> Cetak {{ $print->name }}</td>
-                                                    <td class="text-center py-1 fw-bold" width="50">x{{ $print->pivot->quantity }}</td>
+                                                    <td class="ps-2"><i class="bx bx-printer me-2 text-secondary"></i> Cetak {{ $print->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $print->pivot->quantity }}</td>
                                                 </tr>
                                             @endforeach
                                         @endif
 
                                         {{-- Additional Defaults --}}
                                         @if($transaksi->packet->additionalDefaults->isNotEmpty())
-                                            <tr><td colspan="2" class="px-3 py-1 fw-bold text-muted small bg-soft-light">Included Items</td></tr>
+                                            <tr><td colspan="2" class="fw-bold text-dark small border-bottom pb-1 mb-1 mt-2 d-block w-100">Included Items</td></tr>
                                             @foreach($transaksi->packet->additionalDefaults as $default)
                                                 <tr>
-                                                    <td class="px-3 py-1 ps-4"><i class="bx bx-check-circle me-2 text-secondary"></i> {{ $default->additional->name }}</td>
-                                                    <td class="text-center py-1 fw-bold" width="50">x{{ $default->quantity }}</td>
+                                                    <td class="ps-2"><i class="bx bx-check-circle me-2 text-secondary"></i> {{ $default->additional->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $default->quantity }}</td>
                                                 </tr>
                                             @endforeach
                                         @endif
 
                                         {{-- Paid Additionals --}}
                                         @if($transaksi->additionals->isNotEmpty())
-                                            <tr><td colspan="2" class="px-3 py-1 fw-bold text-warning small bg-soft-warning">Extra Add-ons</td></tr>
+                                            <tr><td colspan="2" class="fw-bold text-warning small border-bottom pb-1 mb-1 mt-2 d-block w-100">Extra Add-ons</td></tr>
                                             @foreach($transaksi->additionals as $additional)
                                                 <tr>
-                                                    <td class="px-3 py-1 ps-4"><i class="bx bx-plus me-2 text-warning"></i> {{ $additional->name }}</td>
-                                                    <td class="text-center py-1 fw-bold" width="50">x{{ $additional->pivot->quantity }}</td>
+                                                    <td class="ps-2"><i class="bx bx-plus me-2 text-warning"></i> {{ $additional->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $additional->pivot->quantity }}</td>
                                                 </tr>
                                             @endforeach
-                                        @endif
-                                        
-                                        @if($transaksi->packet->printOptions->isEmpty() && $transaksi->packet->additionalDefaults->isEmpty() && $transaksi->additionals->isEmpty())
-                                            <tr><td colspan="2" class="text-center text-muted fst-italic py-2">No specific details available for this package.</td></tr>
                                         @endif
                                     </tbody>
                                 </table>
@@ -262,29 +306,29 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card shadow-lg border-0">
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
-                        <h4 class="card-title mb-3">Formulir Pemilihan Foto</h4>
-                        <p class="card-title-desc text-muted">
-                            Silakan masukkan nama file foto sesuai dengan rincian paket di atas.
+                        <h4 class="card-title mb-2">Formulir Pemilihan Foto</h4>
+                        <p class="card-title-desc text-muted font-size-13">
+                            Silakan masukkan nama file foto sesuai dengan rincian paket.
                         </p>
                     </div>
 
                     <!-- Area Link Foto -->
-                    <div class="external-link-card rounded p-4 mb-4 text-center">
+                    <div class="external-link-card rounded p-3 mb-4 text-center">
                         <h5 class="font-size-15 mb-3">Akses Galeri Foto Anda</h5>
                         @if($transaksi->url_images)
-                            <a href="{{ $transaksi->url_images }}" target="_blank" class="btn btn-primary btn-lg waves-effect waves-light">
+                            <a href="{{ $transaksi->url_images }}" target="_blank" class="btn btn-primary waves-effect waves-light btn-mobile-block">
                                 <i class="mdi mdi-open-in-new me-2"></i> Buka Link Google Drive
                             </a>
-                            <div class="mt-2 text-muted small text-break">
+                            <div class="mt-2 text-muted small text-break px-2">
                                 <i class="mdi mdi-link-variant"></i> {{ $transaksi->url_images }}
                             </div>
                         @else
-                            <div class="alert alert-warning d-inline-flex align-items-center" role="alert">
+                            <div class="alert alert-warning d-inline-flex align-items-center mb-0" role="alert">
                                 <i class="mdi mdi-alert-outline me-2"></i>
-                                Link foto belum tersedia. Hubungi admin jika Anda sudah melakukan sesi foto.
+                                <span>Link foto belum tersedia. Hubungi admin.</span>
                             </div>
                         @endif
                     </div>
@@ -292,94 +336,62 @@
                     <form action="{{ route('transaksi.handle-select-for-edit', ['transaksi' => $transaksi->transaction_id]) }}" method="POST" id="photoSelectionForm">
                         @csrf
                         
-                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <div class="alert alert-info alert-dismissible fade show font-size-13 mb-4" role="alert">
                             <i class="mdi mdi-information-outline me-2"></i>
-                            <strong>Tips Cepat:</strong> Anda bisa menyalin (copy) nama file dari Google Drive dan tempel di sini.
+                            <strong>Tips:</strong> Ketik nama file (mis: IMG_1234.JPG) di setiap baris.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
 
                         <div class="row">
-                            <!-- INPUT EDIT PHOTO (Tag Input) -->
-                            <div class="col-md-12">
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold font-size-15">
-                                        <i class="mdi mdi-image-edit text-primary me-1"></i> Foto untuk Diedit
-                                    </label>
-                                    <!-- Hidden Input Asli untuk dikirim ke server -->
-                                    <input type="hidden" name="select_edit_photo" id="hidden_edit_photo" value="{{ old('select_edit_photo', $transaksi->select_edit_photo) }}">
-                                    
-                                    <!-- UI Tag Input -->
-                                    <div class="tag-container" id="container_edit_photo">
-                                        <input type="text" class="tag-input" placeholder="Ketik nama file lalu tekan Enter atau Koma..." id="input_edit_photo">
+                            <!-- INPUT EDIT PHOTO (TEXTAREA) -->
+                            <div class="col-md-6 col-12 mb-4">
+                                <div class="card h-100 border shadow-none">
+                                    <div class="card-header bg-soft-primary p-3">
+                                        <h5 class="font-size-16 mb-0 text-primary">
+                                            <i class="mdi mdi-image-edit me-2"></i> Foto untuk Diedit
+                                        </h5>
                                     </div>
-                                    <div class="form-text d-flex justify-content-between align-items-center">
-                                        <span>Maksimal: <strong>{{ $displayMaxPhotos }}</strong></span>
-                                        <!-- COUNTER UPDATE: Format Terisi n / Max -->
-                                        <span class="badge bg-soft-primary text-primary font-size-12 p-2">
-                                            Terisi: <span id="count_edit_photo" class="fw-bold">0</span> / {{ $finalMaxPhotos > 0 ? $finalMaxPhotos : '∞' }}
-                                        </span>
+                                    <div class="card-body p-0">
+                                        <textarea 
+                                            name="select_edit_photo" 
+                                            class="form-control custom-textarea border-0 rounded-0" 
+                                            spellcheck="false"
+                                            oninput="autoResize(this)"
+                                            placeholder="Contoh:&#10;1. IMG_001.JPG&#10;2. IMG_005.JPG">{{ old('select_edit_photo', $editValue) }}</textarea>
+                                    </div>
+                                    <div class="card-footer bg-light p-2 text-center text-muted small">
+                                        Maksimal: <strong>{{ $displayMaxPhotos }}</strong>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- INPUT PRINT PHOTO (Separate Inputs) -->
-                            <div class="col-md-12">
-                                <div class="mb-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <label class="form-label fw-bold font-size-15 mb-0">
-                                            <i class="mdi mdi-printer text-success me-1"></i> Foto untuk Dicetak
-                                        </label>
-                                        @if($transaksi->hasPrintableItems())
-                                            <a href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#printDetailModal" class="text-primary small fw-bold">
-                                                <i class="mdi mdi-eye"></i> Lihat Rincian
-                                            </a>
-                                        @endif
+                            <!-- INPUT PRINT PHOTO (TEXTAREA) -->
+                            <div class="col-md-6 col-12 mb-4">
+                                <div class="card h-100 border shadow-none">
+                                    <div class="card-header bg-soft-success p-3">
+                                        <h5 class="font-size-16 mb-0 text-success">
+                                            <i class="mdi mdi-printer me-2"></i> Foto untuk Dicetak
+                                        </h5>
                                     </div>
-                                    
-                                    @if($transaksi->hasPrintableItems() && count($printSlots) > 0)
-                                        <!-- Hidden Input Asli (yang akan diisi via JS) -->
-                                        <input type="hidden" name="select_print_photo" id="hidden_print_photo" value="{{ old('select_print_photo', $transaksi->select_print_photo) }}">
-                                        
-                                        <div id="print-inputs-wrapper">
-                                            @foreach($printSlots as $index => $slotName)
-                                                <div class="print-slot-item p-2 mb-2">
-                                                    <label class="small text-muted mb-1 d-block">
-                                                        <span class="badge badge-soft-secondary me-1">#{{ $index + 1 }}</span>
-                                                        {{ $slotName }}
-                                                    </label>
-                                                    <input type="text" 
-                                                           class="form-control print-photo-input" 
-                                                           placeholder="Tempel nama file untuk {{ $slotName }} disini..." 
-                                                           data-index="{{ $index }}"
-                                                           value="{{ $savedPrintFiles[$index] ?? '' }}">
-                                                </div>
-                                            @endforeach
-                                        </div>
-
-                                        <div class="form-text d-flex justify-content-between align-items-center">
-                                            <span>Isi kolom sesuai ukuran yang tertera.</span>
-                                            <span class="badge bg-soft-success text-success font-size-12 p-2">
-                                                Terisi: <span id="count_print_filled" class="fw-bold">0</span> / {{ count($printSlots) }}
-                                            </span>
-                                        </div>
-                                    @else
-                                        <!-- DISABLED STATE -->
-                                        <div class="tag-container bg-light border-danger" style="cursor: not-allowed; opacity: 0.7;">
-                                            <input type="text" class="tag-input text-muted" value="Paket tidak mengandung additional print" disabled style="cursor: not-allowed; width: 100%;">
-                                        </div>
-                                        <div class="text-danger mt-1 small fw-bold">
-                                            <i class="mdi mdi-block-helper me-1"></i> Paket ini tidak termasuk item cetak foto.
-                                        </div>
-                                    @endif
+                                    <div class="card-body p-0">
+                                        <textarea 
+                                            name="select_print_photo" 
+                                            class="form-control custom-textarea border-0 rounded-0" 
+                                            oninput="autoResize(this)"
+                                            spellcheck="false">{{ old('select_print_photo', $printValue) }}</textarea>
+                                    </div>
+                                    <div class="card-footer bg-light p-2 text-center text-muted small">
+                                        Total Kuota: <strong>{{ $displayPrintQuota }}</strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                            <a href="{{ route('transaksi.index') }}" class="btn btn-light waves-effect">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-2 border-top pt-4">
+                            <a href="{{ route('transaksi.index') }}" class="btn btn-light waves-effect btn-mobile-block order-2 order-md-1">
                                 <i class="bx bx-arrow-back me-1"></i> Kembali
                             </a>
-                            <button type="submit" class="btn btn-success waves-effect waves-light px-4">
+                            <button type="submit" class="btn btn-success waves-effect waves-light px-4 btn-mobile-block order-1 order-md-2 mb-3 mb-md-0">
                                 <i class="bx bx-save me-1"></i> Simpan Pilihan Saya
                             </button>
                         </div>
@@ -390,57 +402,6 @@
         </div>
     </div>
 
-    <!-- Modal Rincian Cetak -->
-    @if($transaksi->hasPrintableItems())
-    <div class="modal fade" id="printDetailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Rincian Kuota Cetak</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-striped table-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Tipe Cetak</th>
-                                <th class="text-center">Jumlah</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if($transaksi->packet->printOptions->isNotEmpty())
-                                @foreach($transaksi->packet->printOptions as $print)
-                                    <tr>
-                                        <td>Cetak {{ $print->name }}</td>
-                                        <td class="text-center fw-bold">{{ $print->pivot->quantity }}</td>
-                                    </tr>
-                                @endforeach
-                            @endif
-                            @if($transaksi->additionals->isNotEmpty())
-                                @foreach($transaksi->additionals as $additional)
-                                    @if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false)
-                                        <tr>
-                                            <td>{{ $additional->name }}</td>
-                                            <td class="text-center fw-bold">{{ $additional->pivot->quantity }}</td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                            @endif
-                            <tr class="table-active">
-                                <td class="fw-bold">Total Kuota</td>
-                                <td class="text-center fw-bold">{{ $totalPrintQuota }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
 @endsection
 
 @section('script')
@@ -448,205 +409,36 @@
 <script src="{{ URL::asset('/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
 
 <script>
+    function autoResize(textarea) {
+        textarea.style.height = 'auto'; // Reset height
+        textarea.style.height = textarea.scrollHeight + 'px'; // Set to scrollHeight
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        
-        // --- 1. LOGIC TAG INPUT (HANYA UNTUK EDIT FOTO) ---
-        function initTagInput(containerId, inputId, hiddenId, counterId, maxLimit) {
-            const container = document.getElementById(containerId);
-            const input = document.getElementById(inputId);
-            const hiddenInput = document.getElementById(hiddenId);
-            const counter = document.getElementById(counterId);
-
-            if(!container || !input) return;
-
-            let tags = [];
-
-            // Load initial values
-            const initialValue = hiddenInput.value;
-            if (initialValue) {
-                tags = initialValue.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-                renderTags();
-            }
-
-            function renderTags() {
-                const existingTags = container.querySelectorAll('.tag');
-                existingTags.forEach(tag => tag.remove());
-
-                tags.slice().reverse().forEach(tag => {
-                    const tagEl = document.createElement('div');
-                    tagEl.classList.add('tag');
-                    tagEl.innerHTML = `<span>${tag}</span><i class="mdi mdi-close" data-tag="${tag}"></i>`;
-                    container.prepend(tagEl);
-                });
-
-                if(counter) {
-                    counter.innerText = tags.length;
-                    
-                    if (maxLimit) {
-                        if (tags.length >= maxLimit) {
-                            // LIMIT REACHED: Disable input & style container
-                            counter.classList.add('text-danger');
-                            container.classList.add('limit-reached');
-                            
-                            input.disabled = true;
-                            input.placeholder = "Batas maksimal (" + maxLimit + ") tercapai";
-                        } else {
-                            // AVAILABLE: Enable input & reset style
-                            counter.classList.remove('text-danger');
-                            container.classList.remove('limit-reached');
-                            
-                            input.disabled = false;
-                            input.placeholder = "Ketik nama file lalu tekan Enter atau Koma...";
-                        }
-                    }
-                }
-                hiddenInput.value = tags.join(',');
-            }
-
-            function addTags(text) {
-                // Double check limit before processing (in case input wasn't disabled yet)
-                if (maxLimit && tags.length >= maxLimit) {
-                    Swal.fire('Limit Tercapai', 'Anda sudah mencapai batas maksimal foto untuk diedit.', 'warning');
-                    input.value = '';
-                    return;
-                }
-
-                const newTags = text.split(/[\n\r,]+/).map(t => t.trim()).filter(t => t !== '');
-                
-                if (newTags.length === 0) return;
-
-                let tagsToAdd = newTags;
-                
-                // Check if adding these tags exceeds limit
-                if (maxLimit) {
-                    const remainingSlots = maxLimit - tags.length;
-                    if (newTags.length > remainingSlots) {
-                        tagsToAdd = newTags.slice(0, remainingSlots);
-                        
-                        // Alert user that some tags were ignored
-                        Swal.fire({
-                            title: 'Melebihi Batas',
-                            text: `Hanya ${remainingSlots} foto yang ditambahkan. ${newTags.length - remainingSlots} foto lainnya diabaikan karena melebihi kuota paket.`,
-                            icon: 'warning',
-                            confirmButtonColor: '#556ee6'
-                        });
-                    }
-                }
-
-                tags = [...tags, ...tagsToAdd];
-                renderTags();
-                input.value = '';
-            }
-
-            container.addEventListener('click', function(e) {
-                if (e.target.tagName === 'I') {
-                    const tagValue = e.target.getAttribute('data-tag');
-                    const index = tags.indexOf(tagValue);
-                    if (index > -1) {
-                        tags.splice(index, 1);
-                        renderTags();
-                    }
-                }
-                // Only focus if input is not disabled
-                if (e.target === container && !input.disabled) {
-                    input.focus();
-                }
-            });
-
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault();
-                    addTags(input.value);
-                }
-                if (e.key === 'Backspace' && input.value === '' && tags.length > 0) {
-                    tags.pop();
-                    renderTags();
-                }
-            });
-
-            input.addEventListener('paste', function(e) {
-                e.preventDefault();
-                const pastedData = (e.clipboardData || window.clipboardData).getData('text');
-                addTags(pastedData);
-            });
-        }
-
-        // Init Edit Photo Tag Input
-        const editLimit = {{ $jsLimitEdit }};
-        initTagInput('container_edit_photo', 'input_edit_photo', 'hidden_edit_photo', 'count_edit_photo', editLimit);
-
-
-        // --- 2. LOGIC INPUT TEXT TERPISAH (UNTUK PRINT FOTO) ---
-        const printInputs = document.querySelectorAll('.print-photo-input');
-        const hiddenPrintInput = document.getElementById('hidden_print_photo');
-        const printFilledCounter = document.getElementById('count_print_filled');
-
-        function syncPrintInputs() {
-            if(!hiddenPrintInput) return;
-
-            let values = [];
-            let filledCount = 0;
-
-            printInputs.forEach(input => {
-                const val = input.value.trim();
-                values.push(val); 
-                if(val !== '') filledCount++;
-            });
-            
-            const cleanValues = values.filter(v => v !== '');
-            hiddenPrintInput.value = cleanValues.join(',');
-            
-            if(printFilledCounter) printFilledCounter.innerText = filledCount;
-        }
-
-        // Attach Listeners to Print Inputs
-        printInputs.forEach(input => {
-            input.addEventListener('input', syncPrintInputs);
-            input.addEventListener('change', syncPrintInputs);
+        const textareas = document.querySelectorAll('.custom-textarea');
+        textareas.forEach(textarea => {
+            autoResize(textarea); // Initial resize
         });
 
-        // Run once on load to update counter based on pre-filled data
-        syncPrintInputs();
-
-        // --- 3. VALIDASI FORM SEBELUM SUBMIT ---
         const form = document.getElementById('photoSelectionForm');
+        
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-
-            // Validasi Foto Edit
-            const currentEditCount = parseInt(document.getElementById('count_edit_photo').innerText) || 0;
-            const isUnlimitedEdit = {{ $isUnlimitedEdit ? 'true' : 'false' }};
             
-            if (!isUnlimitedEdit && currentEditCount < editLimit) {
-                Swal.fire({
-                    title: 'Belum Selesai',
-                    text: `Kuota foto edit belum terpenuhi. Anda baru memilih ${currentEditCount} dari ${editLimit} foto.`,
-                    icon: 'warning',
-                    confirmButtonColor: '#556ee6'
-                });
-                return;
-            }
-
-            // Validasi Foto Print
-            if (printInputs.length > 0) {
-                let printFilled = 0;
-                printInputs.forEach(i => {
-                    if(i.value.trim() !== '') printFilled++;
-                });
-
-                if (printFilled < printInputs.length) {
-                    Swal.fire({
-                        title: 'Belum Selesai',
-                        text: `Kuota foto cetak belum terpenuhi. Mohon lengkapi semua kolom isian cetak (${printFilled}/${printInputs.length}).`,
-                        icon: 'warning',
-                        confirmButtonColor: '#556ee6'
-                    });
-                    return;
+            Swal.fire({
+                title: 'Simpan Pilihan?',
+                text: "Pastikan nama file yang Anda tulis sudah benar sesuai di Google Drive.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#34c38f',
+                cancelButtonColor: '#f46a6a',
+                confirmButtonText: 'Ya, Simpan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.submit();
                 }
-            }
-
-            // Jika semua validasi lolos, submit form
-            this.submit();
+            });
         });
     });
 </script>

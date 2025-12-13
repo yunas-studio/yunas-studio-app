@@ -135,10 +135,31 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
                                             {{-- Link ke Galeri Foto External --}}
+                                            @php
+                                                $showResultButton = in_array($transaksi->process_status, ['Proses Edit dan Cetak', 'Selesai']);
+                                                $hasResultUrl = !empty($transaksi->url_photos_result);
+                                                $iconClass = "uil uil-image-search";
+                                            @endphp
+                                            
+
+                                            {{-- RAW PHOTOS --}}
                                             @if($transaksi->url_images && !in_array($transaksi->process_status, ['Pelanggan Belum Foto', 'Pelanggan Pilih Foto']))
-                                                <a href="{{ $transaksi->url_images }}" target="_blank" class="text-info" data-bs-toggle="tooltip" title="Lihat Galeri Foto">
-                                                    <i class="uil uil-image-search font-size-18"></i>
+                                                <a href="{{ $transaksi->url_images }}" target="_blank" class="text-primary" data-bs-toggle="tooltip" title="Lihat Foto Mentah">
+                                                    <i class="{{ $iconClass }} font-size-18"></i>
                                                 </a>
+                                            @endif
+
+                                            {{-- RESULT PHOTOS --}}
+                                            @if($showResultButton)
+                                                @if($hasResultUrl)
+                                                    <a href="{{ $transaksi->url_photos_result }}" target="_blank" class="text-success" data-bs-toggle="tooltip" title="Lihat Hasil Foto">
+                                                        <i class="uil uil-check-circle font-size-18"></i>
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted" data-bs-toggle="tooltip" title="Hasil foto belum diupload" style="cursor: not-allowed;">
+                                                        <i class="uil uil-check-circle font-size-18"></i>
+                                                    </span>
+                                                @endif
                                             @endif
 
                                             {{-- Link Pilih Foto --}}
@@ -148,7 +169,7 @@
                                                 </a>
                                             @endif
                                             
-                                            {{-- FITUR LIHAT HASIL FOTO DIHAPUS DARI SINI --}}
+
                                         </div>
                                     </td>
                                 </tr>

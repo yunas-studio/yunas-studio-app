@@ -367,7 +367,7 @@
                                                     
                                                     // Prioritas 1: URL Kosong (Admin wajib isi URL dulu)
                                                     if (empty($transaksi->url_images)) {
-                                                        $tooltipMessage = "Photo URL missing. Please edit transaction and add gallery link.";
+                                                        $tooltipMessage = "Photo URL missing. Please edit transaction and add gallery link for user to view and select.";
                                                         $isDisabledIcon = true;
                                                     }
                                                     // Prioritas 2: Status masih 'Belum Foto'
@@ -410,7 +410,7 @@
                                                         $waMessages = [
                                                             'Pelanggan Belum Foto' => "Halo kak {$transaksi->customer_name}, jadwal foto belum terlaksana. Hubungi kami untuk info lebih lanjut.",
                                                             'Pelanggan Pilih Foto' => "Halo kak {$transaksi->customer_name}, silakan pilih foto untuk diedit melalui link: " . route('transaksi.view-select-for-edit', $transaksi),
-                                                            'Selesai' => "Halo kak {$transaksi->customer_name}, foto anda telah selesai. Silakan ambil di studio."
+                                                            'Selesai' => "Halo Kak, kabar gembira! Foto Anda telah selesai dicetak.\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review",
                                                         ];
                                                         $waLink = null;
                                                         if (isset($waMessages[$transaksi->process_status])) {

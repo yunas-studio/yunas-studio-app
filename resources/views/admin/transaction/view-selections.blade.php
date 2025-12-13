@@ -87,7 +87,165 @@
                 }
             }
         }
+
+        // --- LOGIKA PERHITUNGAN KUOTA FOTO (JATAH EDIT) ---
+        $finalMaxPhotos = $transaksi->packet->max_photos_for_edit ?? 0;
+        $displayMaxPhotos = $finalMaxPhotos > 0 ? $finalMaxPhotos . ' Foto' : 'Unlimited';
+
+        // Hitung Total Kuota Cetak untuk Badge
+        $totalPrintQuota = 0;
+        if($transaksi->packet->printOptions->isNotEmpty()) {
+            foreach($transaksi->packet->printOptions as $print) {
+                $totalPrintQuota += $print->pivot->quantity;
+            }
+        }
+        if($transaksi->additionals->isNotEmpty()) {
+            foreach($transaksi->additionals as $additional) {
+                if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                    $totalPrintQuota += $additional->pivot->quantity;
+                }
+            }
+        }
+        $displayPrintQuota = $totalPrintQuota > 0 ? $totalPrintQuota . ' Lembar' : '0 Lembar';
+
+        // --- GENERATE TEMPLATE TEXTAREA JIKA BELUM ADA (FALLBACK) ---
+        // 1. Template Edit
+        // Cek apakah controller mengirim variabel $editValue, jika tidak, generate sendiri
+        if (!isset($editValue)) {
+            $editValue = $transaksi->select_edit_photo;
+            if (!$editValue) {
+                $editValue = "Daftar Foto untuk Diedit (Maks {$displayMaxPhotos}):\n";
+                if ($finalMaxPhotos > 0) {
+                    for ($i = 1; $i <= $finalMaxPhotos; $i++) {
+                        $editValue .= "{$i}. \n";
+                    }
+                } else {
+                    $editValue .= "1. \n2. \n3. \n(Lanjutkan sendiri...)\n";
+                }
+            }
+        }
+
+        // 2. Template Print
+        // Cek apakah controller mengirim variabel $printValue, jika tidak, generate sendiri
+        if (!isset($printValue)) {
+            $printValue = $transaksi->select_print_photo;
+            if (!$printValue) {
+                $printValue = "Daftar Foto untuk Dicetak:\n";
+                
+                // Dari Paket
+                if($transaksi->packet->printOptions->isNotEmpty()) {
+                    foreach($transaksi->packet->printOptions as $print) {
+                        for($i = 0; $i < $print->pivot->quantity; $i++) {
+                            $printValue .= "- Cetak {$print->name} : \n";
+                        }
+                    }
+                }
+                
+                // Dari Additional
+                foreach($transaksi->additionals as $additional) {
+                    if (stripos($additional->name, 'Cetak') !== false || stripos($additional->name, 'Print') !== false) {
+                        for($i = 0; $i < $additional->pivot->quantity; $i++) {
+                            $printValue .= "- (Add-on) {$additional->name} : \n";
+                        }
+                    }
+                }
+
+                if ($totalPrintQuota == 0) {
+                    $printValue = "Tidak ada item cetak dalam paket ini.";
+                }
+            }
+        }
     @endphp
+
+    
+
+    <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 text-dark font-size-16"><i class="mdi mdi-information-outline me-2"></i> Detail Paket</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Kolom Kiri: Info Dasar -->
+                        <div class="col-md-5 col-12 border-end-md mb-3 mb-md-0">
+                            <h6 class="font-size-14 text-muted mb-3">Ringkasan Pesanan</h6>
+                            <table class="table table-borderless table-sm mb-0 font-size-14">
+                                <tr>
+                                    <th style="width: 110px;" class="text-muted fw-normal">Produk</th>
+                                    <td class="fw-bold text-primary">: {{ $transaksi->packet->product->name ?? '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted fw-normal">Paket</th>
+                                    <td class="fw-bold">: {{ $transaksi->packet->name }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted fw-normal">Invoice</th>
+                                    <td>: {{ $transaksi->receipt_code }}</td>
+                                </tr>
+                                <tr><td colspan="2"><hr class="my-2"></td></tr>
+                                <tr>
+                                    <th class="text-muted fw-normal">Jatah Edit</th>
+                                    <td>: 
+                                        <span class="badge bg-soft-primary text-primary font-size-12">
+                                            <i class="mdi mdi-image-edit"></i> {{ $displayMaxPhotos }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted fw-normal">Jatah Cetak</th>
+                                    <td>: 
+                                        <span class="badge bg-soft-success text-success font-size-12">
+                                            <i class="mdi mdi-printer"></i> {{ $displayPrintQuota }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Kolom Kanan: Tabel Rincian Item -->
+                        <div class="col-md-7 col-12">
+                            <h6 class="font-size-14 text-muted mb-2">Item Paket & Tambahan:</h6>
+                            <div class="table-responsive bg-light rounded p-2" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-borderless mb-0 font-size-13">
+                                    <tbody>
+                                        {{-- Included Prints --}}
+                                        @if($transaksi->packet->printOptions->isNotEmpty())
+                                            <tr><td colspan="2" class="fw-bold text-dark small border-bottom pb-1 mb-1 d-block w-100">Included Prints</td></tr>
+                                            @foreach($transaksi->packet->printOptions as $print)
+                                                <tr>
+                                                    <td class="ps-2"><i class="bx bx-printer me-2 text-secondary"></i> Cetak {{ $print->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $print->pivot->quantity }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @endif
+
+                                        {{-- Additional Defaults --}}
+                                        @if($transaksi->packet->additionalDefaults->isNotEmpty())
+                                            <tr><td colspan="2" class="fw-bold text-dark small border-bottom pb-1 mb-1 mt-2 d-block w-100">Included Items</td></tr>
+                                            @foreach($transaksi->packet->additionalDefaults as $default)
+                                                <tr>
+                                                    <td class="ps-2"><i class="bx bx-check-circle me-2 text-secondary"></i> {{ $default->additional->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $default->quantity }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @endif
+
+                                        {{-- Paid Additionals --}}
+                                        @if($transaksi->additionals->isNotEmpty())
+                                            <tr><td colspan="2" class="fw-bold text-warning small border-bottom pb-1 mb-1 mt-2 d-block w-100">Extra Add-ons</td></tr>
+                                            @foreach($transaksi->additionals as $additional)
+                                                <tr>
+                                                    <td class="ps-2"><i class="bx bx-plus me-2 text-warning"></i> {{ $additional->name }}</td>
+                                                    <td class="text-end fw-bold">x{{ $additional->pivot->quantity }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
     <div class="row">
         <div class="col-lg-12">
@@ -128,89 +286,68 @@
                     </div>
 
                     <div class="row">
-                        {{-- KOLOM 1: FOTO EDIT --}}
+                        <!-- Edit Photos Section -->
                         <div class="col-md-6 mb-4">
-                            <div class="card selection-card h-100">
-                                <div class="card-header-clean d-flex justify-content-between align-items-center">
-                                    <h5 class="font-size-15 mb-0 text-primary fw-bold">
-                                        <i class="bx bx-edit me-2"></i> Foto untuk Diedit
+                            <div class="card h-100 border shadow-none bg-light">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="font-size-16 mb-0 text-white">
+                                        <i class="mdi mdi-image-edit me-2"></i> Foto untuk Diedit
                                     </h5>
-                                    <span class="badge bg-soft-primary text-primary pill font-size-12">{{ count($selectedPhotos) }} File</span>
                                 </div>
-                                <div class="card-body p-0">
-                                    <div class="file-list-container">
-                                        @if(count($selectedPhotos) > 0)
-                                            <div class="list-group list-group-flush">
-                                                @foreach($selectedPhotos as $index => $photo)
-                                                    <div class="list-group-item file-item py-3">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="file-icon me-3">
-                                                                <i class="mdi mdi-image-outline"></i>
-                                                            </div>
-                                                            <div class="flex-grow-1 overflow-hidden">
-                                                                <h6 class="file-name mb-1 text-truncate" title="{{ $photo }}">{{ $photo }}</h6>
-                                                                <small class="text-muted">Item #{{ $index + 1 }}</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <div class="text-center py-5">
-                                                <div class="avatar-md mx-auto mb-3">
-                                                    <span class="avatar-title rounded-circle bg-light text-muted font-size-24">
-                                                        <i class="mdi mdi-image-off"></i>
-                                                    </span>
-                                                </div>
-                                                <p class="text-muted mb-0">Belum ada foto yang dipilih untuk diedit.</p>
-                                            </div>
-                                        @endif
-                                    </div>
+                                <div class="card-body">
+                                    @if($transaksi->select_edit_photo)
+                                        <div class="form-group">
+                                            <textarea 
+                                                class="form-control bg-white border-0" 
+                                                rows="15" 
+                                                readonly 
+                                                style="font-family: 'Courier New', Courier, monospace; line-height: 1.6; font-size: 14px; resize: none;"
+                                            >{{ $transaksi->select_edit_photo }}</textarea>
+                                        </div>
+                                        <div class="mt-2 text-end">
+                                            <button class="btn btn-outline-primary btn-sm copy-btn" data-clipboard-text="{{ $transaksi->select_edit_photo }}">
+                                                <i class="mdi mdi-content-copy me-1"></i> Salin Teks
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="text-center py-5 text-muted">
+                                            <i class="mdi mdi-image-off font-size-24 mb-2 d-block"></i>
+                                            Pelanggan belum memilih foto untuk diedit.
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
 
-                        {{-- KOLOM 2: FOTO CETAK --}}
+                        <!-- Print Photos Section -->
                         <div class="col-md-6 mb-4">
-                            <div class="card selection-card h-100">
-                                <div class="card-header-clean d-flex justify-content-between align-items-center">
-                                    <h5 class="font-size-15 mb-0 text-success fw-bold">
-                                        <i class="bx bx-printer me-2"></i> Foto untuk Dicetak
+                            <div class="card h-100 border shadow-none bg-light">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="font-size-16 mb-0 text-white">
+                                        <i class="mdi mdi-printer me-2"></i> Foto untuk Dicetak
                                     </h5>
-                                    <span class="badge bg-soft-success text-success pill font-size-12">{{ count($selectedPrints) }} File</span>
                                 </div>
-                                <div class="card-body p-0">
-                                    <div class="file-list-container">
-                                        @if(count($selectedPrints) > 0)
-                                            <div class="list-group list-group-flush">
-                                                @foreach($selectedPrints as $index => $photo)
-                                                    @php
-                                                        $slotName = $printSlots[$index] ?? 'Extra Print';
-                                                    @endphp
-                                                    <div class="list-group-item file-item py-3">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="file-icon me-3 bg-soft-success text-success">
-                                                                <i class="mdi mdi-printer"></i>
-                                                            </div>
-                                                            <div class="flex-grow-1 overflow-hidden">
-                                                                <h6 class="file-name mb-1 text-truncate" title="{{ $photo }}">{{ $photo }}</h6>
-                                                                <span class="badge badge-soft-secondary font-size-11">{{ $slotName }}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <div class="text-center py-5">
-                                                <div class="avatar-md mx-auto mb-3">
-                                                    <span class="avatar-title rounded-circle bg-light text-muted font-size-24">
-                                                        <i class="mdi mdi-printer-off"></i>
-                                                    </span>
-                                                </div>
-                                                <p class="text-muted mb-0">Tidak ada foto yang dipilih untuk dicetak.</p>
-                                            </div>
-                                        @endif
-                                    </div>
+                                <div class="card-body">
+                                    @if($transaksi->select_print_photo)
+                                        <div class="form-group">
+                                            <textarea 
+                                                class="form-control bg-white border-0" 
+                                                rows="15" 
+                                                readonly 
+                                                style="font-family: 'Courier New', Courier, monospace; line-height: 1.6; font-size: 14px; resize: none;"
+                                            >{{ $transaksi->select_print_photo }}</textarea>
+                                        </div>
+                                        <div class="mt-2 text-end">
+                                            <button class="btn btn-outline-success btn-sm copy-btn" data-clipboard-text="{{ $transaksi->select_print_photo }}">
+                                                <i class="mdi mdi-content-copy me-1"></i> Salin Teks
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="text-center py-5 text-muted">
+                                            <i class="mdi mdi-printer-off font-size-24 mb-2 d-block"></i>
+                                            Pelanggan belum memilih foto untuk dicetak / Tidak ada kuota cetak.
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>

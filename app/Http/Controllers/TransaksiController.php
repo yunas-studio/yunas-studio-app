@@ -7,6 +7,8 @@ use App\Models\Packet;
 use App\Models\Transaksi;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,7 +19,7 @@ use Illuminate\Validation\Rule;
 
 class TransaksiController extends Controller
 {
-    // Definisi Status Baru secara Global agar konsisten
+    // Definisi Status
     private $processStatuses = [
         'Pelanggan Belum Foto',
         'Pelanggan Pilih Foto',
@@ -26,11 +28,45 @@ class TransaksiController extends Controller
         'Selesai'
     ];
 
+    // --- HELPER UTAMA UNTUK SECURITY (Mencegah IDOR) ---
+    
+    /**
+     * Memastikan hanya pemilik data atau Admin/Kasir yang bisa akses.
+     */
+    private function authorizeAccess(Transaksi $transaksi)
+    {
+        $user = auth()->user();
+        
+        // 1. Jika Admin atau Kasir, izinkan akses
+        if ($user->isAdmin() || $user->isKasir()) {
+            return true;
+        }
+
+        // 2. Jika User biasa, cek apakah ID-nya cocok dengan pemilik transaksi
+        if ($transaksi->user_id !== $user->id) {
+            abort(403, 'AKSES DITOLAK: Anda tidak memiliki izin untuk melihat transaksi ini.');
+        }
+    }
+
+    /**
+     * Memastikan HANYA Admin atau Kasir yang bisa akses (User biasa ditolak).
+     */
+    private function authorizeAdmin()
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && !$user->isKasir()) {
+            abort(403, 'AKSES DITOLAK: Halaman ini khusus Admin/Kasir.');
+        }
+    }
+
+    // ----------------------------------------------------
+
     public function index(Request $request)
     {
         $query = Transaksi::with(['packet.product', 'packet.printOptions', 'user', 'additionals']);
         $user = auth()->user();
         
+        // Filter otomatis: User hanya melihat datanya sendiri
         if ($user->isUser()) {
             $query->where('phone_number', $user->username);
         }
@@ -75,7 +111,6 @@ class TransaksiController extends Controller
         }
         $transactions = $query->paginate($perPage)->withQueryString();
         
-        // Kirim variabel status baru ke View
         $processStatuses = $this->processStatuses;
         $paymentStatuses = ['belum dibayar', 'dp', 'sudah dibayar'];
 
@@ -108,6 +143,8 @@ class TransaksiController extends Controller
 
     public function create()
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+        
         $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
         $all_additionals = Additional::where('price', '>', 0)->orderBy('name')->get();
         return view('admin.transaction.create', compact('packets', 'all_additionals'));
@@ -115,6 +152,8 @@ class TransaksiController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         $validatedData = $request->validate([
             'customer_name'  => ['required', 'string', 'max:50'],
             'phone_number'   => ['required', 'string', 'max:20'],
@@ -127,6 +166,7 @@ class TransaksiController extends Controller
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'           => ['nullable', 'string'],
             'url_images'     => ['nullable', 'string', 'url'],
+            'url_photos_result' => ['nullable', 'string', 'url'],
             'select_edit_photo' => ['nullable', 'string'],
             'select_print_photo'=> ['nullable', 'string'],
         ]);
@@ -138,7 +178,7 @@ class TransaksiController extends Controller
                 [
                     'name' => $validatedData['customer_name'],
                     'password' => Hash::make($validatedData['phone_number']),
-                    'role_id' => Role::where('name', 'User')->firstOrFail()->id,
+                    'role_id' => Role::where('name', 'User')->first()->id ?? 3,
                 ]
             );
 
@@ -153,8 +193,6 @@ class TransaksiController extends Controller
             }
 
             $totalPrice = $subtotal - $discount;
-
-            // Update Logika Status Awal
             $initialProcessStatus = !empty($validatedData['url_images']) ? 'Pelanggan Pilih Foto' : 'Pelanggan Belum Foto';
 
             $transaksi = Transaksi::create([
@@ -170,6 +208,7 @@ class TransaksiController extends Controller
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'url_images'      => $validatedData['url_images'] ?? null,
+                'url_photos_result' => $validatedData['url_photos_result'] ?? null,
                 'select_edit_photo'  => $validatedData['select_edit_photo'] ?? null,
                 'select_print_photo' => $validatedData['select_print_photo'] ?? null,
             ]);
@@ -185,6 +224,10 @@ class TransaksiController extends Controller
             $transaksi->receipt_code = "INV/" . Carbon::now()->format('Ymd') . "/" . $transaksi->transaction_id;
             $transaksi->save();
 
+            if ($validatedData['status'] === 'sudah dibayar') {
+                $this->recordIncome($transaksi);
+            }
+
             DB::commit();
             return redirect()->route('transaksi.index')->with('success', 'Transaction created successfully.');
         } catch (\Exception $e) {
@@ -195,6 +238,8 @@ class TransaksiController extends Controller
 
     public function edit(string $id)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         $transaksi = Transaksi::with(['packet', 'additionals'])->findOrFail($id);
         $packets = Packet::with('product')->where('is_active', 1)->get()->groupBy('product.name');
         $all_additionals = Additional::where('price', '>', 0)->orderBy('name')->get();
@@ -204,13 +249,14 @@ class TransaksiController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         $transaksi = Transaksi::with('user')->findOrFail($id);
 
         $validatedData = $request->validate([
             'customer_name'  => ['required', 'string', 'max:50'],
-            'phone_number'   => ['required', 'string', 'max:20', Rule::unique('users', 'username')->ignore($transaksi->user_id)],
+            'phone_number'   => ['required', 'string', 'max:20'],
             'status'         => ['required', 'in:belum dibayar,dp,sudah dibayar'],
-            // Update Validasi Rule Status
             'process_status' => ['required', Rule::in($this->processStatuses)],
             'packet_id'      => ['required', 'exists:packets,id'],
             'additionals'    => ['nullable', 'array'],
@@ -220,17 +266,25 @@ class TransaksiController extends Controller
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
             'note'           => ['nullable', 'string'],
             'url_images'     => ['nullable', 'string', 'url'],
+            'url_photos_result' => ['nullable', 'string', 'url'],
             'select_edit_photo' => ['nullable', 'string'],
             'select_print_photo'=> ['nullable', 'string'],
         ]);
 
         DB::beginTransaction();
         try {
-            if ($transaksi->user) {
-                $transaksi->user->update([
+            // FIX BUG 2: Ganti User jika nomor HP berubah
+            $user = User::firstOrCreate(
+                ['username' => $validatedData['phone_number']],
+                [
                     'name' => $validatedData['customer_name'],
-                    'username' => $validatedData['phone_number'],
-                ]);
+                    'password' => Hash::make($validatedData['phone_number']),
+                    'role_id' => Role::where('name', 'User')->first()->id ?? 3,
+                ]
+            );
+
+            if ($user->name !== $validatedData['customer_name']) {
+                $user->update(['name' => $validatedData['customer_name']]);
             }
 
             $packet = Packet::findOrFail($validatedData['packet_id']);
@@ -244,15 +298,14 @@ class TransaksiController extends Controller
             }
 
             $totalPrice = $subtotal - $discount;
-            $previousStatus = $transaksi->status;
             
-            // Update Logika Auto Status
             $processStatus = $validatedData['process_status'];
             if (!empty($validatedData['url_images']) && $processStatus === 'Pelanggan Belum Foto') {
                 $processStatus = 'Pelanggan Pilih Foto';
             }
 
             $transaksi->update([
+                'user_id'         => $user->id,
                 'customer_name'   => $validatedData['customer_name'],
                 'phone_number'    => $validatedData['phone_number'],
                 'status'          => $validatedData['status'],
@@ -263,11 +316,13 @@ class TransaksiController extends Controller
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'url_images'      => $validatedData['url_images'] ?? null,
+                'url_photos_result' => $validatedData['url_photos_result'] ?? null,
                 'select_edit_photo'  => $validatedData['select_edit_photo'] ?? null,
                 'select_print_photo' => $validatedData['select_print_photo'] ?? null,
             ]);
             
-            if ($previousStatus !== 'sudah dibayar' && $validatedData['status'] === 'sudah dibayar') {
+            // FIX BUG 1: Panggil fungsi yang sudah aman dari duplikasi
+            if ($validatedData['status'] === 'sudah dibayar') {
                 $this->recordIncome($transaksi);
             }
 
@@ -283,17 +338,18 @@ class TransaksiController extends Controller
             return redirect()->route('transaksi.index')->with('success', 'Transaction updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('error', 'Failed to update transaction.');
+            return redirect()->back()->withInput()->with('error', 'Failed to update transaction: ' . $e->getMessage());
         }
     }
 
     public function updateStatus(Request $request, $id)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         $transaksi = Transaksi::findOrFail($id);
         $field = $request->input('field');
         $value = $request->input('value');
 
-        // Update logika pengecekan URL kosong
         if ($field === 'process_status' && $value !== 'Pelanggan Belum Foto' && empty($transaksi->url_images)) {
             return redirect()->back()->with('error', 'Cannot proceed. URL Photos must be filled first.');
         }
@@ -317,6 +373,7 @@ class TransaksiController extends Controller
 
     public function destroy(string $id)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
         Transaksi::destroy($id);
         return back()->with('success', 'Deleted');
     }
@@ -328,15 +385,55 @@ class TransaksiController extends Controller
                 'packet.product', 
                 'packet.printOptions', 
                 'packet.additionalDefaults.additional',
-                'additionals'
+                'additionals' // Load extra items purchased
             ]);
 
             if (!$transaksi->packet) {
                 return redirect()->back()->with('error', 'Transaction is not linked to a valid packet.');
             }
+
+            // --- 1. Generate Template for Editing ---
+            // If user already saved data, use that. Otherwise, generate the template.
+            if ($transaksi->select_edit_photo) {
+                $editValue = $transaksi->select_edit_photo;
+            } else {
+                $maxEdit = $transaksi->packet->max_photos_for_edit;
+                $editValue = "Daftar Foto untuk Diedit (Maks {$maxEdit} Foto):\n";
+                for ($i = 1; $i <= $maxEdit; $i++) {
+                    $editValue .= "{$i}. \n";
+                }
+            }
+
+            // --- 2. Generate Template for Printing ---
+            if ($transaksi->select_print_photo) {
+                $printValue = $transaksi->select_print_photo;
+            } else {
+                $printValue = "Daftar Foto untuk Dicetak:\n";
+                
+                // A. From Packet Defaults (Combined accessor from Packet model)
+                foreach ($transaksi->packet->combined_defaults as $item) {
+                    // Check if item name contains "Cetak" or "Print"
+                    if (stripos($item->name, 'cetak') !== false || stripos($item->name, 'print') !== false) {
+                        for ($q = 0; $q < $item->quantity; $q++) {
+                            $printValue .= "- {$item->name} : \n";
+                        }
+                    }
+                }
+
+                // B. From Additional Items (Extras bought by user)
+                foreach ($transaksi->additionals as $additional) {
+                    if (stripos($additional->name, 'cetak') !== false || stripos($additional->name, 'print') !== false) {
+                        for ($q = 0; $q < $additional->pivot->quantity; $q++) {
+                            $printValue .= "- (Add-on) {$additional->name} : \n";
+                        }
+                    }
+                }
+            }
             
             return view('user.transaction.select-photo', [
                 'transaksi' => $transaksi,
+                'editValue' => $editValue,
+                'printValue' => $printValue
             ]);
 
         } catch (\Exception $e) {
@@ -344,11 +441,10 @@ class TransaksiController extends Controller
         }
     }
 
-    /**
-     * USER SIDE: Handle submission of photo selections.
-     */
     public function handleSelectForEditUser(Request $request, Transaksi $transaksi)
     {
+        $this->authorizeAccess($transaksi); // Security Check: Owner atau Admin
+
         $validatedData = $request->validate([
             'select_edit_photo'  => ['nullable', 'string'],
             'select_print_photo' => ['nullable', 'string'],
@@ -356,7 +452,6 @@ class TransaksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update Logika Auto Status setelah User memilih
             $newStatus = ($transaksi->process_status === 'Pelanggan Pilih Foto') ? 'Siap Edit dan Cetak' : $transaksi->process_status;
 
             $transaksi->update([
@@ -375,6 +470,8 @@ class TransaksiController extends Controller
 
     public function viewSelectionsForAdmin(Transaksi $transaksi, Request $request)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         try {
             $selectedPhotos = $transaksi->select_edit_photo ? array_map('trim', explode(',', $transaksi->select_edit_photo)) : [];
             $selectedPrints = $transaksi->select_print_photo ? array_map('trim', explode(',', $transaksi->select_print_photo)) : [];
@@ -391,11 +488,10 @@ class TransaksiController extends Controller
         }
     }
 
-    // ... (sisa method downloadInvoice, printInvoice, dll tetap sama) ...
-    // Untuk mempersingkat, saya tidak menyertakan method yang tidak berubah.
-
     public function downloadInvoice(Transaksi $transaksi)
     {
+        $this->authorizeAccess($transaksi); // Security Check: Owner atau Admin
+
         if ($transaksi->status != "sudah dibayar") {
             return back()->with('error', 'Only paid transactions can download invoices');
         }
@@ -414,7 +510,6 @@ class TransaksiController extends Controller
                 'dp' => 'Down Payment',
                 'sudah dibayar' => 'Paid'
             ],
-            // Update config PDF (opsional, tapi baik untuk konsistensi)
             'processStatusConfig' => [
                 'Pelanggan Belum Foto' => 'Not Photographed',
                 'Pelanggan Pilih Foto' => 'Selecting Photos',
@@ -436,6 +531,8 @@ class TransaksiController extends Controller
 
     public function printInvoice(Transaksi $transaksi)
     {
+        $this->authorizeAdmin(); // Security Check: Hanya Admin
+
         $transaksi->load(
             'packet.product',
             'packet.additionalDefaults.additional',
@@ -446,13 +543,63 @@ class TransaksiController extends Controller
         return view('invoices.print-template', ['transaksi' => $transaksi]);
     }
 
+    // Placeholder methods for future implementation, secured
+    public function downloadAllPhotosAsZip(Transaksi $transaksi)
+    {
+        $this->authorizeAccess($transaksi);
+        return back()->with('error', 'Fitur Download All belum diimplementasikan.');
+    }
+
+    public function downloadSelectedPhotosAsZip(Transaksi $transaksi)
+    {
+        $this->authorizeAccess($transaksi);
+        return back()->with('error', 'Fitur Download Selected belum diimplementasikan.');
+    }
+
+    public function downloadFolderAsZip(Transaksi $transaksi, $status)
+    {
+        $this->authorizeAccess($transaksi);
+        return back()->with('error', 'Fitur Download Folder belum diimplementasikan.');
+    }
+    
+    // Method route tambahan jika ada di web.php
+    public function viewResultPhotos(Transaksi $transaksi)
+    {
+        $this->authorizeAccess($transaksi);
+        // Logika view result photo disini...
+        return view('user.transaction.result-photo', compact('transaksi'));
+    }
+    
+    public function viewSelectForPrint(Transaksi $transaksi)
+    {
+        $this->authorizeAccess($transaksi);
+        // Logika view select for print...
+        return view('user.transaction.manage-print-photo', compact('transaksi'));
+    }
+
+    public function handleSelectForPrint(Request $request, Transaksi $transaksi)
+    {
+        $this->authorizeAccess($transaksi);
+        // Logika save select for print...
+        return redirect()->back()->with('success', 'Print selection saved.');
+    }
+
     private function recordIncome(Transaksi $transaksi)
     {
+        // FIX BUG 1: Cek Duplikasi
+        $exists = Expense::where('name', $transaksi->receipt_code)
+            ->where('type', 'income')
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
         $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
         
-        $categoryId = \App\Models\ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
+        $categoryId = ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
         
-        \App\Models\Expense::create([
+        Expense::create([
             'name' => $transaksi->receipt_code,
             'description' => $description,
             'amount' => $transaksi->total_price,

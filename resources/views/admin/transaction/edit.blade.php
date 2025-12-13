@@ -196,10 +196,19 @@
                         </div>
                         
                         <hr>
-                        <h5 class="section-title"><i class="mdi mdi-image-multiple text-primary me-1"></i> URL Photos</h5>
+                        <h5 class="section-title"><i class="mdi mdi-image-multiple text-primary me-1"></i> URL Photos (For Select User to Edit and Print)</h5>
                         <div class="mb-3">
                             <input type="url" class="form-control form-control-sm @error('url_images') is-invalid @enderror" id="url_images" name="url_images" value="{{ old('url_images', $transaksi->url_images) }}" placeholder="https://...">
                             @error('url_images')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        
+                        <hr>
+                        <h5 class="section-title"><i class="mdi mdi-image-multiple text-primary me-1"></i> URL Photos Result (Final Edited)</h5>
+                        <div class="mb-3">
+                            <input type="url" class="form-control form-control-sm @error('url_photos_result') is-invalid @enderror" id="url_photos_result" name="url_photos_result" value="{{ old('url_photos_result', $transaksi->url_photos_result) }}" placeholder="https://...">
+                            @error('url_photos_result')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

@@ -25,6 +25,7 @@ class Transaksi extends Model
         'discount',
         'note',
         'url_images',
+        'url_photos_result',
         'select_edit_photo',
         'select_print_photo',
     ];
