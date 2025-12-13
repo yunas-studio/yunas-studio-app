@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Balance; // Pastikan Model Balance di-import
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -330,10 +331,11 @@ class TransaksiController extends Controller
             ]);
             
             // LOGIKA PEMASUKAN DI UPDATE
+            // Jika status berubah menjadi 'sudah dibayar', catat pemasukan & tambah balance
             if ($validatedData['status'] === 'sudah dibayar') {
                 $this->recordIncome($transaksi);
             } else {
-                // Jika status berubah dari 'sudah dibayar' ke 'belum dibayar'/'dp', hapus entry di expense
+                // Jika status berubah DARI 'sudah dibayar' KE 'belum dibayar'/'dp', hapus entry di expense & kurangi balance
                 $this->deleteIncome($transaksi);
             }
 
@@ -465,7 +467,7 @@ class TransaksiController extends Controller
         $this->authorizeAdmin();
         $transaksi = Transaksi::findOrFail($id);
         
-        // Hapus juga data pemasukan terkait sebelum menghapus transaksi
+        // Hapus juga data pemasukan terkait sebelum menghapus transaksi (Balance akan otomatis berkurang)
         $this->deleteIncome($transaksi);
         
         $transaksi->delete();
@@ -520,37 +522,70 @@ class TransaksiController extends Controller
     public function viewSelectForPrint(Transaksi $transaksi) { $this->authorizeAccess($transaksi); return view('user.transaction.manage-print-photo', compact('transaksi')); }
     public function handleSelectForPrint(Request $request, Transaksi $transaksi) { $this->authorizeAccess($transaksi); return redirect()->back()->with('success', 'Saved.'); }
 
-    // --- Helper untuk Pemasukan ---
+    // --- Helper untuk Pemasukan & Update Balance ---
 
     private function recordIncome(Transaksi $transaksi)
     {
         $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
         $categoryId = ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
         
-        // Gunakan updateOrCreate agar tidak duplikat jika dipanggil berulang kali untuk transaksi yang sama
-        Expense::updateOrCreate(
-            [
-                'name' => $transaksi->receipt_code, 
-                'type' => 'income'
-            ],
-            [
+        // Ambil data Balance (Asumsi hanya ada 1 baris data di tabel balance)
+        $balance = Balance::first();
+
+        // Cek apakah income sudah pernah dicatat sebelumnya
+        $existingExpense = Expense::where('name', $transaksi->receipt_code)
+                                  ->where('type', 'income')
+                                  ->first();
+
+        if ($existingExpense) {
+            // Jika sudah ada, hitung selisih harga (jika ada perubahan harga paket/additional)
+            $difference = $transaksi->total_price - $existingExpense->amount;
+            
+            if ($difference != 0 && $balance) {
+                $balance->amount += $difference;
+                $balance->save();
+            }
+
+            // Update data expense
+            $existingExpense->update([
                 'description' => $description,
                 'amount' => $transaksi->total_price,
                 'paid_amount' => $transaksi->total_price,
                 'remaining_amount' => 0,
-                'expense_date' => now(), // Tanggal pemasukan diupdate ke waktu pembayaran lunas
+                'expense_date' => now(),
+            ]);
+        } else {
+            // Jika belum ada (transaksi baru lunas), buat expense baru dan tambah Balance
+            Expense::create([
+                'name' => $transaksi->receipt_code, 
+                'type' => 'income',
+                'description' => $description,
+                'amount' => $transaksi->total_price,
+                'paid_amount' => $transaksi->total_price,
+                'remaining_amount' => 0,
+                'expense_date' => now(),
                 'category_id' => $categoryId,
                 'is_paid' => true,
-            ]
-        );
+            ]);
+
+            // Tambah Balance
+            if ($balance) {
+                $balance->amount += $transaksi->total_price;
+                $balance->save();
+            }
+        }
     }
 
     private function deleteIncome(Transaksi $transaksi)
     {
         // Cari dan hapus expense yang terhubung dengan kode resi transaksi ini
-        Expense::where('name', $transaksi->receipt_code)
+        $expense = Expense::where('name', $transaksi->receipt_code)
                ->where('type', 'income')
-               ->delete();
+               ->first();
+
+        if ($expense) {
+            $expense->delete();
+        }
     }
 
     public function getDefaultAdditionals(Packet $packet)
