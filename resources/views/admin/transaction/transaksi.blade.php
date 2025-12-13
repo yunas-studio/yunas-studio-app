@@ -1,6 +1,6 @@
 @extends('layouts.master')
 @section('title')
-    Transaction
+    Daftar Transaksi
 @endsection
 
 @php
@@ -64,7 +64,7 @@
 @endsection
 
 @section('content')
-    @component('common-components.breadcrumb', ['title' => 'Transaksi', 'pagetitle' => 'Transactions', 'breadcrumbs' => [['text' => 'Transactions', 'url' => '']]])
+    @component('common-components.breadcrumb', ['title' => 'Daftar Transaksi', 'pagetitle' => 'Admin', 'breadcrumbs' => [['text' => 'Transaksi', 'url' => '']]])
     @endcomponent
 
     {{-- Summary Cards Row --}}
@@ -76,14 +76,14 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">Total Belum Dibayar</p>
+                                    <p class="text-muted fw-medium">Belum Dibayar</p>
                                     <h4 class="mb-0 text-warning">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}">
                                             <span class="amount-value">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">from {{ $countBelumDibayar }} {{ Str::plural('transaction', $countBelumDibayar) }}</p>
+                                    <p class="text-muted mb-0 font-size-12">dari {{ $countBelumDibayar }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-error-circle font-size-24 text-warning"></i>
@@ -97,14 +97,14 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">Total DP (Paid)</p>
+                                    <p class="text-muted fw-medium">DP (Uang Muka)</p>
                                     <h4 class="mb-0 text-info">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalDpPaid, 0, ',', '.') }}">
                                             <span class="amount-value">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">from {{ $countDp }} {{ Str::plural('transaction', $countDp) }}</p>
+                                    <p class="text-muted mb-0 font-size-12">dari {{ $countDp }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-time-five font-size-24 text-info"></i>
@@ -118,14 +118,14 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">Total Sudah Dibayar</p>
+                                    <p class="text-muted fw-medium">Lunas</p>
                                     <h4 class="mb-0 text-success">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}">
                                             <span class="amount-value">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">from {{ $countSudahDibayar }} {{ Str::plural('transaction', $countSudahDibayar) }}</p>
+                                    <p class="text-muted mb-0 font-size-12">dari {{ $countSudahDibayar }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-check-circle font-size-24 text-success"></i>
@@ -145,14 +145,14 @@
                     <div class="card-body">
                         <div class="d-flex text-white">
                             <div class="flex-grow-1">
-                                <p class="fw-medium text-white" id="profit-card-title">Total Profit (Filtered)</p>
+                                <p class="fw-medium text-white" id="profit-card-title">Total Pendapatan (Terfilter)</p>
                                 <h4 class="mb-0 text-white" id="profit-card-value">
                                     <span class="amount-container" data-amount="Rp {{ number_format($totalProfit, 0, ',', '.') }}">
                                         <span class="amount-value">Rp {{ number_format($totalProfit, 0, ',', '.') }}</span>
-                                        <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i>
+                                        <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i>
                                     </span>
                                 </h4>
-                                <small class="mb-0 opacity-75" id="profit-card-subtitle">Click to see overall total</small>
+                                <small class="mb-0 opacity-75" id="profit-card-subtitle">Klik untuk lihat total keseluruhan</small>
                             </div>
                             <div class="flex-shrink-0 align-self-center">
                                 <i class="bx bx-wallet font-size-24"></i>
@@ -172,13 +172,13 @@
                     <form action="{{ route('transaksi.index') }}" method="GET">
                         <div class="row">
                             <div class="col-12">
-                                <label for="search" class="form-label">Search Transaction</label>
-                                <input type="text" name="search" class="form-control" placeholder="Search by name or receipt code..." value="{{ request('search') }}">
+                                <label for="search" class="form-label">Cari Transaksi</label>
+                                <input type="text" name="search" class="form-control" placeholder="Cari nama pelanggan atau kode invoice..." value="{{ request('search') }}">
                             </div>
                         </div>
                         <div class="mt-2">
                              <a class="advanced-filter-toggler" data-bs-toggle="collapse" href="#advancedFilters" role="button" aria-expanded="false" aria-controls="advancedFilters">
-                                <i class="bx bx-slider-alt me-1"></i> Advanced Filters
+                                <i class="bx bx-slider-alt me-1"></i> Filter Lanjutan
                             </a>
                         </div>
 
@@ -190,27 +190,29 @@
                             <hr>
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label for="payment_status" class="form-label">Payment Status</label>
+                                    <label for="payment_status" class="form-label">Status Pembayaran</label>
                                     <select class="form-select" name="payment_status" id="payment_status">
-                                        <option value="">All</option>
+                                        <option value="">Semua</option>
                                         @foreach($paymentStatuses as $status)
-                                            <option value="{{ $status }}" {{ request('payment_status') == $status ? 'selected' : '' }}>{{ ucwords($status) }}</option>
+                                            <option value="{{ $status }}" {{ request('payment_status') == $status ? 'selected' : '' }}>
+                                                {{ $status == 'dp' ? 'DP (Uang Muka)' : ($status == 'sudah dibayar' ? 'Lunas' : 'Belum Dibayar') }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="process_status" class="form-label">Process Status</label>
+                                    <label for="process_status" class="form-label">Status Pengerjaan</label>
                                     <select class="form-select" name="process_status" id="process_status">
-                                        <option value="">All</option>
+                                        <option value="">Semua</option>
                                         @foreach($processStatuses as $status)
                                             <option value="{{ $status }}" {{ request('process_status') == $status ? 'selected' : '' }}>{{ $status }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="packet_id" class="form-label">Packet</label>
+                                    <label for="packet_id" class="form-label">Paket</label>
                                     <select class="form-select" name="packet_id" id="packet_id">
-                                        <option value="">All Packets</option>
+                                        <option value="">Semua Paket</option>
                                         @foreach($packetsForFilter as $productName => $packets)
                                             <optgroup label="{{ $productName }}">
                                                 @foreach($packets as $packet)
@@ -223,14 +225,14 @@
                                     </select>
                                 </div>
                                 <div class="col-12 mt-3">
-                                    <label class="form-label mb-0">Date Range</label>
+                                    <label class="form-label mb-0">Rentang Tanggal</label>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="start_date" class="form-label small text-muted">From</label>
+                                    <label for="start_date" class="form-label small text-muted">Dari</label>
                                     <input type="date" class="form-control" id="start_date" name="start_date" value="{{ request('start_date') }}">
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="end_date" class="form-label small text-muted">To</label>
+                                    <label for="end_date" class="form-label small text-muted">Sampai</label>
                                     <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request('end_date') }}">
                                 </div>
                             </div>
@@ -239,7 +241,7 @@
                         <hr>
                         <div class="d-flex justify-content-end gap-2">
                              <a href="{{ route('transaksi.index') }}" class="btn btn-secondary"><i class="bx bx-reset me-1"></i> Reset</a>
-                            <button type="submit" class="btn btn-primary"><i class="bx bx-filter-alt me-1"></i> Apply Filters</button>
+                            <button type="submit" class="btn btn-primary"><i class="bx bx-filter-alt me-1"></i> Terapkan Filter</button>
                         </div>
                     </form>
                 </div>
@@ -254,9 +256,9 @@
                     <div class="row mb-2">
                         <div class="col-md-12">
                             <div class="d-flex flex-wrap gap-2 mb-3">
-                                <a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Add New Transaction</a>
+                                <a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Tambah Transaksi Baru</a>
                                 <button type="button" id="hide-completed-btn" class="btn btn-secondary waves-effect waves-light">
-                                    <i class="bx bx-hide me-1"></i> Hide Completed
+                                    <i class="bx bx-hide me-1"></i> Sembunyikan Selesai
                                 </button>
                             </div>
                         </div>
@@ -277,23 +279,23 @@
                                             return '<a href="' . $url . '" class="text-dark sortable-header' . ($isActive ? ' active' : '') . '">' . $label . '<i class="bx ' . $icon . ' sort-icon"></i></a>';
                                         }
                                     @endphp
-                                    <th>Receipt Code</th>
-                                    <th>Customer</th>
-                                    <th>Packet</th>
-                                    <th>{!! sortable_header('Total Price', 'total_price', request()) !!}</th>
-                                    <th>{!! sortable_header('Transaction Date', 'created_at', request()) !!}</th>
-                                    <th>Payment Status</th>
-                                    <th>Process Status</th>
-                                    <th>Details</th>
-                                    <th style="width: 120px;">Action</th>
+                                    <th>Kode Invoice</th>
+                                    <th>Pelanggan</th>
+                                    <th>Produk</th>
+                                    <th>{!! sortable_header('Total Biaya', 'total_price', request()) !!}</th>
+                                    <th>{!! sortable_header('Tanggal', 'created_at', request()) !!}</th>
+                                    <th>Status Pembayaran</th>
+                                    <th>Status Pengerjaan</th>
+                                    <th>Detail</th>
+                                    <th style="width: 120px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php
                                     $paymentStatusConfig = [
-                                        'belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],
-                                        'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
-                                        'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
+                                        'belum dibayar' => ['label' => 'Belum Dibayar', 'icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],
+                                        'dp' => ['label' => 'DP (Uang Muka)', 'icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
+                                        'sudah dibayar' => ['label' => 'Lunas', 'icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
                                     ];
                                     
                                     // KONFIGURASI STATUS BARU
@@ -308,12 +310,21 @@
                                 @forelse($transactions as $transaksi)
                                     <tr data-process-status="{{ $transaksi->process_status }}" data-payment-status="{{ $transaksi->status }}">
                                         <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
-                                        <td>{{ $transaksi->customer_name }}</td>
+                                        
+                                        {{-- MODIFIKASI: Menambahkan Nomor HP & Icon --}}
                                         <td>
-                                            <span class="fw-bold">{{ $transaksi->packet->name ?? 'N/A' }}</span>
+                                            <h6 class="mb-1">{{ $transaksi->customer_name }}</h6>
+                                            <div class="text-muted" style="font-size: 0.85em;">
+                                                <i class="bx bx-phone text-secondary me-1"></i>
+                                                {{ $transaksi->phone_number }}
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <span class="fw-bold">{{ $transaksi->packet->product->name ?? 'N/A' }}</span>
                                             @if($transaksi->packet && $transaksi->packet->product)
                                                 <br>
-                                                <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
+                                                <small class="text-muted">{{ $transaksi->packet->name }}</small>
                                             @endif
                                         </td>
                                         <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
@@ -324,9 +335,9 @@
                                                 @method('PUT')
                                                 <input type="hidden" name="field" value="status">
                                                 <select name="value" class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" data-transaction-id="{{ $transaksi->transaction_id }}">
-                                                    @foreach ($paymentStatusConfig as $status => $config)
-                                                        <option value="{{ $status }}" {{ $transaksi->status == $status ? 'selected' : '' }}>
-                                                            {{ $config['icon'] }} {{ ucwords($status) }}
+                                                    @foreach ($paymentStatusConfig as $statusKey => $config)
+                                                        <option value="{{ $statusKey }}" {{ $transaksi->status == $statusKey ? 'selected' : '' }}>
+                                                            {{ $config['icon'] }} {{ $config['label'] }}
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -375,7 +386,7 @@
                                                             }
                                                             if ($status === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
                                                                 $disabled = true;
-                                                                $labelSuffix = '(No Prints)';
+                                                                $labelSuffix = '(Tidak ada item cetak)';
                                                             }
                                                             if ($status === 'Selesai') {
                                                                 if ($transaksi->status !== 'sudah dibayar') {
@@ -395,7 +406,7 @@
                                             </form>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button>
+                                            <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Lihat</button>
                                         </td>
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
@@ -404,7 +415,7 @@
                                                         data-id="{{ $transaksi->transaction_id }}"
                                                         data-field="url_images"
                                                         data-value="{{ $transaksi->url_images }}"
-                                                        data-bs-toggle="tooltip" title="Input Link Gallery">
+                                                        data-bs-toggle="tooltip" title="Input Link Galeri (Pemilihan Foto)">
                                                     <i class="mdi mdi-image-multiple"></i>
                                                 </button>
 
@@ -412,14 +423,14 @@
                                                         data-id="{{ $transaksi->transaction_id }}"
                                                         data-field="url_photos_result"
                                                         data-value="{{ $transaksi->url_photos_result }}"
-                                                        data-bs-toggle="tooltip" title="Input Link Final Result">
+                                                        data-bs-toggle="tooltip" title="Input Link Hasil Akhir">
                                                     <i class="bx bx-check-double"></i>
                                                 </button>
 
                                                 {{-- INPUT MANUAL SELECTION BUTTON --}}
                                                 @php
                                                     $canInputSelections = !empty($transaksi->url_images);
-                                                    $tooltipMessage = $canInputSelections ? "Input Pilihan Foto (Paste WA)" : "Isi Link Gallery Terlebih Dahulu";
+                                                    $tooltipMessage = $canInputSelections ? "Input Pilihan Foto (Paste WA)" : "Isi Link Galeri Terlebih Dahulu";
                                                     $existingText = "";
                                                     if($transaksi->select_edit_photo) $existingText .= "*DAFTAR FOTO EDIT*\n" . $transaksi->select_edit_photo . "\n\n";
                                                     if($transaksi->select_print_photo) $existingText .= "*DAFTAR FOTO CETAK*\n" . $transaksi->select_print_photo;
@@ -432,7 +443,7 @@
                                                     <i class="bx bx-list-check"></i>
                                                 </button>
                                                 
-                                                <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
+                                                <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaksi"><i class="uil uil-pen font-size-18"></i></a>
 
                                                 <form id="delete-form-{{ $transaksi->transaction_id }}" action="{{ route('transaksi.destroy', $transaksi->transaction_id) }}" method="POST" class="d-inline">
                                                     @csrf
@@ -441,7 +452,7 @@
                                                             data-bs-toggle="modal" 
                                                             data-bs-target="#confirmDeleteModal" 
                                                             data-form-id="delete-form-{{ $transaksi->transaction_id }}"
-                                                            data-bs-toggle="tooltip" title="Delete Transaction">
+                                                            data-bs-toggle="tooltip" title="Hapus Transaksi">
                                                         <i class="uil uil-trash-alt font-size-18"></i>
                                                     </button>
                                                 </form>
@@ -534,7 +545,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="text-center">No transactions found for the selected filters.</td></tr>
+                                    <tr><td colspan="9" class="text-center">Data transaksi tidak ditemukan.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -542,14 +553,14 @@
                      <div class="row mt-4">
                         <div class="col-sm-6 d-flex align-items-center">
                             <div>
-                                <p class="mb-sm-0">Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} of {{ $transactions->total() }} entries</p>
+                                <p class="mb-sm-0">Menampilkan {{ $transactions->firstItem() }} sampai {{ $transactions->lastItem() }} dari {{ $transactions->total() }} data</p>
                             </div>
                             <div class="ms-3">
                                 <form method="GET" action="{{ route('transaksi.index') }}" class="d-flex align-items-center">
                                     @foreach (request()->except(['per_page', 'page']) as $key => $value)
                                         <input type="hidden" name="{{ $key }}" value="{{ is_array($value) ? http_build_query($value) : $value }}">
                                     @endforeach
-                                    <label for="per_page" class="form-label me-2 mb-0">Show:</label>
+                                    <label for="per_page" class="form-label me-2 mb-0">Tampil:</label>
                                     <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: 70px;" onchange="this.form.submit()">
                                         @foreach($perPageOptions as $option)
                                             <option value="{{ $option }}" {{ request('per_page', 10) == $option ? 'selected' : '' }}>{{ $option }}</option>
@@ -578,11 +589,11 @@
                         <div class="invoice-content" id="invoiceContent{{ $transaksi->transaction_id }}">
                             <div class="invoice-header text-center"><div class="mb-3"><img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="logo" class="invoice-logo"/></div><p class="text-muted mb-0">Jalan Lingkar Selatan, Sukabumi</p></div>
                             <div class="p-4">
-                                <div class="row"><div class="col-md-6"><h5 class="font-size-16">Billed To:</h5><p class="mb-1">{{ $transaksi->customer_name }}</p>@if($transaksi->phone_number)<p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>@endif @if($transaksi->user)<p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Linked to User: {{ $transaksi->user->name }}</p>@endif</div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Invoice Details:</h5><p class="mb-1"><strong>Invoice #:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Transaction Date:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Payment Status:</strong> {{ ucwords($transaksi->status) }}</p><p class="mb-1"><strong>Process Status:</strong> {{ $transaksi->process_status }}</p></div></div>
-                                <div class="py-2 mt-3"><h3 class="font-size-15 fw-bold">Order Summary</h3></div>
+                                <div class="row"><div class="col-md-6"><h5 class="font-size-16">Ditagihkan Kepada:</h5><p class="mb-1">{{ $transaksi->customer_name }}</p>@if($transaksi->phone_number)<p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>@endif @if($transaksi->user)<p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Akun User: {{ $transaksi->user->name }}</p>@endif</div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Rincian Invoice:</h5><p class="mb-1"><strong>No. Invoice:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Tanggal Transaksi:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Status Pembayaran:</strong> {{ $paymentStatusConfig[$transaksi->status]['label'] ?? ucwords($transaksi->status) }}</p><p class="mb-1"><strong>Status Pengerjaan:</strong> {{ $transaksi->process_status }}</p></div></div>
+                                <div class="py-2 mt-3"><h3 class="font-size-15 fw-bold">Ringkasan Pesanan</h3></div>
                                 <div class="table-responsive">
                                     <table class="table table-nowrap">
-                                        <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
+                                        <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Harga</th><th class="text-center">Jml</th><th class="text-end">Total</th></tr></thead>
                                         <tbody>
                                             @if($transaksi->packet)
                                                 <tr>
@@ -594,7 +605,7 @@
                                                 </tr>
                                             @endif
                                             @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
-                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Prints:</strong></td></tr>
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Cetak Termasuk:</strong></td></tr>
                                                 @foreach($transaksi->packet->printOptions as $printOption)
                                                     <tr class="bg-light">
                                                         <td><i class="mdi mdi-circle-small text-muted"></i></td>
@@ -608,7 +619,7 @@
                                                 @endforeach
                                             @endif
                                             @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
-                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Extras:</strong></td></tr>
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Tambahan Termasuk:</strong></td></tr>
                                                 @foreach($transaksi->packet->additionalDefaults as $default)
                                                     <tr>
                                                         <td><i class="mdi mdi-circle-small text-muted"></i></td>
@@ -617,11 +628,11 @@
                                                 @endforeach 
                                             @endif
                                             @if($transaksi->additionals->isNotEmpty())
-                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Extra Items:</strong></td></tr>
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Item Tambahan:</strong></td></tr>
                                                 @foreach($transaksi->additionals as $additional)
                                                     <tr>
                                                         <td><i class="mdi mdi-circle-small text-muted"></td>
-                                                        <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td>
+                                                        <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Item Tambahan</span></td>
                                                         <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
                                                         <td class="text-center">{{ $additional->pivot->quantity }}</td>
                                                         <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
@@ -636,25 +647,25 @@
                                         <table class="table table-nowrap invoice-details-table">
                                             <tbody>
                                                 <tr><td class="fw-bold">Subtotal</td><td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td></tr>
-                                                @if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Discount</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif
-                                                <tr class="border-top"><td class="fw-bold">Grand Total</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                @if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Diskon</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif
+                                                <tr class="border-top"><td class="fw-bold">Total Akhir</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
                                                 @if($transaksi->status == 'dp' && isset($transaksi->dp_amount))
-                                                    <tr><td class="fw-bold">DP Paid</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
-                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Remaining Balance</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                    <tr><td class="fw-bold">DP Terbayar</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Sisa Tagihan</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
                                                 @elseif($transaksi->status == 'sudah dibayar')
-                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Total Paid</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                    <tr class="fs-5 bg-light"><td class="fw-bold">Total Terbayar</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
                                                 @else
-                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Total Due</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
+                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Total Tagihan</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
                                                 @endif
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                                @if($transaksi->note)<hr><div class="py-2"><h5 class="font-size-15">Note:</h5><p class="text-muted fst-italic">{{ $transaksi->note }}</p></div>@endif
+                                @if($transaksi->note)<hr><div class="py-2"><h5 class="font-size-15">Catatan:</h5><p class="text-muted fst-italic">{{ $transaksi->note }}</p></div>@endif
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><a href="{{ route('transaksi.print-invoice', $transaksi) }}" target="_blank" class="btn btn-primary"><i class="mdi mdi-printer me-1"></i> Print Receipt</a></div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button><a href="{{ route('transaksi.print-invoice', $transaksi) }}" target="_blank" class="btn btn-primary"><i class="mdi mdi-printer me-1"></i> Cetak Nota</a></div>
                 </div>
             </div>
         </div>
@@ -664,19 +675,19 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="text-center">
                         <i class="bx bx-error-circle bx-lg text-danger mb-2"></i>
-                        <p>Are you sure you want to delete this transaction?</p>
-                        <p class="text-muted">This action is irreversible and will also delete associated photo folders.</p>
+                        <p>Apakah Anda yakin ingin menghapus transaksi ini?</p>
+                        <p class="text-muted">Tindakan ini tidak dapat dibatalkan dan akan menghapus folder foto terkait.</p>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Yes, Delete It</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Ya, Hapus</button>
                 </div>
             </div>
         </div>
@@ -753,10 +764,10 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Set Modal Title based on field
             if (field === 'url_images') {
-                urlLabel.textContent = 'Update Gallery Link (Pemilihan Foto)';
+                urlLabel.textContent = 'Update Link Galeri (Pemilihan Foto)';
                 urlInput.placeholder = 'https://...';
             } else {
-                urlLabel.textContent = 'Update Final Result Link (Hasil Foto)';
+                urlLabel.textContent = 'Update Link Hasil Akhir (Final)';
                 urlInput.placeholder = 'https://...';
             }
 
@@ -839,11 +850,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         if (isHidden) {
-            toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Show Completed`;
+            toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Tampilkan Selesai`;
             toggleBtn.classList.remove('btn-secondary');
             toggleBtn.classList.add('btn-info');
         } else {
-            toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Hide Completed`;
+            toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Sembunyikan Selesai`;
             toggleBtn.classList.remove('btn-info');
             toggleBtn.classList.add('btn-secondary');
         }
@@ -880,33 +891,33 @@ document.addEventListener('DOMContentLoaded', function () {
             isShowingFiltered = !isShowingFiltered;
 
             if (isShowingFiltered) {
-                titleEl.textContent = 'Total Profit (Filtered)';
+                titleEl.textContent = 'Total Pendapatan (Terfilter)';
                 const amountContainer = valueEl.querySelector('.amount-container');
                 if (amountContainer) {
                     const amountValue = amountContainer.querySelector('.amount-value');
                     if (amountValue) {
                         amountValue.textContent = formatter.format(filteredProfit);
                     } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
                     }
                 } else {
-                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
                 }
-                subtitleEl.textContent = 'Click to see overall total';
+                subtitleEl.textContent = 'Klik untuk lihat total keseluruhan';
             } else {
-                titleEl.textContent = 'Total Profit (Overall)';
+                titleEl.textContent = 'Total Pendapatan (Keseluruhan)';
                 const amountContainer = valueEl.querySelector('.amount-container');
                 if (amountContainer) {
                     const amountValue = amountContainer.querySelector('.amount-value');
                     if (amountValue) {
                         amountValue.textContent = formatter.format(overallProfit);
                     } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
                     }
                 } else {
-                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Show/Hide Amount"></i></span>`;
+                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
                 }
-                subtitleEl.textContent = 'Click to see filtered total';
+                subtitleEl.textContent = 'Klik untuk lihat total terfilter';
                 const hideCompletedBtn = document.getElementById('hide-completed-btn');
                 if (hideCompletedBtn) {
                     hideCompletedBtn.style.display = 'none';
@@ -928,18 +939,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 <input type="hidden" name="field" value="status">
                 <input type="hidden" name="value" value="dp">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="dpAmountModalLabel">Enter Down Payment Amount</h5>
+                    <h5 class="modal-title" id="dpAmountModalLabel">Masukkan Jumlah DP</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="dp_amount_modal" class="form-label">DP Amount (Rp)</label>
+                        <label for="dp_amount_modal" class="form-label">Jumlah DP (Rp)</label>
                         <input type="number" class="form-control" id="dp_amount_modal" name="dp_amount" min="0" required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save DP Amount</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan DP</button>
                 </div>
             </form>
         </div>
@@ -969,8 +980,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Link</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Link</button>
                 </div>
             </form>
         </div>
@@ -1006,7 +1017,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary">Simpan Pilihan</button>
                 </div>
             </form>

@@ -125,12 +125,18 @@ class TransaksiController extends Controller
             ));
         } else {
              // Admin Stats
-             $totalBelumDibayar = (clone $financialQuery)->where('status', 'belum dibayar')->sum('total_price');
+             $unpaidFull = (clone $financialQuery)->where('status', 'belum dibayar')->sum('total_price');
+             $dpRemaining = (clone $financialQuery)->where('status', 'dp')->sum(DB::raw('total_price - COALESCE(dp_amount, 0)'));
+             
+             $totalBelumDibayar = $unpaidFull + $dpRemaining;
              $countBelumDibayar = (clone $financialQuery)->where('status', 'belum dibayar')->count();
+             
              $totalDpPaid = (clone $financialQuery)->where('status', 'dp')->sum('dp_amount');
              $countDp = (clone $financialQuery)->where('status', 'dp')->count();
+             
              $totalSudahDibayar = (clone $financialQuery)->where('status', 'sudah dibayar')->sum('total_price');
              $countSudahDibayar = (clone $financialQuery)->where('status', 'sudah dibayar')->count();
+             
              $totalProfit = $totalDpPaid + $totalSudahDibayar;
              $totalOverallProfit = Transaksi::sum('total_price');
              
@@ -226,8 +232,11 @@ class TransaksiController extends Controller
             $transaksi->receipt_code = "INV/" . Carbon::now()->format('Ymd') . "/" . $transaksi->transaction_id;
             $transaksi->save();
 
+            // LOGIKA PEMASUKAN: Jika Lunas -> Catat; Jika Tidak -> Hapus (jika ada)
             if ($validatedData['status'] === 'sudah dibayar') {
                 $this->recordIncome($transaksi);
+            } else {
+                $this->deleteIncome($transaksi);
             }
 
             DB::commit();
@@ -320,8 +329,12 @@ class TransaksiController extends Controller
                 'select_print_photo' => $validatedData['select_print_photo'] ?? null,
             ]);
             
+            // LOGIKA PEMASUKAN DI UPDATE
             if ($validatedData['status'] === 'sudah dibayar') {
                 $this->recordIncome($transaksi);
+            } else {
+                // Jika status berubah dari 'sudah dibayar' ke 'belum dibayar'/'dp', hapus entry di expense
+                $this->deleteIncome($transaksi);
             }
 
             $syncData = [];
@@ -350,17 +363,12 @@ class TransaksiController extends Controller
 
         // Validasi Logika Bisnis
         if ($field === 'process_status') {
-            // 1. Cek URL Pemilihan Foto jika status selain 'Pelanggan Belum Foto'
             if ($value !== 'Pelanggan Belum Foto' && empty($transaksi->url_images)) {
                 return redirect()->back()->with('error', 'Gagal: Link pemilihan foto (URL Gallery) harus diisi terlebih dahulu.');
             }
-
-            // 2. Validasi Khusus Status 'Proses Cetak'
             if ($value === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
                 return redirect()->back()->with('error', 'Gagal: Transaksi ini tidak memiliki item untuk dicetak.');
             }
-
-            // 3. Validasi Khusus Status 'Selesai'
             if ($value === 'Selesai') {
                 if ($transaksi->status !== 'sudah dibayar') {
                     return redirect()->back()->with('error', 'Gagal: Status pembayaran harus "Sudah Dibayar" sebelum menyelesaikan transaksi.');
@@ -371,11 +379,9 @@ class TransaksiController extends Controller
             }
         }
 
-        // Handle update khusus field URL melalui AJAX/Action Buttons
+        // Handle update khusus field URL
         if (in_array($field, ['url_images', 'url_photos_result'])) {
-            $transaksi->{$field} = $value; // Bisa null jika dikosongi
-            
-            // Otomatis ubah status jika mengisi link galeri
+            $transaksi->{$field} = $value;
             if ($field === 'url_images' && !empty($value) && $transaksi->process_status === 'Pelanggan Belum Foto') {
                 $transaksi->process_status = 'Pelanggan Pilih Foto';
             }
@@ -387,8 +393,12 @@ class TransaksiController extends Controller
         $transaksi->{$field} = $value;
         if ($field === 'status') {
              $transaksi->dp_amount = ($value === 'dp') ? $request->input('dp_amount') : null;
+             
+             // LOGIKA PEMASUKAN DI UPDATE STATUS (AJAX/DIRECT)
              if ($value === 'sudah dibayar') {
                  $this->recordIncome($transaksi);
+             } else {
+                 $this->deleteIncome($transaksi);
              }
         }
         
@@ -401,9 +411,6 @@ class TransaksiController extends Controller
         return back()->with('success', 'Status updated.');
     }
 
-    /**
-     * Method untuk update inputan manual (copy-paste) dari WhatsApp.
-     */
     public function updateSelections(Request $request, Transaksi $transaksi)
     {
         $this->authorizeAdmin();
@@ -417,17 +424,14 @@ class TransaksiController extends Controller
         $printPhotos = null;
 
         if ($text) {
-            // Algoritma Parsing
             $editHeaderPos = stripos($text, 'DAFTAR FOTO EDIT');
             $printHeaderPos = stripos($text, 'DAFTAR FOTO CETAK');
 
             if ($editHeaderPos !== false) {
                 $start = $editHeaderPos + strlen('DAFTAR FOTO EDIT');
-                // Skip "(Max X Foto)" jika ada
                 if (preg_match('/\(.*?\)/', substr($text, $start), $matches, PREG_OFFSET_CAPTURE)) {
                      $start += $matches[0][1] + strlen($matches[0][0]);
                 }
-
                 $length = ($printHeaderPos !== false) ? $printHeaderPos - $start : strlen($text);
                 $editPhotos = trim(substr($text, $start, $length));
             }
@@ -439,7 +443,6 @@ class TransaksiController extends Controller
                 $printPhotos = trim(substr($text, $start, $length));
             }
 
-            // Fallback: Jika parsing gagal, simpan raw text
             if (!$editPhotos && !$printPhotos && !$editHeaderPos && !$printHeaderPos) {
                 $editPhotos = $text; 
             }
@@ -448,7 +451,6 @@ class TransaksiController extends Controller
         $transaksi->select_edit_photo = $editPhotos;
         $transaksi->select_print_photo = $printPhotos;
         
-        // Otomatis update status ke 'Proses Edit' jika data terisi dan status masih pilih foto
         if ($transaksi->process_status === 'Pelanggan Pilih Foto' && (!empty($editPhotos) || !empty($printPhotos))) {
             $transaksi->process_status = 'Proses Edit';
         }
@@ -461,18 +463,22 @@ class TransaksiController extends Controller
     public function destroy(string $id)
     {
         $this->authorizeAdmin();
-        Transaksi::destroy($id);
+        $transaksi = Transaksi::findOrFail($id);
+        
+        // Hapus juga data pemasukan terkait sebelum menghapus transaksi
+        $this->deleteIncome($transaksi);
+        
+        $transaksi->delete();
         return back()->with('success', 'Deleted');
     }
 
-    // ... [viewSelectForEdit, handleSelectForEditUser, viewSelectionsForAdmin, downloadInvoice, dll tetap sama] ...
+    // ... [Other methods unchanged] ...
     
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
             $transaksi->load(['packet.product', 'packet.printOptions', 'packet.additionalDefaults.additional', 'additionals']);
-            // ... (Kode sama seperti sebelumnya) ...
-            return view('user.transaction.select-photo', ['transaksi' => $transaksi]); // Simplified for response
+            return view('user.transaction.select-photo', ['transaksi' => $transaksi]);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
@@ -514,25 +520,37 @@ class TransaksiController extends Controller
     public function viewSelectForPrint(Transaksi $transaksi) { $this->authorizeAccess($transaksi); return view('user.transaction.manage-print-photo', compact('transaksi')); }
     public function handleSelectForPrint(Request $request, Transaksi $transaksi) { $this->authorizeAccess($transaksi); return redirect()->back()->with('success', 'Saved.'); }
 
+    // --- Helper untuk Pemasukan ---
+
     private function recordIncome(Transaksi $transaksi)
     {
-        $exists = Expense::where('name', $transaksi->receipt_code)->where('type', 'income')->exists();
-        if ($exists) return;
-
         $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
         $categoryId = ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
         
-        Expense::create([
-            'name' => $transaksi->receipt_code,
-            'description' => $description,
-            'amount' => $transaksi->total_price,
-            'paid_amount' => $transaksi->total_price,
-            'remaining_amount' => 0,
-            'expense_date' => now(),
-            'category_id' => $categoryId,
-            'type' => 'income',
-            'is_paid' => true,
-        ]);
+        // Gunakan updateOrCreate agar tidak duplikat jika dipanggil berulang kali untuk transaksi yang sama
+        Expense::updateOrCreate(
+            [
+                'name' => $transaksi->receipt_code, 
+                'type' => 'income'
+            ],
+            [
+                'description' => $description,
+                'amount' => $transaksi->total_price,
+                'paid_amount' => $transaksi->total_price,
+                'remaining_amount' => 0,
+                'expense_date' => now(), // Tanggal pemasukan diupdate ke waktu pembayaran lunas
+                'category_id' => $categoryId,
+                'is_paid' => true,
+            ]
+        );
+    }
+
+    private function deleteIncome(Transaksi $transaksi)
+    {
+        // Cari dan hapus expense yang terhubung dengan kode resi transaksi ini
+        Expense::where('name', $transaksi->receipt_code)
+               ->where('type', 'income')
+               ->delete();
     }
 
     public function getDefaultAdditionals(Packet $packet)
