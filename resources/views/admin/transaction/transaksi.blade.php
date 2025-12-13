@@ -300,8 +300,8 @@
                                     $processStatusConfig = [
                                         'Pelanggan Belum Foto' => ['icon' => '📷❌', 'class' => 'bg-light text-dark'],
                                         'Pelanggan Pilih Foto' => ['icon' => '🖼️', 'class' => 'bg-info-subtle text-info-emphasis'],
-                                        'Siap Edit dan Cetak' => ['icon' => '✏️🖨️', 'class' => 'bg-primary-subtle text-primary-emphasis'],
-                                        'Proses Edit dan Cetak' => ['icon' => '⚙️', 'class' => 'bg-warning-subtle text-warning-emphasis'],
+                                        'Proses Edit' => ['icon' => '✏️', 'class' => 'bg-primary-subtle text-primary-emphasis'],
+                                        'Proses Cetak' => ['icon' => '🖨️', 'class' => 'bg-warning-subtle text-warning-emphasis'],
                                         'Selesai' => ['icon' => '✅', 'class' => 'bg-success-subtle text-success-emphasis']
                                     ];
                                 @endphp
@@ -336,19 +336,59 @@
                                             <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
                                                 @csrf @method('PUT')
                                                 <input type="hidden" name="field" value="process_status">
+                                                
+                                                @php
+                                                    $statusKeys = array_keys($processStatusConfig);
+                                                    $currentIndex = array_search($transaksi->process_status, $statusKeys);
+                                                    if ($currentIndex === false) $currentIndex = 0;
+                                                @endphp
+
                                                 <select name="value" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
                                                      @foreach ($processStatusConfig as $status => $config)
                                                         @php
-                                                            // Logic baru untuk URL Check
-                                                            $hasUrl = !empty($transaksi->url_images);
-                                                            // Jika status bukan 'Pelanggan Belum Foto', wajib ada URL
-                                                            $statusNeedsUrl = $status !== 'Pelanggan Belum Foto';
-                                                            $disabled = ($statusNeedsUrl && !$hasUrl);
+                                                            $loopIndex = array_search($status, $statusKeys);
+                                                            $disabled = false;
+                                                            $labelSuffix = '';
+
+                                                            // --- LOGIKA SEQUENTIAL (Mencegah Loncat Status) ---
+                                                            if ($loopIndex > $currentIndex) {
+                                                                if ($loopIndex == $currentIndex + 1) {
+                                                                    // Langkah selanjutnya: OK
+                                                                } else {
+                                                                    $canSkip = true;
+                                                                    for ($k = $currentIndex + 1; $k < $loopIndex; $k++) {
+                                                                        $skippedStatus = $statusKeys[$k];
+                                                                        if ($skippedStatus === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
+                                                                            continue;
+                                                                        }
+                                                                        $canSkip = false;
+                                                                        break;
+                                                                    }
+                                                                    if (!$canSkip) $disabled = true;
+                                                                }
+                                                            }
+
+                                                            // --- LOGIKA VALIDASI DATA ---
+                                                            if ($status === 'Pelanggan Pilih Foto' && empty($transaksi->url_images)) {
+                                                                $disabled = true; 
+                                                                $labelSuffix = '(Isi Link Dulu)';
+                                                            }
+                                                            if ($status === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
+                                                                $disabled = true;
+                                                                $labelSuffix = '(No Prints)';
+                                                            }
+                                                            if ($status === 'Selesai') {
+                                                                if ($transaksi->status !== 'sudah dibayar') {
+                                                                    $disabled = true; $labelSuffix = '(Belum Lunas)';
+                                                                } elseif (empty($transaksi->url_photos_result)) {
+                                                                    $disabled = true; $labelSuffix = '(Isi Link Final)';
+                                                                }
+                                                            }
                                                         @endphp
                                                          <option value="{{ $status }}" 
                                                             {{ $transaksi->process_status == $status ? 'selected' : '' }}
                                                             {{ $disabled ? 'disabled' : '' }}>
-                                                             {{ $config['icon'] }} {{ $status }} {{ ($statusNeedsUrl && !$hasUrl) ? '(URL Empty)' : '' }}
+                                                             {{ $config['icon'] }} {{ $status }} {{ $labelSuffix }}
                                                          </option>
                                                      @endforeach
                                                 </select>
@@ -359,36 +399,38 @@
                                         </td>
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
+                                                {{-- Action Buttons for Links --}}
+                                                <button type="button" class="btn btn-sm btn-info update-url-btn" 
+                                                        data-id="{{ $transaksi->transaction_id }}"
+                                                        data-field="url_images"
+                                                        data-value="{{ $transaksi->url_images }}"
+                                                        data-bs-toggle="tooltip" title="Input Link Gallery">
+                                                    <i class="mdi mdi-image-multiple"></i>
+                                                </button>
+
+                                                <button type="button" class="btn btn-sm btn-secondary update-url-btn"
+                                                        data-id="{{ $transaksi->transaction_id }}"
+                                                        data-field="url_photos_result"
+                                                        data-value="{{ $transaksi->url_photos_result }}"
+                                                        data-bs-toggle="tooltip" title="Input Link Final Result">
+                                                    <i class="bx bx-check-double"></i>
+                                                </button>
+
+                                                {{-- INPUT MANUAL SELECTION BUTTON --}}
                                                 @php
-                                                    $canViewSelections = in_array($transaksi->process_status, ['Siap Edit dan Cetak', 'Proses Edit dan Cetak', 'Selesai']);
-                                                    
-                                                    $tooltipMessage = "View Selections"; 
-                                                    $isDisabledIcon = false;
-                                                    
-                                                    // Prioritas 1: URL Kosong (Admin wajib isi URL dulu)
-                                                    if (empty($transaksi->url_images)) {
-                                                        $tooltipMessage = "Photo URL missing. Please edit transaction and add gallery link for user to view and select.";
-                                                        $isDisabledIcon = true;
-                                                    }
-                                                    // Prioritas 2: Status masih 'Belum Foto'
-                                                    elseif ($transaksi->process_status === 'Pelanggan Belum Foto') {
-                                                        $tooltipMessage = "Photo session not done yet. Please Contact the Customer";
-                                                        $isDisabledIcon = true;
-                                                    }
-                                                    // Prioritas 3: User belum memilih foto
-                                                    elseif (!$canViewSelections) {
-                                                        $tooltipMessage = "Waiting for user selection. You can notify the Customer by sending the chat";
-                                                        $isDisabledIcon = true;
-                                                    }
+                                                    $canInputSelections = !empty($transaksi->url_images);
+                                                    $tooltipMessage = $canInputSelections ? "Input Pilihan Foto (Paste WA)" : "Isi Link Gallery Terlebih Dahulu";
+                                                    $existingText = "";
+                                                    if($transaksi->select_edit_photo) $existingText .= "*DAFTAR FOTO EDIT*\n" . $transaksi->select_edit_photo . "\n\n";
+                                                    if($transaksi->select_print_photo) $existingText .= "*DAFTAR FOTO CETAK*\n" . $transaksi->select_print_photo;
                                                 @endphp
-                                                
-                                                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="{{ $tooltipMessage }}">
-                                                    <a href="{{ $canViewSelections ? route('transaksi.view-selections', $transaksi) : '#' }}" 
-                                                       class="text-warning {{ $isDisabledIcon ? 'disabled text-muted' : '' }}" 
-                                                       style="{{ $isDisabledIcon ? 'pointer-events: none;' : '' }}">
-                                                        <i class="uil uil-camera-change font-size-18"></i>
-                                                    </a>
-                                                </span>
+                                                <button type="button" class="btn btn-sm btn-warning input-selection-btn"
+                                                        data-id="{{ $transaksi->transaction_id }}"
+                                                        data-existing-text="{{ $existingText }}"
+                                                        {{ !$canInputSelections ? 'disabled' : '' }}
+                                                        data-bs-toggle="tooltip" title="{{ $tooltipMessage }}">
+                                                    <i class="bx bx-list-check"></i>
+                                                </button>
                                                 
                                                 <a href="{{ route('transaksi.edit', $transaksi->transaction_id) }}" class="text-primary" data-bs-toggle="tooltip" title="Edit Transaction"><i class="uil uil-pen font-size-18"></i></a>
 
@@ -406,12 +448,74 @@
 
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
-                                                        // Update Pesan WA sesuai Status Baru
+                                                        // TEMPLATE PESAN WA BARU
+                                                        
+                                                        $hasPrint = $transaksi->hasPrintableItems();
+                                                        $linkFinal = $transaksi->url_photos_result ? $transaksi->url_photos_result : "[Link Belum Diisi]";
+                                                        $packetName = $transaksi->packet->name ?? 'N/A';
+                                                        $productName = $transaksi->packet->product->name ?? 'N/A';
+                                                        
+                                                        // Pesan Tambahan: Backup Reminder & Info Paket
+                                                        $backupNote = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 14 hari.";
+                                                        $detailPaket = "Detail Paket:\n*{$productName} - {$packetName}*";
+
+                                                        // Isi pesan 'Selesai'
+                                                        if ($hasPrint) {
+                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai dicetak & diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil hasil cetak di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
+                                                        } else {
+                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih telah mempercayakan momennya di Yunas Studio!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
+                                                        }
+
                                                         $waMessages = [
                                                             'Pelanggan Belum Foto' => "Halo kak {$transaksi->customer_name}, jadwal foto belum terlaksana. Hubungi kami untuk info lebih lanjut.",
-                                                            'Pelanggan Pilih Foto' => "Halo kak {$transaksi->customer_name}, silakan pilih foto untuk diedit melalui link: " . route('transaksi.view-select-for-edit', $transaksi),
-                                                            'Selesai' => "Halo Kak, kabar gembira! Foto Anda telah selesai dicetak.\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review",
+                                                            'Selesai' => $pesanSelesai
                                                         ];
+
+                                                        // Template Pelanggan Pilih Foto
+                                                        if ($transaksi->process_status === 'Pelanggan Pilih Foto') {
+                                                            $maxEdit = $transaksi->packet->max_photos_for_edit ?? 0;
+                                                            
+                                                            $editList = "";
+                                                            for ($i = 1; $i <= $maxEdit; $i++) {
+                                                                $editList .= "{$i}. \n";
+                                                            }
+
+                                                            $printList = "";
+                                                            if ($transaksi->packet && $transaksi->packet->combined_defaults) {
+                                                                foreach ($transaksi->packet->combined_defaults as $item) {
+                                                                    if (stripos($item->name, 'cetak') !== false || stripos($item->name, 'print') !== false) {
+                                                                        for ($q = 0; $q < $item->quantity; $q++) {
+                                                                            $printList .= "- {$item->name} : \n";
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            if ($transaksi->additionals) {
+                                                                foreach ($transaksi->additionals as $additional) {
+                                                                    if (stripos($additional->name, 'cetak') !== false || stripos($additional->name, 'print') !== false) {
+                                                                        for ($q = 0; $q < $additional->pivot->quantity; $q++) {
+                                                                            $printList .= "- (Extra) {$additional->name} : \n";
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            if (empty($printList)) {
+                                                                $printList = "- (Tidak ada item cetak) \n";
+                                                            }
+
+                                                            $linkGaleri = $transaksi->url_images ? $transaksi->url_images : "[Link Belum Diisi]";
+                                                            
+                                                            // Updated with Backup Note
+                                                            $waMessages['Pelanggan Pilih Foto'] = "Halo kak *{$transaksi->customer_name}*, Terima kasih sudah mempercayakan momennya di Yunas Studio.\n\nDetail Paket:\n*{$productName} - {$packetName}*\n\nBerikut kami kirimkan link untuk pemilihan foto:\n{$linkGaleri}\n\n{$backupNote}\n\nMohon untuk mengisi format pemilihan foto dibawah ini dengan menyalin pesan ini dan mengisi nomor fotonya (4 digit belakang file):\n\n*DAFTAR FOTO EDIT (Max {$maxEdit} Foto)*\n{$editList}\n*DAFTAR FOTO CETAK*\n{$printList}\nTerima kasih";
+                                                        }
+
+                                                        // Tooltip WA
+                                                        $waTooltip = "Kirim WhatsApp";
+                                                        if($transaksi->process_status == 'Pelanggan Belum Foto') $waTooltip = "Ingatkan Jadwal Foto";
+                                                        elseif($transaksi->process_status == 'Pelanggan Pilih Foto') $waTooltip = "Kirim Link Pilih Foto";
+                                                        elseif($transaksi->process_status == 'Selesai') $waTooltip = "Info Pengambilan Foto";
+
                                                         $waLink = null;
                                                         if (isset($waMessages[$transaksi->process_status])) {
                                                             $waMessage = $waMessages[$transaksi->process_status];
@@ -423,7 +527,7 @@
                                                         }
                                                     @endphp
                                                     @if(isset($waLink))
-                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WhatsApp"><i class="uil uil-whatsapp"></i></a>
+                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="{{ $waTooltip }}"><i class="uil uil-whatsapp"></i></a>
                                                     @endif
                                                 @endif
                                             </div>
@@ -587,6 +691,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const dpForm = document.getElementById('dpAmountForm');
     const dpInput = document.getElementById('dp_amount_modal');
 
+    // Init URL Modal
+    const urlModal = new bootstrap.Modal(document.getElementById('urlModal'));
+    const urlForm = document.getElementById('urlForm');
+    const urlInput = document.getElementById('url_input');
+    const urlLabel = document.getElementById('urlModalLabel');
+    const urlFieldInput = document.getElementById('url_field_input');
+
+    // Init Selection Modal
+    const selectionModal = new bootstrap.Modal(document.getElementById('inputSelectionModal'));
+    const selectionForm = document.getElementById('selectionForm');
+    const selectionTextInput = document.getElementById('selection_text_input');
+
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -628,6 +744,50 @@ document.addEventListener('DOMContentLoaded', function () {
         dpInput.focus();
     });
 
+    // Handle Update URL Buttons
+    document.querySelectorAll('.update-url-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const transactionId = this.dataset.id;
+            const field = this.dataset.field;
+            const currentValue = this.dataset.value;
+            
+            // Set Modal Title based on field
+            if (field === 'url_images') {
+                urlLabel.textContent = 'Update Gallery Link (Pemilihan Foto)';
+                urlInput.placeholder = 'https://...';
+            } else {
+                urlLabel.textContent = 'Update Final Result Link (Hasil Foto)';
+                urlInput.placeholder = 'https://...';
+            }
+
+            urlInput.value = currentValue;
+            urlFieldInput.value = field;
+            
+            // Set Form Action (Reuse existing update-status route or generic update)
+            // Using update-status route since it handles field/value logic
+            urlForm.action = `/transaksi/${transactionId}/update-status`;
+            
+            urlModal.show();
+        });
+    });
+
+    document.getElementById('urlModal').addEventListener('shown.bs.modal', function () {
+        urlInput.focus();
+    });
+
+    // Handle Input Selection Button (NEW)
+    document.querySelectorAll('.input-selection-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const transactionId = this.dataset.id;
+            const existingText = this.dataset.existingText;
+            
+            document.getElementById('selection_text_input').value = existingText;
+            document.getElementById('selectionForm').action = `/transaksi/${transactionId}/update-selections`;
+            
+            selectionModal.show();
+        });
+    });
+
     const profitToggles = document.querySelectorAll('.profit-toggle');
     const profitAmountEl = document.getElementById('profit-card-amount');
     const profitTitleEl = document.getElementById('profit-card-title');
@@ -660,14 +820,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.add('bx-hide');
             }
         });
-    });
-
-    document.querySelectorAll('.amount-value').forEach(el => {
-        el.classList.add('amount-hidden');
-    });
-    document.querySelectorAll('.toggle-amount-visibility').forEach(el => {
-        el.classList.remove('bx-show-alt');
-        el.classList.add('bx-hide');
     });
 
     // Hide Completed Logic
@@ -788,6 +940,74 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save DP Amount</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- URL Input Modal (NO REQUIRED) --}}
+<div class="modal fade" id="urlModal" tabindex="-1" aria-labelledby="urlModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="urlForm" method="POST">
+                @csrf
+                @method('PUT')
+                {{-- Field name will be dynamic --}}
+                <input type="hidden" id="url_field_input" name="field" value="">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="urlModalLabel">Update Link</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="url_input" class="form-label">URL / Link</label>
+                        {{-- REMOVED REQUIRED ATTRIBUTE --}}
+                        <input type="url" class="form-control" id="url_input" name="value" placeholder="https://...">
+                        <small class="text-muted">Pastikan link diawali dengan https://</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Selection Input Modal (UPDATED: Single Textarea) --}}
+<div class="modal fade" id="inputSelectionModal" tabindex="-1" aria-labelledby="inputSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <form id="selectionForm" method="POST">
+                @csrf
+                @method('PUT')
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inputSelectionModalLabel">Input Pilihan Foto Pelanggan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="mdi mdi-information me-1"></i> Salin dan tempel (Paste) seluruh pesan balasan dari WhatsApp pelanggan ke kolom di bawah ini. Sistem akan otomatis memisahkan daftar foto edit dan cetak.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="selection_text_input" class="form-label fw-bold">Pesan Balasan WhatsApp</label>
+                        <textarea class="form-control" id="selection_text_input" name="selection_text" rows="15" placeholder="Contoh:
+*DAFTAR FOTO EDIT (Max 10 Foto)*
+1. 1234
+2. 5678
+
+*DAFTAR FOTO CETAK*
+- 10R : 1234"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Simpan Pilihan</button>
                 </div>
             </form>
         </div>
