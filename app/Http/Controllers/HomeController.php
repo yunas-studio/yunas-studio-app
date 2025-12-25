@@ -37,7 +37,7 @@ class HomeController extends Controller
 
     public function root()
     {
-        if(Auth::user()->isUser()){
+        if(Auth::user()->isUser() || Auth::user()->isKasir()){
             return redirect('transaksi');
         }
 

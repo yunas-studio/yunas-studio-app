@@ -468,13 +468,14 @@
                                                         
                                                         // Pesan Tambahan: Backup Reminder & Info Paket
                                                         $backupNote = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 14 hari.";
+                                                        $backupNoteSelesai = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 30 hari.";
                                                         $detailPaket = "Detail Paket:\n*{$productName} - {$packetName}*";
 
                                                         // Isi pesan 'Selesai'
                                                         if ($hasPrint) {
-                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai dicetak & diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil hasil cetak di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
+                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai dicetak & diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNoteSelesai}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil hasil cetak di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
                                                         } else {
-                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih telah mempercayakan momennya di Yunas Studio!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
+                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNoteSelesai}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih telah mempercayakan momennya di Yunas Studio!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
                                                         }
 
                                                         $waMessages = [
@@ -518,7 +519,7 @@
                                                             $linkGaleri = $transaksi->url_images ? $transaksi->url_images : "[Link Belum Diisi]";
                                                             
                                                             // Updated with Backup Note
-                                                            $waMessages['Pelanggan Pilih Foto'] = "Halo kak *{$transaksi->customer_name}*, Terima kasih sudah mempercayakan momennya di Yunas Studio.\n\nDetail Paket:\n*{$productName} - {$packetName}*\n\nBerikut kami kirimkan link untuk pemilihan foto:\n{$linkGaleri}\n\n{$backupNote}\n\nMohon untuk mengisi format pemilihan foto dibawah ini dengan menyalin pesan ini dan mengisi nomor fotonya (4 digit belakang file):\n\n*DAFTAR FOTO EDIT (Max {$maxEdit} Foto)*\n{$editList}\n*DAFTAR FOTO CETAK*\n{$printList}\nTerima kasih";
+                                                            $waMessages['Pelanggan Pilih Foto'] = "Halo kak *{$transaksi->customer_name}*, Terima kasih sudah mempercayakan momennya di Yunas Studio.\n\nDetail Paket:\n*{$productName} - {$packetName}*\n\nBerikut kami kirimkan link untuk pemilihan foto:\n{$linkGaleri}\n\n{$backupNote}\n\nMohon untuk mengisi format pemilihan foto dibawah ini dengan menyalin pesan ini dan mengisi nama fotonya (misal : 1.YNSFXXX):\n\n*DAFTAR FOTO EDIT (Max {$maxEdit} Foto)*\n{$editList}\n*DAFTAR FOTO CETAK*\n{$printList}\nTerima kasih";
                                                         }
 
                                                         // Tooltip WA

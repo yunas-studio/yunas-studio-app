@@ -3,17 +3,63 @@
 @section('title') Dashboard @endsection
 
 @section('css')
-<style>
-    /* Styling for Advanced Table & Modals */
-    .invoice-modal .modal-dialog { max-width: 800px; }
-    .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
-    .invoice-modal .invoice-logo { max-height: 60px; }
-    .invoice-modal .invoice-details-table th,
-    .invoice-modal .invoice-details-table td { border: none; }
-    .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
-    .clickable-price:hover { text-decoration: underline; color: #556ee6; }
-    .cursor-pointer { cursor: pointer; }
-</style>
+    <!-- DataTables -->
+    <link href="{{ URL::asset('/assets/libs/datatables/datatables.min.css') }}" rel="stylesheet" type="text/css" />
+
+    <style>
+        /* Invoice Modal Styling */
+        .invoice-modal .modal-dialog { max-width: 800px; }
+        .invoice-modal .invoice-header { background-color: #f8f9fa; padding: 2rem; border-bottom: 1px solid #dee2e6; }
+        .invoice-modal .invoice-logo { max-height: 60px; }
+        .invoice-modal .invoice-details-table th,
+        .invoice-modal .invoice-details-table td { border: none; }
+        
+        /* Links & cursors */
+        .clickable-price { cursor: pointer; color: inherit; text-decoration: none; }
+        .clickable-price:hover { text-decoration: underline; color: #556ee6; }
+        .cursor-pointer { cursor: pointer; }
+        
+        /* Card Hover Effect */
+        .clickable-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: block;
+            color: inherit; 
+        }
+        .clickable-card:hover {
+            transform: scale(1.03);
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Privacy Blur Effect */
+        .amount-container {
+            position: relative;
+            display: inline-block;
+        }
+        .amount-hidden {
+            visibility: hidden;
+            position: relative;
+        }
+        .amount-hidden::after {
+            content: '******';
+            visibility: visible;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: inline-block;
+        }
+        .toggle-amount-visibility {
+            position: relative;
+            z-index: 2;
+            cursor: pointer;
+            margin-left: 20px;
+            color: #556ee6;
+        }
+        .toggle-amount-visibility:hover {
+            color: #4458b8;
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -76,7 +122,7 @@
             </div>
         </div>
 
-        {{-- Pending Transactions Card (Updated) --}}
+        {{-- Pending Transactions Card --}}
         <div class="col-md-6 col-xl-3">
             <div class="card">
                 <div class="card-body">
@@ -85,7 +131,6 @@
                     </div>
                     <div>
                         <h4 class="mb-1 mt-1"><span data-plugin="counterup">{{ $pending_transactions }}</span></h4>
-                        {{-- UPDATED TEXT HERE --}}
                         <p class="text-muted mb-0">Belum Lunas / DP</p>
                     </div>
                     <p class="text-muted mt-3 mb-0"><span class="text-danger me-1"><i class="mdi mdi-alert-circle-outline me-1"></i></span> Perlu Tindakan</p>
@@ -176,9 +221,10 @@
                         <a href="{{ route('transaksi.index') }}" class="btn btn-primary btn-sm">Lihat Semua <i class="mdi mdi-arrow-right ms-1"></i></a>
                     </div>
                     
-                    <div class="table-responsive">
-                        <table class="table table-centered table-nowrap mb-0">
-                            <thead class="table-light">
+                    <div class="table-responsive dt-responsive">
+                        <table id="datatable" class="table table-bordered dt-responsive nowrap"
+                        style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                        <thead class="table-light">
                                 <tr>
                                     <th>Kode Invoice</th>
                                     <th>Pelanggan</th>
@@ -188,25 +234,9 @@
                                     <th>Status Pembayaran</th>
                                     <th>Status Pengerjaan</th>
                                     <th>Detail</th>
-                                    <th style="width: 120px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $paymentStatusConfig = [
-                                        'belum dibayar' => ['label' => 'Belum Dibayar', 'icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],
-                                        'dp' => ['label' => 'DP (Uang Muka)', 'icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
-                                        'sudah dibayar' => ['label' => 'Lunas', 'icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
-                                    ];
-                                    
-                                    $processStatusConfig = [
-                                        'Pelanggan Belum Foto' => ['icon' => '📷❌', 'class' => 'bg-light text-dark'],
-                                        'Pelanggan Pilih Foto' => ['icon' => '🖼️', 'class' => 'bg-info-subtle text-info-emphasis'],
-                                        'Proses Edit' => ['icon' => '✏️', 'class' => 'bg-primary-subtle text-primary-emphasis'],
-                                        'Proses Cetak' => ['icon' => '🖨️', 'class' => 'bg-warning-subtle text-warning-emphasis'],
-                                        'Selesai' => ['icon' => '✅', 'class' => 'bg-success-subtle text-success-emphasis']
-                                    ];
-                                @endphp
                                 @forelse($recent_transactions as $transaksi)
                                     <tr>
                                         <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
@@ -227,180 +257,33 @@
                                                 <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                             @endif
                                         </td>
-                                        <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
-                                        <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                         
-                                        {{-- Advanced Payment Dropdown --}}
-                                        <td>
-                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST" class="status-update-form">
-                                                @csrf
-                                                @method('PUT')
-                                                <input type="hidden" name="field" value="status">
-                                                <input type="hidden" name="redirect_to" value="dashboard">
-                                                <select name="value" class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" data-transaction-id="{{ $transaksi->transaction_id }}">
-                                                    @foreach ($paymentStatusConfig as $statusKey => $config)
-                                                        <option value="{{ $statusKey }}" {{ $transaksi->status == $statusKey ? 'selected' : '' }}>
-                                                            {{ $config['icon'] }} {{ $config['label'] }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </form>
+                                        {{-- 
+                                            IMPORTANT: Data-order allows proper sorting of currency values 
+                                            DataTables will sort based on the number, not the string "Rp ..." 
+                                        --}}
+                                        <td class="fw-bold" data-order="{{ $transaksi->total_price }}">
+                                            <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
+                                                Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
+                                            </a>
                                         </td>
 
-                                        {{-- Advanced Process Dropdown --}}
-                                        <td>
-                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
-                                                @csrf @method('PUT')
-                                                <input type="hidden" name="field" value="process_status">
-                                                <input type="hidden" name="redirect_to" value="dashboard">
-                                                
-                                                @php
-                                                    $statusKeys = array_keys($processStatusConfig);
-                                                    $currentIndex = array_search($transaksi->process_status, $statusKeys);
-                                                    if ($currentIndex === false) $currentIndex = 0;
-                                                @endphp
-
-                                                <select name="value" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
-                                                     @foreach ($processStatusConfig as $status => $config)
-                                                        @php
-                                                            $loopIndex = array_search($status, $statusKeys);
-                                                            $disabled = false;
-                                                            $labelSuffix = '';
-
-                                                            // Logic Sequence Check
-                                                            if ($loopIndex > $currentIndex) {
-                                                                if ($loopIndex == $currentIndex + 1) {
-                                                                    // OK
-                                                                } else {
-                                                                    $canSkip = true;
-                                                                    for ($k = $currentIndex + 1; $k < $loopIndex; $k++) {
-                                                                        $skippedStatus = $statusKeys[$k];
-                                                                        if ($skippedStatus === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
-                                                                            continue;
-                                                                        }
-                                                                        $canSkip = false;
-                                                                        break;
-                                                                    }
-                                                                    if (!$canSkip) $disabled = true;
-                                                                }
-                                                            }
-
-                                                            // Validation Logic
-                                                            if ($status === 'Pelanggan Pilih Foto' && empty($transaksi->url_images)) {
-                                                                $disabled = true; $labelSuffix = '(Link?)';
-                                                            }
-                                                            if ($status === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
-                                                                $disabled = true; $labelSuffix = '(N/A)';
-                                                            }
-                                                            if ($status === 'Selesai') {
-                                                                if ($transaksi->status !== 'sudah dibayar') {
-                                                                    $disabled = true; $labelSuffix = '(Lunas?)';
-                                                                } elseif (empty($transaksi->url_photos_result)) {
-                                                                    $disabled = true; $labelSuffix = '(Final?)';
-                                                                }
-                                                            }
-                                                        @endphp
-                                                         <option value="{{ $status }}" 
-                                                            {{ $transaksi->process_status == $status ? 'selected' : '' }}
-                                                            {{ $disabled ? 'disabled' : '' }}>
-                                                             {{ $config['icon'] }} {{ $status }} {{ $labelSuffix }}
-                                                         </option>
-                                                     @endforeach
-                                                </select>
-                                            </form>
+                                        {{-- 
+                                            IMPORTANT: Data-order timestamp ensures proper date sorting 
+                                        --}}
+                                        <td data-order="{{ $transaksi->created_at->timestamp }}">
+                                            {{ $transaksi->created_at->format('d M Y, H:i') }}
                                         </td>
+                                        
+                                        <td>{{ $transaksi->status }}</td>
+                                        <td>{{ $transaksi->process_status }}</td>
                                         
                                         <td>
                                             <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Lihat</button>
                                         </td>
-                                        
-                                        {{-- Actions --}}
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-info update-url-btn" 
-                                                        data-id="{{ $transaksi->transaction_id }}"
-                                                        data-field="url_images"
-                                                        data-value="{{ $transaksi->url_images }}"
-                                                        data-bs-toggle="tooltip" title="Input Link Galeri">
-                                                    <i class="mdi mdi-image-multiple"></i>
-                                                </button>
-
-                                                <button type="button" class="btn btn-sm btn-secondary update-url-btn"
-                                                        data-id="{{ $transaksi->transaction_id }}"
-                                                        data-field="url_photos_result"
-                                                        data-value="{{ $transaksi->url_photos_result }}"
-                                                        data-bs-toggle="tooltip" title="Input Link Final">
-                                                    <i class="bx bx-check-double"></i>
-                                                </button>
-
-                                                @php
-                                                    $canInputSelections = !empty($transaksi->url_images);
-                                                    $existingText = "";
-                                                    if($transaksi->select_edit_photo) $existingText .= "*DAFTAR FOTO EDIT*\n" . $transaksi->select_edit_photo . "\n\n";
-                                                    if($transaksi->select_print_photo) $existingText .= "*DAFTAR FOTO CETAK*\n" . $transaksi->select_print_photo;
-                                                @endphp
-                                                <button type="button" class="btn btn-sm btn-warning input-selection-btn"
-                                                        data-id="{{ $transaksi->transaction_id }}"
-                                                        data-existing-text="{{ $existingText }}"
-                                                        {{ !$canInputSelections ? 'disabled' : '' }}
-                                                        data-bs-toggle="tooltip" title="Input Pilihan Foto">
-                                                    <i class="bx bx-list-check"></i>
-                                                </button>
-                                                
-                                                @if(!empty($transaksi->phone_number) && $transaksi->user)
-                                                    @php
-                                                        $hasPrint = $transaksi->hasPrintableItems();
-                                                        $linkFinal = $transaksi->url_photos_result ? $transaksi->url_photos_result : "[Link Belum Diisi]";
-                                                        $packetName = $transaksi->packet->name ?? 'N/A';
-                                                        $productName = $transaksi->packet->product->name ?? 'N/A';
-                                                        $backupNote = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 14 hari.";
-                                                        $detailPaket = "Detail Paket:\n*{$productName} - {$packetName}*";
-
-                                                        if ($hasPrint) {
-                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai dicetak & diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil hasil cetak di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
-                                                        } else {
-                                                            $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNote}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih telah mempercayakan momennya di Yunas Studio!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
-                                                        }
-
-                                                        $waMessages = [
-                                                            'Pelanggan Belum Foto' => "Halo kak {$transaksi->customer_name}, jadwal foto belum terlaksana. Hubungi kami untuk info lebih lanjut.",
-                                                            'Selesai' => $pesanSelesai
-                                                        ];
-
-                                                        if ($transaksi->process_status === 'Pelanggan Pilih Foto') {
-                                                            $maxEdit = $transaksi->packet->max_photos_for_edit ?? 0;
-                                                            $editList = "";
-                                                            for ($i = 1; $i <= $maxEdit; $i++) { $editList .= "{$i}. \n"; }
-                                                            $printList = "";
-                                                            if ($transaksi->packet && $transaksi->packet->combined_defaults) {
-                                                                foreach ($transaksi->packet->combined_defaults as $item) {
-                                                                    if (stripos($item->name, 'cetak') !== false || stripos($item->name, 'print') !== false) {
-                                                                        for ($q = 0; $q < $item->quantity; $q++) { $printList .= "- {$item->name} : \n"; }
-                                                                    }
-                                                                }
-                                                            }
-                                                            if (empty($printList)) { $printList = "- (Tidak ada item cetak) \n"; }
-                                                            $linkGaleri = $transaksi->url_images ? $transaksi->url_images : "[Link Belum Diisi]";
-                                                            $waMessages['Pelanggan Pilih Foto'] = "Halo kak *{$transaksi->customer_name}*, Terima kasih sudah mempercayakan momennya di Yunas Studio.\n\nDetail Paket:\n*{$productName} - {$packetName}*\n\nBerikut kami kirimkan link untuk pemilihan foto:\n{$linkGaleri}\n\n{$backupNote}\n\nMohon untuk mengisi format pemilihan foto dibawah ini:\n\n*DAFTAR FOTO EDIT (Max {$maxEdit} Foto)*\n{$editList}\n*DAFTAR FOTO CETAK*\n{$printList}\nTerima kasih";
-                                                        }
-
-                                                        $waLink = null;
-                                                        if (isset($waMessages[$transaksi->process_status])) {
-                                                            $waMessage = $waMessages[$transaksi->process_status];
-                                                            $phoneNumber = preg_replace('/\D/', '', $transaksi->phone_number);
-                                                            if (strpos($phoneNumber, '0') === 0) { $phoneNumber = '62' . substr($phoneNumber, 1); }
-                                                            $waLink = "https://api.whatsapp.com/send?phone={$phoneNumber}&text=" . urlencode($waMessage);
-                                                        }
-                                                    @endphp
-                                                    @if(isset($waLink))
-                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Kirim WA"><i class="uil uil-whatsapp"></i></a>
-                                                    @endif
-                                                @endif
-                                            </div>
-                                        </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="text-center">Belum ada transaksi terbaru.</td></tr>
+                                    <tr><td colspan="8" class="text-center">Belum ada transaksi terbaru.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -411,7 +294,7 @@
     </div>
     <!-- end row -->
 
-    {{-- MODALS FOR TABLE ACTIONS --}}
+    {{-- MODALS FOR TABLE ACTIONS (LOOPS) --}}
     @foreach($recent_transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -451,7 +334,7 @@
         </div>
     @endforeach
 
-    {{-- Shared Modals --}}
+    {{-- Shared Modals (DP, URL, Selection) --}}
     <div class="modal fade" id="dpAmountModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -496,166 +379,180 @@
 @endsection
 
 @section('script')
-    <!-- apexcharts -->
+    <!-- Libraries -->
     <script src="{{ URL::asset('/assets/libs/apexcharts/apexcharts.min.js') }}"></script>
+    <script src="{{ URL::asset('/assets/libs/datatables/datatables.min.js') }}"></script>
+    <script src="{{ URL::asset('/assets/libs/jszip/jszip.min.js') }}"></script>
+    <script src="{{ URL::asset('/assets/libs/pdfmake/pdfmake.min.js') }}"></script>
+    <!-- Init Scripts for default behavior (optional if custom below handles it) -->
     <script src="{{ URL::asset('/assets/js/pages/dashboard.init.js') }}"></script>
+    <script src="{{ URL::asset('/assets/js/pages/datatables.init.js') }}"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             
-            // --- INCOME FILTER LOGIC ---
+            // --- 1. DATATABLE CUSTOM SORTING ---
+            // We destroy previous instances to ensure our custom sorting applies
+            if ($.fn.DataTable.isDataTable('#datatable')) {
+                $('#datatable').DataTable().destroy();
+            }
+            
+            $('#datatable').DataTable({
+                "order": [[ 4, "desc" ]], // Sort by Date (Index 4) Descending by default
+                "pageLength": 10,
+                "lengthChange": false, // Hide "Show 10 entries" dropdown
+                "language": {
+                    "search": "Cari:",
+                    "paginate": { "next": ">", "previous": "<" },
+                    "emptyTable": "Tidak ada data transaksi terbaru."
+                }
+            });
+
+
+            // --- 2. INCOME FILTER LOGIC ---
             const incomeFilters = document.querySelectorAll('.income-filter');
             const incomeDisplay = document.getElementById('total-income-display');
             const incomeSortLabel = document.getElementById('income-sort-label');
             const incomeSubtext = document.getElementById('income-subtext');
 
-            incomeFilters.forEach(filter => {
-                filter.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    const type = this.dataset.type;
-                    const totalVal = parseFloat(incomeDisplay.dataset.total);
-                    const monthlyVal = parseFloat(incomeDisplay.dataset.monthly);
-                    
-                    let displayVal = 0;
-                    let labelText = "Total";
-                    let subtextHtml = "";
+            if(incomeFilters.length > 0){
+                incomeFilters.forEach(filter => {
+                    filter.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        const type = this.dataset.type;
+                        const totalVal = parseFloat(incomeDisplay.dataset.total);
+                        const monthlyVal = parseFloat(incomeDisplay.dataset.monthly);
+                        
+                        let displayVal = 0;
+                        let labelText = "Total";
+                        let subtextHtml = "";
 
-                    if (type === 'monthly') {
-                        displayVal = monthlyVal;
-                        labelText = "Bulan Ini";
-                        subtextHtml = '<span class="text-info me-1"><i class="mdi mdi-calendar-month me-1"></i></span> Bulan Ini';
-                    } else {
-                        displayVal = totalVal;
-                        labelText = "Total";
-                        subtextHtml = '<span class="text-success me-1"><i class="mdi mdi-chart-line me-1"></i></span> Akumulasi';
-                    }
+                        if (type === 'monthly') {
+                            displayVal = monthlyVal;
+                            labelText = "Bulan Ini";
+                            subtextHtml = '<span class="text-info me-1"><i class="mdi mdi-calendar-month me-1"></i></span> Bulan Ini';
+                        } else {
+                            displayVal = totalVal;
+                            labelText = "Total";
+                            subtextHtml = '<span class="text-success me-1"><i class="mdi mdi-chart-line me-1"></i></span> Akumulasi';
+                        }
 
-                    // Format Number (ID-ID)
-                    const formatter = new Intl.NumberFormat('id-ID', {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
+                        const formatter = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+                        incomeDisplay.textContent = formatter.format(displayVal);
+                        incomeSortLabel.textContent = labelText;
+                        incomeSubtext.innerHTML = subtextHtml;
                     });
-
-                    incomeDisplay.textContent = formatter.format(displayVal);
-                    incomeSortLabel.textContent = labelText;
-                    incomeSubtext.innerHTML = subtextHtml;
                 });
-            });
-
-
-            // --- CHART LOGIC ---
-            // Data passed from controller
-            const chartData = {
-                daily: { labels: @json($chart_daily_labels), data: @json($chart_daily_data) },
-                monthly: { labels: @json($chart_monthly_labels), data: @json($chart_monthly_data) },
-                yearly: { labels: @json($chart_yearly_labels), data: @json($chart_yearly_data) }
-            };
-
-            const chartElement = document.querySelector("#sales-analytics-chart");
-            let currentChart = null;
-
-            function renderChart(type) {
-                const data = chartData[type];
-                
-                const options = {
-                    series: [{ name: 'Pemasukan', data: data.data }],
-                    chart: { 
-                        height: 450, 
-                        type: 'area', 
-                        toolbar: { show: false },
-                        zoom: { enabled: false }
-                    },
-                    colors: ['#556ee6'],
-                    dataLabels: { enabled: false },
-                    stroke: { curve: 'smooth', width: 2 },
-                    fill: {
-                        type: 'gradient',
-                        gradient: { shadeIntensity: 1, inverseColors: false, opacityFrom: 0.45, opacityTo: 0.05, stops: [20, 100, 100, 100] }
-                    },
-                    xaxis: { categories: data.labels },
-                    yaxis: { 
-                        labels: { 
-                            formatter: function (value) { return "Rp " + new Intl.NumberFormat('id-ID').format(value); } 
-                        } 
-                    },
-                    grid: { borderColor: '#f1f1f1' }
-                };
-
-                if (currentChart) {
-                    currentChart.destroy();
-                }
-                currentChart = new ApexCharts(chartElement, options);
-                currentChart.render();
             }
 
-            // Initial Render (Daily)
-            renderChart('daily');
 
-            // Handle Filter Clicks
-            document.querySelectorAll('.chart-filter').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.chart-filter').forEach(b => b.classList.remove('active', 'btn-primary'));
-                    document.querySelectorAll('.chart-filter').forEach(b => b.classList.add('btn-light'));
-                    
-                    this.classList.remove('btn-light');
-                    this.classList.add('active', 'btn-primary');
-                    
-                    renderChart(this.dataset.filter);
+            // --- 3. SALES CHART LOGIC ---
+            const chartElement = document.querySelector("#sales-analytics-chart");
+            if(chartElement) {
+                const chartData = {
+                    daily: { labels: @json($chart_daily_labels), data: @json($chart_daily_data) },
+                    monthly: { labels: @json($chart_monthly_labels), data: @json($chart_monthly_data) },
+                    yearly: { labels: @json($chart_yearly_labels), data: @json($chart_yearly_data) }
+                };
+
+                let currentChart = null;
+
+                function renderChart(type) {
+                    const data = chartData[type];
+                    const options = {
+                        series: [{ name: 'Pemasukan', data: data.data }],
+                        chart: { height: 450, type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
+                        colors: ['#556ee6'],
+                        dataLabels: { enabled: false },
+                        stroke: { curve: 'smooth', width: 2 },
+                        fill: { type: 'gradient', gradient: { shadeIntensity: 1, inverseColors: false, opacityFrom: 0.45, opacityTo: 0.05, stops: [20, 100, 100, 100] } },
+                        xaxis: { categories: data.labels },
+                        yaxis: { labels: { formatter: function (value) { return "Rp " + new Intl.NumberFormat('id-ID').format(value); } } },
+                        grid: { borderColor: '#f1f1f1' }
+                    };
+
+                    if (currentChart) { currentChart.destroy(); }
+                    currentChart = new ApexCharts(chartElement, options);
+                    currentChart.render();
+                }
+
+                renderChart('daily'); // Initial Render
+
+                document.querySelectorAll('.chart-filter').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.chart-filter').forEach(b => {
+                            b.classList.remove('active', 'btn-primary');
+                            b.classList.add('btn-light');
+                        });
+                        this.classList.remove('btn-light');
+                        this.classList.add('active', 'btn-primary');
+                        renderChart(this.dataset.filter);
+                    });
                 });
-            });
+            }
 
 
-            // --- ADVANCED TABLE LOGIC ---
+            // --- 4. MODAL LOGIC (DP, URL, SELECTION) ---
             
             // DP Modal
-            const dpModal = new bootstrap.Modal(document.getElementById('dpAmountModal'));
-            const dpForm = document.getElementById('dpAmountForm');
-            document.querySelectorAll('.payment-status-select').forEach(select => {
-                select.addEventListener('change', function (e) {
-                    if (e.target.value === 'dp') {
-                        dpForm.action = e.target.closest('form').action;
-                        dpModal.show();
-                    } else {
-                        e.target.closest('form').submit();
-                    }
+            const dpModalEl = document.getElementById('dpAmountModal');
+            if(dpModalEl){
+                const dpModal = new bootstrap.Modal(dpModalEl);
+                const dpForm = document.getElementById('dpAmountForm');
+                document.querySelectorAll('.payment-status-select').forEach(select => {
+                    select.addEventListener('change', function (e) {
+                        if (e.target.value === 'dp') {
+                            dpForm.action = e.target.closest('form').action;
+                            dpModal.show();
+                        } else {
+                            e.target.closest('form').submit();
+                        }
+                    });
                 });
-            });
+            }
 
             // URL Modal
-            const urlModal = new bootstrap.Modal(document.getElementById('urlModal'));
-            const urlForm = document.getElementById('urlForm');
-            const urlInput = document.getElementById('url_input');
-            const urlLabel = document.getElementById('urlModalLabel');
-            const urlFieldInput = document.getElementById('url_field_input');
+            const urlModalEl = document.getElementById('urlModal');
+            if(urlModalEl) {
+                const urlModal = new bootstrap.Modal(urlModalEl);
+                const urlForm = document.getElementById('urlForm');
+                const urlInput = document.getElementById('url_input');
+                const urlLabel = document.getElementById('urlModalLabel');
+                const urlFieldInput = document.getElementById('url_field_input');
 
-            document.querySelectorAll('.update-url-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const id = this.dataset.id;
-                    const field = this.dataset.field;
-                    const val = this.dataset.value;
-                    
-                    if (field === 'url_images') urlLabel.textContent = 'Update Link Galeri';
-                    else urlLabel.textContent = 'Update Link Final';
+                document.querySelectorAll('.update-url-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const field = this.dataset.field;
+                        const val = this.dataset.value;
+                        
+                        if (field === 'url_images') urlLabel.textContent = 'Update Link Galeri';
+                        else urlLabel.textContent = 'Update Link Final';
 
-                    urlInput.value = val;
-                    urlFieldInput.value = field;
-                    urlForm.action = `/transaksi/${id}/update-status`;
-                    urlModal.show();
+                        urlInput.value = val;
+                        urlFieldInput.value = field;
+                        urlForm.action = `/transaksi/${id}/update-status`;
+                        urlModal.show();
+                    });
                 });
-            });
+            }
 
             // Selection Modal
-            const selModal = new bootstrap.Modal(document.getElementById('inputSelectionModal'));
-            document.querySelectorAll('.input-selection-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.getElementById('selection_text_input').value = this.dataset.existingText;
-                    document.getElementById('selectionForm').action = `/transaksi/${this.dataset.id}/update-selections`;
-                    selModal.show();
+            const selModalEl = document.getElementById('inputSelectionModal');
+            if(selModalEl){
+                const selModal = new bootstrap.Modal(selModalEl);
+                document.querySelectorAll('.input-selection-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.getElementById('selection_text_input').value = this.dataset.existingText;
+                        document.getElementById('selectionForm').action = `/transaksi/${this.dataset.id}/update-selections`;
+                        selModal.show();
+                    });
                 });
-            });
+            }
 
-            // Tooltips
+            // Tooltips Init
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
         });
