@@ -226,7 +226,7 @@
                         style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                         <thead class="table-light">
                                 <tr>
-                                    <th>Kode Invoice</th>
+                                    <th>Kode Invoices</th>
                                     <th>Pelanggan</th>
                                     <th>Produk</th>
                                     <th>Total Biaya</th>
@@ -237,11 +237,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($recent_transactions as $transaksi)
+                                @foreach($recent_transactions as $transaksi)
                                     <tr>
                                         <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
                                         
-                                        {{-- Pelanggan with Phone --}}
                                         <td>
                                             <h6 class="mb-1">{{ $transaksi->customer_name }}</h6>
                                             <div class="text-muted" style="font-size: 0.85em;">
@@ -249,7 +248,7 @@
                                                 {{ $transaksi->phone_number }}
                                             </div>
                                         </td>
-
+                            
                                         <td>
                                             <span class="fw-bold">{{ $transaksi->packet->name ?? 'N/A' }}</span>
                                             @if($transaksi->packet && $transaksi->packet->product)
@@ -258,19 +257,12 @@
                                             @endif
                                         </td>
                                         
-                                        {{-- 
-                                            IMPORTANT: Data-order allows proper sorting of currency values 
-                                            DataTables will sort based on the number, not the string "Rp ..." 
-                                        --}}
                                         <td class="fw-bold" data-order="{{ $transaksi->total_price }}">
                                             <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
                                                 Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
                                             </a>
                                         </td>
-
-                                        {{-- 
-                                            IMPORTANT: Data-order timestamp ensures proper date sorting 
-                                        --}}
+                            
                                         <td data-order="{{ $transaksi->created_at->timestamp }}">
                                             {{ $transaksi->created_at->format('d M Y, H:i') }}
                                         </td>
@@ -282,9 +274,7 @@
                                             <button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Lihat</button>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr><td colspan="8" class="text-center">Belum ada transaksi terbaru.</td></tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
                     </div>
