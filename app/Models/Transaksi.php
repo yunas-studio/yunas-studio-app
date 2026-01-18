@@ -19,6 +19,7 @@ class Transaksi extends Model
         'packet_id',
         'status',
         'process_status',
+        'payment_type',
         'receipt_code',
         'total_price',
         'dp_amount',

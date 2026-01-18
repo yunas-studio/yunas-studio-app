@@ -6,7 +6,6 @@
 
     <title>Invoice #{{ $transaksi->receipt_code }}</title>
 
-    <!-- Invoice styling -->
     <style>
         body {
             font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif;
@@ -123,7 +122,6 @@
                     <table>
                         <tr>
                             <td class="title">
-                                <!-- Ganti URL logo sesuai kebutuhan, pastikan accessible oleh DomPDF -->
                                 @if(isset($company['logo']) && file_exists($company['logo']))
                                     <img src="{{ $company['logo'] }}" style="width: 100%; max-width: 150px" />
                                 @else
@@ -134,7 +132,8 @@
                             <td>
                                 <strong>Invoice #:</strong> {{ $transaksi->receipt_code }}<br />
                                 <strong>Created:</strong> {{ $transaksi->created_at->format('d F Y') }}<br />
-                                <strong>Status:</strong> {{ strtoupper($transaksi->status) }}
+                                <strong>Status:</strong> {{ strtoupper($transaksi->status) }}<br />
+                                <strong>Payment Type:</strong> {{ $transaksi->payment_type == 'none' ? '-' : $transaksi->payment_type }}
                             </td>
                         </tr>
                     </table>
@@ -168,7 +167,6 @@
                 <td style="text-align: right; width: 20%">Total</td>
             </tr>
 
-            <!-- 1. PAKET UTAMA -->
             <tr class="item">
                 <td>
                     <strong>{{ $transaksi->packet->product->name ?? 'Product' }}</strong><br>
@@ -179,7 +177,6 @@
                 <td style="text-align: right">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
             </tr>
 
-            <!-- 2. [FIX] INCLUDED PRINTS (Cetak Bawaan Paket) -->
             @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
                 @foreach($transaksi->packet->printOptions as $printOption)
                 <tr class="item" style="background-color: #fdfdfd;">
@@ -193,7 +190,6 @@
                 @endforeach
             @endif
 
-            <!-- 3. ADDITIONAL ITEMS (Tambahan) -->
             @foreach($transaksi->additionals as $additional)
             <tr class="item">
                 <td>
@@ -205,7 +201,6 @@
             </tr>
             @endforeach
 
-            <!-- SUBTOTAL -->
             <tr class="total" style="border-top: 2px solid #eee;">
                 <td colspan="2"></td>
                 <td style="text-align: right; padding-top: 10px;">Subtotal:</td>
@@ -221,7 +216,6 @@
                 </td>
             </tr>
 
-            <!-- DISCOUNT -->
             @if($transaksi->discount > 0)
             <tr class="total">
                 <td colspan="2"></td>
@@ -230,28 +224,47 @@
             </tr>
             @endif
 
-            <!-- GRAND TOTAL -->
             <tr class="total">
                 <td colspan="2"></td>
                 <td style="text-align: right; font-size: 1.1em;"><strong>Total:</strong></td>
                 <td style="text-align: right; font-size: 1.1em;"><strong>Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</strong></td>
             </tr>
 
-            <!-- DP & REMAINING -->
-            @if($transaksi->dp_amount > 0)
-            <tr class="total">
-                <td colspan="2"></td>
-                <td style="text-align: right;">DP / Paid:</td>
-                <td style="text-align: right;">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td>
-            </tr>
-            <tr class="total">
-                <td colspan="2"></td>
-                <td style="text-align: right; font-weight: bold; color: {{ ($transaksi->total_price - $transaksi->dp_amount) > 0 ? '#d9534f' : '#5cb85c' }}">Remaining:</td>
-                <td style="text-align: right; font-weight: bold; color: {{ ($transaksi->total_price - $transaksi->dp_amount) > 0 ? '#d9534f' : '#5cb85c' }}">
-                    Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}
-                </td>
-            </tr>
+            @if($transaksi->status == 'dp' && $transaksi->dp_amount > 0)
+                <tr class="total">
+                    <td colspan="2"></td>
+                    <td style="text-align: right;">DP Paid:</td>
+                    <td style="text-align: right;">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td>
+                </tr>
+                <tr class="total">
+                    <td colspan="2"></td>
+                    <td style="text-align: right; font-weight: bold; color: #d9534f;">Remaining:</td>
+                    <td style="text-align: right; font-weight: bold; color: #d9534f;">
+                        Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}
+                    </td>
+                </tr>
+            @elseif($transaksi->status == 'sudah dibayar')
+                @if($transaksi->dp_amount > 0)
+                    <tr class="total">
+                        <td colspan="2"></td>
+                        <td style="text-align: right;">DP (History):</td>
+                        <td style="text-align: right;">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td>
+                    </tr>
+                    <tr class="total">
+                        <td colspan="2"></td>
+                        <td style="text-align: right;">Settlement:</td>
+                        <td style="text-align: right;">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td>
+                    </tr>
+                @endif
+                <tr class="total">
+                    <td colspan="2"></td>
+                    <td style="text-align: right; font-weight: bold; color: #5cb85c;">Total Paid:</td>
+                    <td style="text-align: right; font-weight: bold; color: #5cb85c;">
+                        Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}
+                    </td>
+                </tr>
             @endif
+
         </table>
 
         @if($transaksi->note)

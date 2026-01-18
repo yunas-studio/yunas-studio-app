@@ -60,6 +60,10 @@
     .toggle-amount-visibility:hover {
         color: #4458b8;
     }
+    /* White icon for the profit card */
+    .toggle-amount-visibility.text-white {
+        color: #ffffff !important;
+    }
 </style>
 @endsection
 
@@ -76,14 +80,17 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">Belum Dibayar</p>
+                                    <p class="text-muted fw-medium mb-1">Belum Dibayar</p>
+                                    @if(!empty($filterLabel))
+                                        <span class="badge bg-warning-subtle text-warning mb-2">{{ str_replace(['(', ')'], '', $filterLabel) }}</span>
+                                    @endif
                                     <h4 class="mb-0 text-warning">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}">
-                                            <span class="amount-value">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
+                                            <span class="amount-value amount-hidden">Rp {{ number_format($totalBelumDibayar, 0, ',', '.') }}</span>
+                                            <i class="bx bx-hide toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">dari {{ $countBelumDibayar }} transaksi</p>
+                                    <p class="text-muted mb-0 font-size-12 mt-1">dari {{ $countBelumDibayar }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-error-circle font-size-24 text-warning"></i>
@@ -97,14 +104,17 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">DP (Uang Muka)</p>
+                                    <p class="text-muted fw-medium mb-1">DP (Uang Muka)</p>
+                                    @if(!empty($filterLabel))
+                                        <span class="badge bg-info-subtle text-info mb-2">{{ str_replace(['(', ')'], '', $filterLabel) }}</span>
+                                    @endif
                                     <h4 class="mb-0 text-info">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalDpPaid, 0, ',', '.') }}">
-                                            <span class="amount-value">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
+                                            <span class="amount-value amount-hidden">Rp {{ number_format($totalDpPaid, 0, ',', '.') }}</span>
+                                            <i class="bx bx-hide toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">dari {{ $countDp }} transaksi</p>
+                                    <p class="text-muted mb-0 font-size-12 mt-1">dari {{ $countDp }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-time-five font-size-24 text-info"></i>
@@ -118,14 +128,17 @@
                         <div class="card-body">
                             <div class="d-flex">
                                 <div class="flex-grow-1">
-                                    <p class="text-muted fw-medium">Lunas</p>
+                                    <p class="text-muted fw-medium mb-1">Lunas</p>
+                                    @if(!empty($filterLabel))
+                                        <span class="badge bg-success-subtle text-success mb-2">{{ str_replace(['(', ')'], '', $filterLabel) }}</span>
+                                    @endif
                                     <h4 class="mb-0 text-success">
                                         <span class="amount-container" data-amount="Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}">
-                                            <span class="amount-value">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</span>
-                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
+                                            <span class="amount-value amount-hidden">Rp {{ number_format($totalSudahDibayar, 0, ',', '.') }}</span>
+                                            <i class="bx bx-hide toggle-amount-visibility" title="Tampilkan/Sembunyikan Nominal"></i>
                                         </span>
                                     </h4>
-                                    <p class="text-muted mb-0 font-size-12">dari {{ $countSudahDibayar }} transaksi</p>
+                                    <p class="text-muted mb-0 font-size-12 mt-1">dari {{ $countSudahDibayar }} transaksi</p>
                                 </div>
                                 <div class="flex-shrink-0 align-self-center">
                                     <i class="bx bx-check-circle font-size-24 text-success"></i>
@@ -145,14 +158,17 @@
                     <div class="card-body">
                         <div class="d-flex text-white">
                             <div class="flex-grow-1">
-                                <p class="fw-medium text-white" id="profit-card-title">Total Pendapatan (Terfilter)</p>
+                                <p class="fw-medium text-white mb-1" id="profit-card-title">Total Pendapatan</p>
+                                @if(!empty($filterLabel))
+                                    <span class="badge bg-white text-primary mb-2">{{ str_replace(['(', ')'], '', $filterLabel) }}</span>
+                                @endif
                                 <h4 class="mb-0 text-white" id="profit-card-value">
                                     <span class="amount-container" data-amount="Rp {{ number_format($totalProfit, 0, ',', '.') }}">
-                                        <span class="amount-value">Rp {{ number_format($totalProfit, 0, ',', '.') }}</span>
-                                        <i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i>
+                                        <span class="amount-value amount-hidden">Rp {{ number_format($totalProfit, 0, ',', '.') }}</span>
+                                        <i class="bx bx-hide toggle-amount-visibility text-white" style="cursor: pointer;" title="Tampilkan/Sembunyikan Nominal"></i>
                                     </span>
                                 </h4>
-                                <small class="mb-0 opacity-75" id="profit-card-subtitle">Klik untuk lihat total keseluruhan</small>
+                                <small class="mb-0 opacity-75 mt-1 d-block" id="profit-card-subtitle">Klik untuk lihat total keseluruhan</small>
                             </div>
                             <div class="flex-shrink-0 align-self-center">
                                 <i class="bx bx-wallet font-size-24"></i>
@@ -169,11 +185,23 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{ route('transaksi.index') }}" method="GET">
+                    <form action="{{ route('transaksi.index') }}" method="GET" id="filterForm">
+                        {{-- Hidden field to detect manual submission --}}
+                        <input type="hidden" name="date_filter_applied" value="1">
+
                         <div class="row">
-                            <div class="col-12">
+                            <div class="col-lg-6 col-md-12 mb-3">
                                 <label for="search" class="form-label">Cari Transaksi</label>
                                 <input type="text" name="search" class="form-control" placeholder="Cari nama pelanggan atau kode invoice..." value="{{ request('search') }}">
+                            </div>
+                            <div class="col-lg-6 col-md-12 mb-3">
+                                <label class="form-label">Quick Filter Waktu</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="setQuickFilter('month')">Bulan Ini</button>
+                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="setQuickFilter('today')">Hari Ini</button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="setQuickFilter('year')">Tahun Ini</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setQuickFilter('all')">Semua Waktu</button>
+                                </div>
                             </div>
                         </div>
                         <div class="mt-2">
@@ -279,8 +307,8 @@
                                             return '<a href="' . $url . '" class="text-dark sortable-header' . ($isActive ? ' active' : '') . '">' . $label . '<i class="bx ' . $icon . ' sort-icon"></i></a>';
                                         }
                                     @endphp
-                                    <th>Kode Invoice</th>
                                     <th>Pelanggan</th>
+                                    <th>Tipe Pembayaran</th>
                                     <th>Produk</th>
                                     <th>{!! sortable_header('Total Biaya', 'total_price', request()) !!}</th>
                                     <th>{!! sortable_header('Tanggal', 'created_at', request()) !!}</th>
@@ -297,8 +325,7 @@
                                         'dp' => ['label' => 'DP (Uang Muka)', 'icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
                                         'sudah dibayar' => ['label' => 'Lunas', 'icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
                                     ];
-                                    
-                                    // KONFIGURASI STATUS BARU
+                                   
                                     $processStatusConfig = [
                                         'Pelanggan Belum Foto' => ['icon' => '📷❌', 'class' => 'bg-light text-dark'],
                                         'Pelanggan Pilih Foto' => ['icon' => '🖼️', 'class' => 'bg-info-subtle text-info-emphasis'],
@@ -306,18 +333,37 @@
                                         'Proses Cetak' => ['icon' => '🖨️', 'class' => 'bg-warning-subtle text-warning-emphasis'],
                                         'Selesai' => ['icon' => '✅', 'class' => 'bg-success-subtle text-success-emphasis']
                                     ];
+
+                                    $paymentTypes = [
+                                        'none' => 'None',
+                                        'Cash' => 'Cash',
+                                        'Transfer/Qris' => 'Transfer/Qris'
+                                    ];
                                 @endphp
                                 @forelse($transactions as $transaksi)
                                     <tr data-process-status="{{ $transaksi->process_status }}" data-payment-status="{{ $transaksi->status }}">
-                                        <td><a href="javascript: void(0);" class="text-body fw-bold">{{ $transaksi->receipt_code }}</a></td>
                                         
-                                        {{-- MODIFIKASI: Menambahkan Nomor HP & Icon --}}
                                         <td>
                                             <h6 class="mb-1">{{ $transaksi->customer_name }}</h6>
                                             <div class="text-muted" style="font-size: 0.85em;">
                                                 <i class="bx bx-phone text-secondary me-1"></i>
                                                 {{ $transaksi->phone_number }}
                                             </div>
+                                        </td>
+
+                                        {{-- Payment Type Column --}}
+                                        <td>
+                                            <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
+                                                @csrf @method('PUT')
+                                                <input type="hidden" name="field" value="payment_type">
+                                                <select name="value" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                     @foreach ($paymentTypes as $val => $label)
+                                                         <option value="{{ $val }}" {{ $transaksi->payment_type == $val ? 'selected' : '' }}>
+                                                             {{ $label }}
+                                                         </option>
+                                                     @endforeach
+                                                </select>
+                                            </form>
                                         </td>
 
                                         <td>
@@ -330,11 +376,17 @@
                                         <td class="fw-bold"><a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</a></td>
                                         <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                         <td>
+                                            {{-- Payment Status Dropdown with Modal Trigger --}}
+                                            {{-- UPGRADE: Added data attributes for current state --}}
                                             <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST" class="status-update-form">
                                                 @csrf
                                                 @method('PUT')
                                                 <input type="hidden" name="field" value="status">
-                                                <select name="value" class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" data-transaction-id="{{ $transaksi->transaction_id }}">
+                                                <select name="value" 
+                                                        class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" 
+                                                        data-transaction-id="{{ $transaksi->transaction_id }}"
+                                                        data-current-status="{{ $transaksi->status }}"
+                                                        data-current-payment-type="{{ $transaksi->payment_type }}">
                                                     @foreach ($paymentStatusConfig as $statusKey => $config)
                                                         <option value="{{ $statusKey }}" {{ $transaksi->status == $statusKey ? 'selected' : '' }}>
                                                             {{ $config['icon'] }} {{ $config['label'] }}
@@ -347,59 +399,11 @@
                                             <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST">
                                                 @csrf @method('PUT')
                                                 <input type="hidden" name="field" value="process_status">
-                                                
-                                                @php
-                                                    $statusKeys = array_keys($processStatusConfig);
-                                                    $currentIndex = array_search($transaksi->process_status, $statusKeys);
-                                                    if ($currentIndex === false) $currentIndex = 0;
-                                                @endphp
-
-                                                <select name="value" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
+                                                <select name="value" id="process-status-select-{{ $transaksi->transaction_id }}" class="form-select form-select-sm {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}" onchange="this.form.submit()">
                                                      @foreach ($processStatusConfig as $status => $config)
-                                                        @php
-                                                            $loopIndex = array_search($status, $statusKeys);
-                                                            $disabled = false;
-                                                            $labelSuffix = '';
-
-                                                            // --- LOGIKA SEQUENTIAL (Mencegah Loncat Status) ---
-                                                            if ($loopIndex > $currentIndex) {
-                                                                if ($loopIndex == $currentIndex + 1) {
-                                                                    // Langkah selanjutnya: OK
-                                                                } else {
-                                                                    $canSkip = true;
-                                                                    for ($k = $currentIndex + 1; $k < $loopIndex; $k++) {
-                                                                        $skippedStatus = $statusKeys[$k];
-                                                                        if ($skippedStatus === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
-                                                                            continue;
-                                                                        }
-                                                                        $canSkip = false;
-                                                                        break;
-                                                                    }
-                                                                    if (!$canSkip) $disabled = true;
-                                                                }
-                                                            }
-
-                                                            // --- LOGIKA VALIDASI DATA ---
-                                                            if ($status === 'Pelanggan Pilih Foto' && empty($transaksi->url_images)) {
-                                                                $disabled = true; 
-                                                                $labelSuffix = '(Isi Link Dulu)';
-                                                            }
-                                                            if ($status === 'Proses Cetak' && !$transaksi->hasPrintableItems()) {
-                                                                $disabled = true;
-                                                                $labelSuffix = '(Tidak ada item cetak)';
-                                                            }
-                                                            if ($status === 'Selesai') {
-                                                                if ($transaksi->status !== 'sudah dibayar') {
-                                                                    $disabled = true; $labelSuffix = '(Belum Lunas)';
-                                                                } elseif (empty($transaksi->url_photos_result)) {
-                                                                    $disabled = true; $labelSuffix = '(Isi Link Final)';
-                                                                }
-                                                            }
-                                                        @endphp
                                                          <option value="{{ $status }}" 
-                                                            {{ $transaksi->process_status == $status ? 'selected' : '' }}
-                                                            {{ $disabled ? 'disabled' : '' }}>
-                                                             {{ $config['icon'] }} {{ $status }} {{ $labelSuffix }}
+                                                            {{ $transaksi->process_status == $status ? 'selected' : '' }}>
+                                                             {{ $config['icon'] }} {{ $status }}
                                                          </option>
                                                      @endforeach
                                                 </select>
@@ -410,7 +414,6 @@
                                         </td>
                                         <td>
                                            <div class="d-flex align-items-center gap-2">
-                                                {{-- Action Buttons for Links --}}
                                                 <button type="button" class="btn btn-sm btn-info update-url-btn" 
                                                         data-id="{{ $transaksi->transaction_id }}"
                                                         data-field="url_images"
@@ -427,7 +430,6 @@
                                                     <i class="bx bx-check-double"></i>
                                                 </button>
 
-                                                {{-- INPUT MANUAL SELECTION BUTTON --}}
                                                 @php
                                                     $canInputSelections = !empty($transaksi->url_images);
                                                     $tooltipMessage = $canInputSelections ? "Input Pilihan Foto (Paste WA)" : "Isi Link Galeri Terlebih Dahulu";
@@ -438,7 +440,6 @@
                                                 <button type="button" class="btn btn-sm btn-warning input-selection-btn"
                                                         data-id="{{ $transaksi->transaction_id }}"
                                                         data-existing-text="{{ $existingText }}"
-                                                        {{ !$canInputSelections ? 'disabled' : '' }}
                                                         data-bs-toggle="tooltip" title="{{ $tooltipMessage }}">
                                                     <i class="bx bx-list-check"></i>
                                                 </button>
@@ -459,34 +460,32 @@
 
                                                 @if(!empty($transaksi->phone_number) && $transaksi->user)
                                                     @php
-                                                        // TEMPLATE PESAN WA BARU
-                                                        
                                                         $hasPrint = $transaksi->hasPrintableItems();
                                                         $linkFinal = $transaksi->url_photos_result ? $transaksi->url_photos_result : "[Link Belum Diisi]";
                                                         $packetName = $transaksi->packet->name ?? 'N/A';
                                                         $productName = $transaksi->packet->product->name ?? 'N/A';
                                                         
-                                                        // Pesan Tambahan: Backup Reminder & Info Paket
                                                         $backupNote = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 14 hari.";
                                                         $backupNoteSelesai = "Catatan Penting:\nMohon segera unduh dan backup foto Anda. Link drive akan kadaluarsa/dihapus dalam 30 hari.";
                                                         $detailPaket = "Detail Paket:\n*{$productName} - {$packetName}*";
 
-                                                        // Isi pesan 'Selesai'
                                                         if ($hasPrint) {
                                                             $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai dicetak & diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNoteSelesai}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nSilakan ambil hasil cetak di studio kami. Terima kasih!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
                                                         } else {
                                                             $pesanSelesai = "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Foto Anda telah selesai diedit.\n\n{$detailPaket}\n\nBerikut link softfile foto finalnya:\n{$linkFinal}\n\n{$backupNoteSelesai}\n\nRincian pesanan atas:\nNama : {$transaksi->customer_name}\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih telah mempercayakan momennya di Yunas Studio!\n\nJika kakak berkenan, boleh beri rating layanan kami di sini : https://g.page/r/CR-YHaNKJ2C_EBM/review";
                                                         }
 
+                                                        $nextStatus = '';
+
                                                         $waMessages = [
                                                             'Pelanggan Belum Foto' => "Halo kak {$transaksi->customer_name}, jadwal foto belum terlaksana. Hubungi kami untuk info lebih lanjut.",
+                                                            'Proses Edit' => "Halo Kak *{$transaksi->customer_name}*, kabar gembira! Proses editing foto kakak sudah selesai.\n\n{$detailPaket}\n\nBerikut link hasil fotonya:\n{$linkFinal}\n\n{$backupNoteSelesai}\n\nSilakan dicek ya kak. Jika sudah sesuai, kami akan lanjut ke proses selanjutnya (Cetak/Selesai). Terima kasih!",
+                                                            'Proses Cetak' => "Halo Kak *{$transaksi->customer_name}*, Proses cetak foto kakak sudah selesai.\n\n{$detailPaket}\n\nHasil cetak sudah bisa diambil di studio ya kak.\n\nRincian pesanan:\nNo. Nota : {$transaksi->receipt_code}\n\nTerima kasih!",
                                                             'Selesai' => $pesanSelesai
                                                         ];
 
-                                                        // Template Pelanggan Pilih Foto
                                                         if ($transaksi->process_status === 'Pelanggan Pilih Foto') {
                                                             $maxEdit = $transaksi->packet->max_photos_for_edit ?? 0;
-                                                            
                                                             $editList = "";
                                                             for ($i = 1; $i <= $maxEdit; $i++) {
                                                                 $editList .= "{$i}. \n";
@@ -511,21 +510,18 @@
                                                                     }
                                                                 }
                                                             }
-                                                            
                                                             if (empty($printList)) {
                                                                 $printList = "- (Tidak ada item cetak) \n";
                                                             }
-
                                                             $linkGaleri = $transaksi->url_images ? $transaksi->url_images : "[Link Belum Diisi]";
-                                                            
-                                                            // Updated with Backup Note
                                                             $waMessages['Pelanggan Pilih Foto'] = "Halo kak *{$transaksi->customer_name}*, Terima kasih sudah mempercayakan momennya di Yunas Studio.\n\nDetail Paket:\n*{$productName} - {$packetName}*\n\nBerikut kami kirimkan link untuk pemilihan foto:\n{$linkGaleri}\n\n{$backupNote}\n\nMohon untuk mengisi format pemilihan foto dibawah ini dengan menyalin pesan ini dan mengisi nama fotonya (misal : 1.YNSFXXX):\n\n*DAFTAR FOTO EDIT (Max {$maxEdit} Foto)*\n{$editList}\n*DAFTAR FOTO CETAK*\n{$printList}\nTerima kasih";
                                                         }
 
-                                                        // Tooltip WA
                                                         $waTooltip = "Kirim WhatsApp";
                                                         if($transaksi->process_status == 'Pelanggan Belum Foto') $waTooltip = "Ingatkan Jadwal Foto";
                                                         elseif($transaksi->process_status == 'Pelanggan Pilih Foto') $waTooltip = "Kirim Link Pilih Foto";
+                                                        elseif($transaksi->process_status == 'Proses Edit') $waTooltip = "Info Selesai Edit";
+                                                        elseif($transaksi->process_status == 'Proses Cetak') $waTooltip = "Info Selesai Cetak (Ambil di Studio)";
                                                         elseif($transaksi->process_status == 'Selesai') $waTooltip = "Info Pengambilan Foto";
 
                                                         $waLink = null;
@@ -539,10 +535,17 @@
                                                         }
                                                     @endphp
                                                     @if(isset($waLink))
-                                                        <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="{{ $waTooltip }}"><i class="uil uil-whatsapp"></i></a>
+                                                        <a href="{{ $waLink }}" target="_blank" 
+                                                           class="btn btn-sm btn-success wa-btn-action" 
+                                                           data-bs-toggle="tooltip" 
+                                                           title="{{ $waTooltip }}"
+                                                           data-transaction-id="{{ $transaksi->transaction_id }}"
+                                                           data-next-status="{{ $nextStatus ?? '' }}">
+                                                           <i class="uil uil-whatsapp"></i>
+                                                        </a>
                                                     @endif
                                                 @endif
-                                            </div>
+                                           </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -581,7 +584,7 @@
         </div>
     </div>
 
-    {{-- Modal Details, Delete Confirmation, DP Amount (Scripts at bottom) --}}
+    {{-- Modal Details, Delete Confirmation, Payment Action Modal (Scripts at bottom) --}}
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -590,7 +593,9 @@
                         <div class="invoice-content" id="invoiceContent{{ $transaksi->transaction_id }}">
                             <div class="invoice-header text-center"><div class="mb-3"><img src="{{ URL::asset('/assets/images/yunas_dark.png') }}" alt="logo" class="invoice-logo"/></div><p class="text-muted mb-0">Jalan Lingkar Selatan, Sukabumi</p></div>
                             <div class="p-4">
-                                <div class="row"><div class="col-md-6"><h5 class="font-size-16">Ditagihkan Kepada:</h5><p class="mb-1">{{ $transaksi->customer_name }}</p>@if($transaksi->phone_number)<p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>@endif @if($transaksi->user)<p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Akun User: {{ $transaksi->user->name }}</p>@endif</div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Rincian Invoice:</h5><p class="mb-1"><strong>No. Invoice:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Tanggal Transaksi:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Status Pembayaran:</strong> {{ $paymentStatusConfig[$transaksi->status]['label'] ?? ucwords($transaksi->status) }}</p><p class="mb-1"><strong>Status Pengerjaan:</strong> {{ $transaksi->process_status }}</p></div></div>
+                                <div class="row"><div class="col-md-6"><h5 class="font-size-16">Ditagihkan Kepada:</h5><p class="mb-1">{{ $transaksi->customer_name }}</p>@if($transaksi->phone_number)<p class="mb-1 text-muted">{{ $transaksi->phone_number }}</p>@endif @if($transaksi->user)<p class="mb-1 text-muted"><i class="mdi mdi-account-circle-outline me-1"></i> Akun User: {{ $transaksi->user->name }}</p>@endif</div><div class="col-md-6 text-md-end"><h5 class="font-size-16">Rincian Invoice:</h5><p class="mb-1"><strong>No. Invoice:</strong> {{ $transaksi->receipt_code }}</p><p class="mb-1"><strong>Tanggal Transaksi:</strong> {{ $transaksi->created_at->format('d M Y, H:i') }}</p><p class="mb-1"><strong>Status Pembayaran:</strong> {{ $paymentStatusConfig[$transaksi->status]['label'] ?? ucwords($transaksi->status) }}</p>
+                                <p class="mb-1"><strong>Tipe Pembayaran:</strong> {{ $transaksi->payment_type == 'none' ? '-' : $transaksi->payment_type }}</p>
+                                <p class="mb-1"><strong>Status Pengerjaan:</strong> {{ $transaksi->process_status }}</p></div></div>
                                 <div class="py-2 mt-3"><h3 class="font-size-15 fw-bold">Ringkasan Pesanan</h3></div>
                                 <div class="table-responsive">
                                     <table class="table table-nowrap">
@@ -650,10 +655,15 @@
                                                 <tr><td class="fw-bold">Subtotal</td><td class="text-end">Rp {{ number_format($transaksi->total_price + $transaksi->discount, 0, ',', '.') }}</td></tr>
                                                 @if ($transaksi->discount > 0)<tr class="text-danger"><td class="fw-bold">Diskon</td><td class="text-end">- Rp {{ number_format($transaksi->discount, 0, ',', '.') }}</td></tr>@endif
                                                 <tr class="border-top"><td class="fw-bold">Total Akhir</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
-                                                @if($transaksi->status == 'dp' && isset($transaksi->dp_amount))
+                                                
+                                                @if($transaksi->status == 'dp' && $transaksi->dp_amount > 0)
                                                     <tr><td class="fw-bold">DP Terbayar</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Sisa Tagihan</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
                                                 @elseif($transaksi->status == 'sudah dibayar')
+                                                    @if($transaksi->dp_amount > 0)
+                                                        <tr><td class="fw-bold">DP (Awal)</td><td class="text-end">Rp {{ number_format($transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                        <tr><td class="fw-bold">Pelunasan</td><td class="text-end">Rp {{ number_format($transaksi->total_price - $transaksi->dp_amount, 0, ',', '.') }}</td></tr>
+                                                    @endif
                                                     <tr class="fs-5 bg-light"><td class="fw-bold">Total Terbayar</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
                                                 @else
                                                      <tr class="fs-5 bg-light"><td class="fw-bold">Total Tagihan</td><td class="text-end fw-bold">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</td></tr>
@@ -698,10 +708,48 @@
 
 @section('script')
 <script>
+    function setQuickFilter(type) {
+        const today = new Date();
+        let startDate = '';
+        let endDate = '';
+        const formatDate = (date) => {
+            let d = new Date(date),
+                month = '' + (d.getMonth() + 1),
+                day = '' + d.getDate(),
+                year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+        if (type === 'today') {
+            startDate = formatDate(today);
+            endDate = formatDate(today);
+        } else if (type === 'month') {
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            startDate = formatDate(firstDay);
+            endDate = formatDate(lastDay);
+        } else if (type === 'year') {
+            const firstDay = new Date(today.getFullYear(), 0, 1);
+            const lastDay = new Date(today.getFullYear(), 11, 31);
+            startDate = formatDate(firstDay);
+            endDate = formatDate(lastDay);
+        } else if (type === 'all') {
+            startDate = '';
+            endDate = '';
+        }
+        document.getElementById('start_date').value = startDate;
+        document.getElementById('end_date').value = endDate;
+        document.getElementById('filterForm').submit();
+    }
+
 document.addEventListener('DOMContentLoaded', function () {
-    const dpModal = new bootstrap.Modal(document.getElementById('dpAmountModal'));
-    const dpForm = document.getElementById('dpAmountForm');
-    const dpInput = document.getElementById('dp_amount_modal');
+    // 1. REPLACED dpAmountModal with paymentActionModal
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentActionModal'));
+    const paymentForm = document.getElementById('paymentActionForm');
+    const paymentInputContainer = document.getElementById('dp_amount_container');
+    const paymentInput = document.getElementById('dp_amount_modal');
+    const paymentStatusInput = document.getElementById('payment_status_input');
 
     // Init URL Modal
     const urlModal = new bootstrap.Modal(document.getElementById('urlModal'));
@@ -738,22 +786,58 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // 2. UPDATED LOGIC for Payment Status Selection (WITH SKIP CHECK)
     document.querySelectorAll('.payment-status-select').forEach(selectElement => {
         selectElement.addEventListener('change', function (e) {
             const selectedStatus = e.target.value;
             const form = e.target.closest('form');
+            
+            // Get current state from data attributes
+            const currentStatus = this.getAttribute('data-current-status');
+            const currentPaymentType = this.getAttribute('data-current-payment-type');
 
             if (selectedStatus === 'dp') {
-                dpForm.action = form.action;
-                dpModal.show();
+                // Case: DP -> Show Amount Input + Payment Type
+                paymentForm.action = form.action;
+                paymentStatusInput.value = 'dp';
+                paymentInputContainer.style.display = 'block';
+                paymentInput.required = true;
+                paymentModal.show();
+            } else if (selectedStatus === 'sudah dibayar') {
+                // Case: Lunas
+                
+                // UPGRADE: CHECK IF WE SHOULD SKIP MODAL
+                // If coming from DP AND we already have a valid payment type
+                if (currentStatus === 'dp' && currentPaymentType && currentPaymentType !== 'none') {
+                    form.submit();
+                    return; // Stop execution to prevent modal show
+                }
+
+                // If not skipped, prepare modal
+                paymentForm.action = form.action;
+                paymentStatusInput.value = 'sudah dibayar';
+                paymentInputContainer.style.display = 'none';
+                paymentInput.required = false;
+                
+                // Pre-select payment type if exists (e.g. from previous state if any)
+                if (currentPaymentType && currentPaymentType !== 'none') {
+                     const modalSelect = document.getElementById('payment_type_modal');
+                     if(modalSelect) modalSelect.value = currentPaymentType;
+                }
+
+                paymentModal.show();
             } else {
+                // Case: Belum Dibayar -> Submit Immediately
                 form.submit();
             }
         });
     });
 
-    document.getElementById('dpAmountModal').addEventListener('shown.bs.modal', function () {
-        dpInput.focus();
+    // Auto-focus logic for modal
+    document.getElementById('paymentActionModal').addEventListener('shown.bs.modal', function () {
+        if(paymentInputContainer.style.display !== 'none') {
+            paymentInput.focus();
+        }
     });
 
     // Handle Update URL Buttons
@@ -763,7 +847,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const field = this.dataset.field;
             const currentValue = this.dataset.value;
             
-            // Set Modal Title based on field
             if (field === 'url_images') {
                 urlLabel.textContent = 'Update Link Galeri (Pemilihan Foto)';
                 urlInput.placeholder = 'https://...';
@@ -774,11 +857,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             urlInput.value = currentValue;
             urlFieldInput.value = field;
-            
-            // Set Form Action (Reuse existing update-status route or generic update)
-            // Using update-status route since it handles field/value logic
             urlForm.action = `/transaksi/${transactionId}/update-status`;
-            
             urlModal.show();
         });
     });
@@ -787,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
         urlInput.focus();
     });
 
-    // Handle Input Selection Button (NEW)
+    // Handle Input Selection Button
     document.querySelectorAll('.input-selection-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const transactionId = this.dataset.id;
@@ -800,25 +879,74 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const profitToggles = document.querySelectorAll('.profit-toggle');
-    const profitAmountEl = document.getElementById('profit-card-amount');
-    const profitTitleEl = document.getElementById('profit-card-title');
+    // Handle WA Button Auto Update
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.wa-btn-action')) {
+            const btn = e.target.closest('.wa-btn-action');
+            const nextStatus = btn.dataset.nextStatus;
+            const transactionId = btn.dataset.transactionId;
 
-    profitToggles.forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            const newAmount = parseFloat(this.dataset.amount);
-            const newTitle = this.dataset.title;
-            profitAmountEl.textContent = 'Rp ' + newAmount.toLocaleString('id-ID');
-            profitTitleEl.textContent = newTitle;
-            profitToggles.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-        });
+            if (nextStatus) {
+                setTimeout(() => {
+                    const select = document.getElementById(`process-status-select-${transactionId}`);
+                    if (select) {
+                        select.value = nextStatus;
+                        select.form.submit();
+                    }
+                }, 1000); 
+            }
+        }
     });
+
+    const profitCard = document.getElementById('profit-card-toggler');
+    if (profitCard) {
+        const titleEl = document.getElementById('profit-card-title');
+        const valueEl = document.getElementById('profit-card-value');
+        const subtitleEl = document.getElementById('profit-card-subtitle');
+
+        const filteredProfit = parseFloat(profitCard.dataset.filteredProfit);
+        const overallProfit = parseFloat(profitCard.dataset.overallProfit);
+        
+        let isShowingFiltered = true;
+
+        const formatter = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        });
+
+        profitCard.addEventListener('click', function(event) {
+            if (event.target.classList.contains('toggle-amount-visibility')) return;
+
+            event.preventDefault(); 
+            isShowingFiltered = !isShowingFiltered;
+
+            const amountContainer = valueEl.querySelector('.amount-container');
+            const amountValue = amountContainer.querySelector('.amount-value');
+
+            if (isShowingFiltered) {
+                titleEl.textContent = 'Total Pendapatan (Terfilter)';
+                subtitleEl.textContent = 'Klik untuk lihat total keseluruhan';
+                amountContainer.dataset.amount = formatter.format(filteredProfit);
+                amountValue.textContent = formatter.format(filteredProfit);
+            } else {
+                titleEl.textContent = 'Total Pendapatan (Keseluruhan)';
+                subtitleEl.textContent = 'Klik untuk lihat total terfilter';
+                amountContainer.dataset.amount = formatter.format(overallProfit);
+                amountValue.textContent = formatter.format(overallProfit);
+                
+                const hideCompletedBtn = document.getElementById('hide-completed-btn');
+                if (hideCompletedBtn) {
+                    hideCompletedBtn.style.display = 'none';
+                }
+            }
+        });
+    }
     
     document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.stopPropagation();
+            e.preventDefault();
             const amountContainer = this.closest('.amount-container');
             const amountValue = amountContainer.querySelector('.amount-value');
             
@@ -834,7 +962,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Hide Completed Logic
     const toggleBtn = document.getElementById('hide-completed-btn');
     const processStatusToHide = 'Selesai';
     const paymentStatusToHide = 'sudah dibayar';
@@ -869,89 +996,47 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('hideCompleted', isCompletedHidden);
         updateView(isCompletedHidden);
     });
-
-    const profitCard = document.getElementById('profit-card-toggler');
-    if (profitCard) {
-        const titleEl = document.getElementById('profit-card-title');
-        const valueEl = document.getElementById('profit-card-value');
-        const subtitleEl = document.getElementById('profit-card-subtitle');
-
-        const filteredProfit = parseFloat(profitCard.dataset.filteredProfit);
-        const overallProfit = parseFloat(profitCard.dataset.overallProfit);
-        
-        let isShowingFiltered = true;
-
-        const formatter = new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0
-        });
-
-        profitCard.addEventListener('click', function(event) {
-            event.preventDefault(); 
-            isShowingFiltered = !isShowingFiltered;
-
-            if (isShowingFiltered) {
-                titleEl.textContent = 'Total Pendapatan (Terfilter)';
-                const amountContainer = valueEl.querySelector('.amount-container');
-                if (amountContainer) {
-                    const amountValue = amountContainer.querySelector('.amount-value');
-                    if (amountValue) {
-                        amountValue.textContent = formatter.format(filteredProfit);
-                    } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
-                    }
-                } else {
-                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(filteredProfit)}"><span class="amount-value">${formatter.format(filteredProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
-                }
-                subtitleEl.textContent = 'Klik untuk lihat total keseluruhan';
-            } else {
-                titleEl.textContent = 'Total Pendapatan (Keseluruhan)';
-                const amountContainer = valueEl.querySelector('.amount-container');
-                if (amountContainer) {
-                    const amountValue = amountContainer.querySelector('.amount-value');
-                    if (amountValue) {
-                        amountValue.textContent = formatter.format(overallProfit);
-                    } else {
-                        valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
-                    }
-                } else {
-                    valueEl.innerHTML = `<span class="amount-container" data-amount="${formatter.format(overallProfit)}"><span class="amount-value">${formatter.format(overallProfit)}</span><i class="bx bx-show-alt toggle-amount-visibility text-white" title="Tampilkan/Sembunyikan Nominal"></i></span>`;
-                }
-                subtitleEl.textContent = 'Klik untuk lihat total terfilter';
-                const hideCompletedBtn = document.getElementById('hide-completed-btn');
-                if (hideCompletedBtn) {
-                    hideCompletedBtn.style.display = 'none';
-                }
-            }
-        });
-    }
 });
 </script>
 @endsection
 
 @section('script-bottom')
-<div class="modal fade" id="dpAmountModal" tabindex="-1" aria-labelledby="dpAmountModalLabel" aria-hidden="true">
+{{-- 3. REPLACED dpAmountModal WITH paymentActionModal --}}
+<div class="modal fade" id="paymentActionModal" tabindex="-1" aria-labelledby="paymentActionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form id="dpAmountForm" method="POST">
+            <form id="paymentActionForm" method="POST">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="field" value="status">
-                <input type="hidden" name="value" value="dp">
+                <input type="hidden" name="value" id="payment_status_input" value="">
+                
                 <div class="modal-header">
-                    <h5 class="modal-title" id="dpAmountModalLabel">Masukkan Jumlah DP</h5>
+                    <h5 class="modal-title" id="paymentActionModalLabel">Konfirmasi Pembayaran</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
+                    {{-- Only shown for DP --}}
+                    <div class="mb-3" id="dp_amount_container">
                         <label for="dp_amount_modal" class="form-label">Jumlah DP (Rp)</label>
-                        <input type="number" class="form-control" id="dp_amount_modal" name="dp_amount" min="0" required>
+                        <input type="number" class="form-control" id="dp_amount_modal" name="dp_amount" min="0">
+                    </div>
+                    
+                    {{-- Shown for both DP and Lunas --}}
+                    <div class="mb-3">
+                        <label for="payment_type_modal" class="form-label">Tipe Pembayaran</label>
+                        <select class="form-select" id="payment_type_modal" name="payment_type" required>
+                            @foreach ($paymentTypes as $val => $label)
+                                @if($val !== 'none') 
+                                    <option value="{{ $val }}">{{ $label }}</option>
+                                @endif
+                            @endforeach
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan DP</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>
         </div>

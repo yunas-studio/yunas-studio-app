@@ -68,13 +68,32 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="col-md-5" id="dp-amount-container" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="dp_amount">Jumlah DP (Rp)</label>
-                                    <input type="number" class="form-control form-control-sm" id="dp_amount" name="dp_amount" value="{{ old('dp_amount') }}" min="0">
+                            
+                            {{-- UPGRADE: Payment Type & DP Amount Container --}}
+                            <div class="col-md-12 row" id="payment-details-container" style="display: none;">
+                                <div class="col-md-6" id="dp-amount-container" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="dp_amount">Jumlah DP (Rp)</label>
+                                        <input type="number" class="form-control form-control-sm" id="dp_amount" name="dp_amount" value="{{ old('dp_amount') }}" min="0">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block mb-2">Tipe Pembayaran</label>
+                                        <div class="pt-2">
+                                            @foreach(['Cash', 'Transfer/Qris'] as $type)
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" id="payment_type_{{ $loop->iteration }}" name="payment_type" value="{{ $type }}" class="form-check-input payment-type-radio" {{ old('payment_type') == $type ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="payment_type_{{ $loop->iteration }}">
+                                                        {{ $type }}
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
                         </div>
 
                         <div class="row">
@@ -199,8 +218,10 @@
             const addSelect = document.getElementById('add_additional_select');
             const addBtn = document.getElementById('add-additional-btn');
             const statusRadios = document.querySelectorAll('.payment-status-radio');
+            const paymentDetailsContainer = document.getElementById('payment-details-container');
             const dpAmountContainer = document.getElementById('dp-amount-container');
             const dpAmountInput = document.getElementById('dp_amount');
+            const paymentTypeRadios = document.querySelectorAll('.payment-type-radio');
 
             // Summary Card Elements
             const summary = {
@@ -289,10 +310,23 @@
                 updateSummary();
             }
 
-            function toggleDpField() {
+            function togglePaymentFields() {
                 const selectedStatus = document.querySelector('.payment-status-radio:checked')?.value;
-                dpAmountContainer.style.display = selectedStatus === 'dp' ? 'block' : 'none';
-                if (selectedStatus !== 'dp') dpAmountInput.value = '';
+                
+                if (selectedStatus === 'belum dibayar') {
+                    paymentDetailsContainer.style.display = 'none';
+                    dpAmountInput.value = '';
+                    paymentTypeRadios.forEach(radio => radio.checked = false);
+                } else {
+                    paymentDetailsContainer.style.display = 'flex'; // Use flex because it's a row
+                    
+                    if (selectedStatus === 'dp') {
+                         dpAmountContainer.style.display = 'block';
+                    } else { // lunas
+                         dpAmountContainer.style.display = 'none';
+                         dpAmountInput.value = '';
+                    }
+                }
                 updateSummary();
             }
 
@@ -369,12 +403,12 @@
                 }
             });
 
-            statusRadios.forEach(radio => radio.addEventListener('change', toggleDpField));
+            statusRadios.forEach(radio => radio.addEventListener('change', togglePaymentFields));
             discountInput.addEventListener('input', updateSummary);
             dpAmountInput.addEventListener('input', updateSummary);
 
             // Initialize form
-            toggleDpField();
+            togglePaymentFields();
             updateSummary();
         });
     </script>

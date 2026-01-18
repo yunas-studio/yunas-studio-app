@@ -70,29 +70,49 @@
                                 <div class="mb-3">
                                     <label class="form-label d-block mb-2">Status Pembayaran</label>
                                     <div class="pt-2">
-                                        @foreach(['belum dibayar', 'dp', 'sudah dibayar'] as $status)
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input payment-status-radio" {{ old('status', $transaksi->status) == $status ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="status_{{ $loop->iteration }}">
-                                                    @if($status == 'dp') DP
-                                                    @elseif($status == 'sudah dibayar') Lunas
-                                                    @else Belum Dibayar
-                                                    @endif
-                                                </label>
-                                            </div>
-                                        @endforeach
+                                            @foreach(['belum dibayar', 'dp', 'sudah dibayar'] as $status)
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" id="status_{{ $loop->iteration }}" name="status" value="{{ $status }}" class="form-check-input payment-status-radio" {{ old('status', $transaksi->status) == $status ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="status_{{ $loop->iteration }}">
+                                                        @if($status == 'dp') DP
+                                                        @elseif($status == 'sudah dibayar') Lunas
+                                                        @else Belum Dibayar
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                            @endforeach
                                     </div>
                                     @error('status')
                                         <div class="text-danger small">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
-                            <div class="col-md-5" id="dp-amount-container" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="dp_amount">Jumlah DP (Rp)</label>
-                                    <input type="number" class="form-control form-control-sm" id="dp_amount" name="dp_amount" value="{{ old('dp_amount', $transaksi->dp_amount) }}" min="0">
+                            
+                            {{-- UPGRADE: Payment Type & DP Amount Container (EDIT MODE) --}}
+                            <div class="col-md-12 row" id="payment-details-container" style="display: none;">
+                                <div class="col-md-6" id="dp-amount-container" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="dp_amount">Jumlah DP (Rp)</label>
+                                        <input type="number" class="form-control form-control-sm" id="dp_amount" name="dp_amount" value="{{ old('dp_amount', $transaksi->dp_amount) }}" min="0">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block mb-2">Tipe Pembayaran</label>
+                                        <div class="pt-2">
+                                            @foreach(['Cash', 'Transfer/Qris'] as $type)
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" id="payment_type_{{ $loop->iteration }}" name="payment_type" value="{{ $type }}" class="form-check-input payment-type-radio" {{ old('payment_type', $transaksi->payment_type) == $type ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="payment_type_{{ $loop->iteration }}">
+                                                        {{ $type }}
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
                         </div>
 
                         {{-- UPDATED: Packet and Status Row --}}
@@ -137,30 +157,15 @@
                                             'Proses Cetak', 
                                             'Selesai'
                                         ] as $status)
-                                            @php
-                                                $isPrintStatus = $status === 'Proses Cetak';
-                                                
-                                                // Cek apakah ada URL
-                                                $hasUrl = !empty($transaksi->url_images);
-                                                // Status selain 'Pelanggan Belum Foto' butuh URL
-                                                $statusNeedsUrl = $status !== 'Pelanggan Belum Foto';
-                                                
-                                                // Disabled logic: Jika butuh print tapi ga ada item print OR butuh URL tapi ga ada URL
-                                                $disabled = ($isPrintStatus && !$canPrint) || ($statusNeedsUrl && !$hasUrl);
-                                            @endphp
-                                            <option value="{{ $status }}" 
-                                                {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}
-                                                {{ $disabled ? 'disabled' : '' }}>
-                                                {{ $status }} {{ ($statusNeedsUrl && !$hasUrl) ? '(Isi URL dulu)' : (($isPrintStatus && !$canPrint) ? '(Tidak Ada Cetak)' : '') }}
+                                            <option value="{{ $status }}" {{ old('process_status', $transaksi->process_status) == $status ? 'selected' : '' }}>
+                                                {{ $status }}
                                             </option>
                                         @endforeach
                                     </select>
                                     @error('process_status')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <div class="text-danger small mt-1" id="process-status-warning" style="display: none;">
-                                        Status terkunci. Harap isi URL Foto terlebih dahulu.
-                                    </div>
+                                    <div class="text-danger small mt-1" id="process-status-warning" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -263,8 +268,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const dpAmountContainer = document.getElementById('dp-amount-container');
     const dpAmountInput = document.getElementById('dp_amount');
     const urlInput = document.getElementById('url_images');
+    const urlFinalInput = document.getElementById('url_photos_result');
     const processSelect = document.getElementById('process_status');
     const warningText = document.getElementById('process-status-warning');
+    const paymentDetailsContainer = document.getElementById('payment-details-container');
+    const paymentTypeRadios = document.querySelectorAll('.payment-type-radio');
     const canPrint = @json($canPrint); // Value from backend
 
     const summary = {
@@ -337,10 +345,23 @@ document.addEventListener('DOMContentLoaded', function() {
         extraContainer.insertAdjacentHTML('beforeend', template);
     }
 
-    function toggleDpField() {
-        const selectedStatus = document.querySelector('.payment-status-radio:checked').value;
-        dpAmountContainer.style.display = selectedStatus === 'dp' ? 'block' : 'none';
-        if (selectedStatus !== 'dp') dpAmountInput.value = '';
+    function togglePaymentFields() {
+        const selectedStatus = document.querySelector('.payment-status-radio:checked')?.value;
+        
+        if (selectedStatus === 'belum dibayar') {
+            paymentDetailsContainer.style.display = 'none';
+            // Only clear values if changing TO 'belum dibayar' from something else
+            // dpAmountInput.value = ''; // Optional: decide if you want to clear or keep hidden
+            // paymentTypeRadios.forEach(radio => radio.checked = false);
+        } else {
+            paymentDetailsContainer.style.display = 'flex'; // Use flex because it's a row
+            
+            if (selectedStatus === 'dp') {
+                 dpAmountContainer.style.display = 'block';
+            } else { // lunas
+                 dpAmountContainer.style.display = 'none';
+            }
+        }
         updateSummary();
     }
 
@@ -370,36 +391,68 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => includedContainer.innerHTML = '<p class="text-danger">Gagal memuat item termasuk.</p>');
     }
 
-    // --- LOGIC BARU: Toggle Status Dropdown berdasarkan URL ---
+    // --- LOGIC BARU: Toggle Status Dropdown berdasarkan URL & Payment Status ---
     function checkUrlStatus() {
         const hasUrl = urlInput.value.trim() !== '';
+        const hasUrlFinal = urlFinalInput.value.trim() !== '';
+        const paymentStatus = document.querySelector('.payment-status-radio:checked').value;
         const options = processSelect.options;
+        const currentStatus = processSelect.value; // Status saat ini sebelum diubah
 
-        // Jika URL kosong
-        if (!hasUrl) {
-            warningText.style.display = 'block'; // Tampilkan pesan peringatan
-            
-            for (let i = 0; i < options.length; i++) {
-                // Disable semua pilihan KECUALI 'Pelanggan Belum Foto'
-                if (options[i].value !== 'Pelanggan Belum Foto') {
-                    options[i].disabled = true;
-                } else {
-                    options[i].disabled = false;
+        warningText.style.display = 'none';
+        warningText.textContent = '';
+
+        for (let i = 0; i < options.length; i++) {
+            const status = options[i].value;
+            let disabled = false;
+            let suffix = '';
+
+            // Reset text option (hapus suffix lama)
+            // options[i].text = status; // Dont reset here to keep original logic simple
+
+            // LOGIC DISABLED STATUS
+            if (status === 'Pelanggan Pilih Foto' && !hasUrl) {
+                disabled = true;
+                suffix = ' (Isi Link Galeri)';
+            }
+            if (status === 'Proses Cetak') {
+                if (!canPrint) {
+                    disabled = true;
+                    suffix = ' (Tidak Ada Cetak)';
+                } else if (!hasUrlFinal) {
+                    disabled = true;
+                    suffix = ' (Isi Link Final)';
                 }
             }
-        } 
-        // Jika URL terisi
-        else {
-            warningText.style.display = 'none'; // Sembunyikan pesan peringatan
-
-            for (let i = 0; i < options.length; i++) {
-                options[i].disabled = false;
+            if (status === 'Selesai') {
+                if (paymentStatus !== 'sudah dibayar') {
+                    disabled = true;
+                    suffix = ' (Belum Lunas)';
+                } else if (!hasUrlFinal) {
+                    disabled = true;
+                    suffix = ' (Isi Link Final)';
+                }
             }
+
+            options[i].disabled = disabled;
+            options[i].text = status + suffix;
+        }
+
+        // Tampilkan warning jika status saat ini menjadi disabled setelah pengecekan
+        const currentOption = processSelect.querySelector(`option[value="${currentStatus}"]`);
+        if (currentOption && currentOption.disabled) {
+            warningText.textContent = 'Status saat ini tidak valid dengan data yang ada. Harap lengkapi data atau ubah status.';
+            warningText.style.display = 'block';
         }
     }
 
-    // Event Listener untuk input URL
+    // Event Listener untuk input yang mempengaruhi status
     urlInput.addEventListener('input', checkUrlStatus);
+    urlFinalInput.addEventListener('input', checkUrlStatus);
+    statusRadios.forEach(radio => radio.addEventListener('change', () => {
+        togglePaymentFields();
+        checkUrlStatus();
+    }));
 
     productSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
@@ -446,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('quantity-input')) updateSummary();
     });
     
-    statusRadios.forEach(radio => radio.addEventListener('change', toggleDpField));
     discountInput.addEventListener('input', updateSummary);
     dpAmountInput.addEventListener('input', updateSummary);
 
@@ -469,16 +521,26 @@ document.addEventListener('DOMContentLoaded', function() {
             productSelect.value = initialProductId;
             
             // Manually trigger the change event to populate packets
-            const event = new Event('change');
-            productSelect.dispatchEvent(event);
+            // We need to re-create the logic because dispatchEvent might not work if listeners aren't ready
+             const productName = productSelect.options[productSelect.selectedIndex].dataset.productName;
+             const packets = productPackets[productName];
+
+             packets.forEach(packet => {
+                const option = document.createElement('option');
+                option.value = packet.id;
+                option.textContent = `${packet.name} (Rp ${new Intl.NumberFormat('id-ID').format(packet.price)})`;
+                option.dataset.price = packet.price;
+                packetSelect.appendChild(option);
+            });
+            packetSelect.disabled = false;
             
             // Set the selected packet after packets are populated
             packetSelect.value = initialPacketId;
         }
         
-        toggleDpField();
+        togglePaymentFields();
         fetchAndDisplayDefaults(); // This will also trigger updateSummary
-        checkUrlStatus(); // Jalankan cek status URL saat inisialisasi halaman
+        checkUrlStatus(); // Jalankan cek status saat inisialisasi halaman
     }
 
     initializeEditForm();
