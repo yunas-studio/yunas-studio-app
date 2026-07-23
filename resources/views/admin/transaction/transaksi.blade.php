@@ -60,9 +60,67 @@
     .toggle-amount-visibility:hover {
         color: #4458b8;
     }
-    /* White icon for the profit card */
     .toggle-amount-visibility.text-white {
         color: #ffffff !important;
+    }
+    /* Fix for 1920px monitors */
+    @media (min-width: 1200px) and (max-width: 1920px) {
+        /* 1. Reduce overall font size for the table */
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+
+        /* 2. Tighten padding drastically */
+        .table.table-centered th, 
+        .table.table-centered td {
+            padding: 0.5rem 0.25rem !important; /* Very tight horizontal padding */
+            vertical-align: middle;
+        }
+
+        /* 3. CUSTOMER COLUMN: Force truncate with ellipsis */
+        .table.table-centered td h6 {
+            font-size: 0.9rem;
+            margin-bottom: 0 !important;
+            max-width: 150px;       /* Force max width */
+            white-space: nowrap;    /* No wrapping */
+            overflow: hidden;       /* Hide overflow */
+            text-overflow: ellipsis; /* Add ... */
+        }
+
+        /* 4. PRODUCT COLUMN: Allow wrapping so it doesn't push width */
+        .table.table-centered td:nth-child(3) { 
+            max-width: 180px;       /* Limit width */
+            white-space: normal !important; /* ALLOW WRAPPING */
+            line-height: 1.2;
+        }
+
+        /* 5. DROPDOWNS: Make them smaller and compact */
+        .form-select-sm {
+            padding-top: 0.1rem;
+            padding-bottom: 0.1rem;
+            padding-left: 0.4rem;
+            font-size: 0.8rem;
+            min-width: auto; /* Allow shrinking */
+            max-width: 140px; /* Prevent huge dropdowns */
+        }
+
+        /* 6. ACTION COLUMN: Reduce gaps and button sizes */
+        .table .d-flex.gap-2 {
+            gap: 0.25rem !important; /* Reduce gap from 0.5rem to 0.25rem */
+        }
+        .update-url-btn, .input-selection-btn, .wa-btn-action, .delete-btn, .btn-sm {
+            padding: 0.15rem 0.3rem; /* Tiny buttons */
+            font-size: 0.75rem;
+        }
+        
+        /* 7. HIDE SCROLLBAR (Slider) if content fits */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        /* Optional: Hide scrollbar visually but allow scroll */
+        .table-responsive::-webkit-scrollbar {
+            height: 4px; /* Make scrollbar very thin */
+        }
     }
 </style>
 @endsection
@@ -188,11 +246,17 @@
                     <form action="{{ route('transaksi.index') }}" method="GET" id="filterForm">
                         {{-- Hidden field to detect manual submission --}}
                         <input type="hidden" name="date_filter_applied" value="1">
+                        
+                        {{-- SERVER-SIDE FILTER: Hide Completed --}}
+                        <input type="hidden" name="hide_completed" id="hide_completed_input" value="{{ request('hide_completed', 0) }}">
 
-                        <div class="row">
+                        <div class="row align-items-end">
                             <div class="col-lg-6 col-md-12 mb-3">
                                 <label for="search" class="form-label">Cari Transaksi</label>
-                                <input type="text" name="search" class="form-control" placeholder="Cari nama pelanggan atau kode invoice..." value="{{ request('search') }}">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Cari nama pelanggan atau kode invoice..." value="{{ request('search') }}">
+                                    <button class="btn btn-primary" type="submit"><i class="bx bx-search-alt-2"></i></button>
+                                </div>
                             </div>
                             <div class="col-lg-6 col-md-12 mb-3">
                                 <label class="form-label">Quick Filter Waktu</label>
@@ -219,7 +283,7 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label for="payment_status" class="form-label">Status Pembayaran</label>
-                                    <select class="form-select" name="payment_status" id="payment_status">
+                                    <select class="form-select" name="payment_status" id="payment_status" onchange="this.form.submit()">
                                         <option value="">Semua</option>
                                         @foreach($paymentStatuses as $status)
                                             <option value="{{ $status }}" {{ request('payment_status') == $status ? 'selected' : '' }}>
@@ -230,7 +294,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label for="process_status" class="form-label">Status Pengerjaan</label>
-                                    <select class="form-select" name="process_status" id="process_status">
+                                    <select class="form-select" name="process_status" id="process_status" onchange="this.form.submit()">
                                         <option value="">Semua</option>
                                         @foreach($processStatuses as $status)
                                             <option value="{{ $status }}" {{ request('process_status') == $status ? 'selected' : '' }}>{{ $status }}</option>
@@ -239,7 +303,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label for="packet_id" class="form-label">Paket</label>
-                                    <select class="form-select" name="packet_id" id="packet_id">
+                                    <select class="form-select" name="packet_id" id="packet_id" onchange="this.form.submit()">
                                         <option value="">Semua Paket</option>
                                         @foreach($packetsForFilter as $productName => $packets)
                                             <optgroup label="{{ $productName }}">
@@ -261,15 +325,15 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="end_date" class="form-label small text-muted">Sampai</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request('end_date') }}">
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request('end_date') }}" onchange="this.form.submit()">
                                 </div>
                             </div>
-                        </div>
-
-                        <hr>
-                        <div class="d-flex justify-content-end gap-2">
-                             <a href="{{ route('transaksi.index') }}" class="btn btn-secondary"><i class="bx bx-reset me-1"></i> Reset</a>
-                            <button type="submit" class="btn btn-primary"><i class="bx bx-filter-alt me-1"></i> Terapkan Filter</button>
+                            
+                            <div class="row mt-3">
+                                <div class="col-12 text-end">
+                                     <a href="{{ route('transaksi.index') }}" class="btn btn-secondary btn-sm"><i class="bx bx-reset me-1"></i> Reset Semua Filter</a>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -285,8 +349,14 @@
                         <div class="col-md-12">
                             <div class="d-flex flex-wrap gap-2 mb-3">
                                 <a href="{{ route('transaksi.create') }}" class="btn btn-success waves-effect waves-light"><i class="mdi mdi-plus me-2"></i> Tambah Transaksi Baru</a>
-                                <button type="button" id="hide-completed-btn" class="btn btn-secondary waves-effect waves-light">
-                                    <i class="bx bx-hide me-1"></i> Sembunyikan Selesai
+                                
+                                {{-- BUTTON: HIDE/SHOW COMPLETED (Server Side Trigger) --}}
+                                <button type="button" id="hide-completed-server-btn" class="btn {{ request('hide_completed') == '1' ? 'btn-info' : 'btn-secondary' }} waves-effect waves-light">
+                                    @if(request('hide_completed') == '1')
+                                        <i class="bx bx-show me-1"></i> Tampilkan Selesai
+                                    @else
+                                        <i class="bx bx-hide me-1"></i> Sembunyikan Selesai
+                                    @endif
                                 </button>
                             </div>
                         </div>
@@ -325,7 +395,7 @@
                                         'dp' => ['label' => 'DP (Uang Muka)', 'icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],
                                         'sudah dibayar' => ['label' => 'Lunas', 'icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],
                                     ];
-                                   
+                                    
                                     $processStatusConfig = [
                                         'Pelanggan Belum Foto' => ['icon' => '📷❌', 'class' => 'bg-light text-dark'],
                                         'Pelanggan Pilih Foto' => ['icon' => '🖼️', 'class' => 'bg-info-subtle text-info-emphasis'],
@@ -377,10 +447,8 @@
                                         <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                         <td>
                                             {{-- Payment Status Dropdown with Modal Trigger --}}
-                                            {{-- UPGRADE: Added data attributes for current state --}}
                                             <form action="{{ route('transaksi.update-status', $transaksi->transaction_id) }}" method="POST" class="status-update-form">
-                                                @csrf
-                                                @method('PUT')
+                                                @csrf @method('PUT')
                                                 <input type="hidden" name="field" value="status">
                                                 <select name="value" 
                                                         class="form-select form-select-sm payment-status-select {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}" 
@@ -554,13 +622,16 @@
                             </tbody>
                         </table>
                     </div>
-                     <div class="row mt-4">
+                    
+                    {{-- Pagination --}}
+                    <div class="row mt-4">
                         <div class="col-sm-6 d-flex align-items-center">
                             <div>
                                 <p class="mb-sm-0">Menampilkan {{ $transactions->firstItem() }} sampai {{ $transactions->lastItem() }} dari {{ $transactions->total() }} data</p>
                             </div>
                             <div class="ms-3">
                                 <form method="GET" action="{{ route('transaksi.index') }}" class="d-flex align-items-center">
+                                    {{-- Preserve all current filters including hide_completed --}}
                                     @foreach (request()->except(['per_page', 'page']) as $key => $value)
                                         <input type="hidden" name="{{ $key }}" value="{{ is_array($value) ? http_build_query($value) : $value }}">
                                     @endforeach
@@ -584,7 +655,7 @@
         </div>
     </div>
 
-    {{-- Modal Details, Delete Confirmation, Payment Action Modal (Scripts at bottom) --}}
+    {{-- Modal Details, Delete Confirmation, Payment Action Modal --}}
     @foreach($transactions as $transaksi)
         <div id="detailModal{{ $transaksi->transaction_id }}" class="modal fade invoice-modal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -786,6 +857,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // === HIDE COMPLETED BUTTON LOGIC (SERVER SIDE) ===
+    const hideCompletedBtn = document.getElementById('hide-completed-server-btn');
+    const hideCompletedInput = document.getElementById('hide_completed_input');
+    const filterForm = document.getElementById('filterForm');
+
+    if (hideCompletedBtn) {
+        hideCompletedBtn.addEventListener('click', function() {
+            // Toggle value
+            const currentVal = hideCompletedInput.value;
+            hideCompletedInput.value = (currentVal == '1') ? '0' : '1';
+            // Submit form to reload page with new filter
+            filterForm.submit();
+        });
+    }
+    // =================================================
+
     // 2. UPDATED LOGIC for Payment Status Selection (WITH SKIP CHECK)
     document.querySelectorAll('.payment-status-select').forEach(selectElement => {
         selectElement.addEventListener('change', function (e) {
@@ -934,11 +1021,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 subtitleEl.textContent = 'Klik untuk lihat total terfilter';
                 amountContainer.dataset.amount = formatter.format(overallProfit);
                 amountValue.textContent = formatter.format(overallProfit);
-                
-                const hideCompletedBtn = document.getElementById('hide-completed-btn');
-                if (hideCompletedBtn) {
-                    hideCompletedBtn.style.display = 'none';
-                }
             }
         });
     }
@@ -960,41 +1042,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.add('bx-hide');
             }
         });
-    });
-
-    const toggleBtn = document.getElementById('hide-completed-btn');
-    const processStatusToHide = 'Selesai';
-    const paymentStatusToHide = 'sudah dibayar';
-
-    function updateView(isHidden) {
-        const rows = document.querySelectorAll(`tr[data-process-status]`);
-        rows.forEach(row => {
-            const isCompleted = row.dataset.processStatus === processStatusToHide && row.dataset.paymentStatus === paymentStatusToHide;
-            if (isCompleted && isHidden) {
-                row.style.display = 'none';
-            } else {
-                row.style.display = '';
-            }
-        });
-
-        if (isHidden) {
-            toggleBtn.innerHTML = `<i class="bx bx-show me-1"></i> Tampilkan Selesai`;
-            toggleBtn.classList.remove('btn-secondary');
-            toggleBtn.classList.add('btn-info');
-        } else {
-            toggleBtn.innerHTML = `<i class="bx bx-hide me-1"></i> Sembunyikan Selesai`;
-            toggleBtn.classList.remove('btn-info');
-            toggleBtn.classList.add('btn-secondary');
-        }
-    }
-
-    let isCompletedHidden = localStorage.getItem('hideCompleted') === 'true';
-    updateView(isCompletedHidden);
-
-    toggleBtn.addEventListener('click', function() {
-        isCompletedHidden = !isCompletedHidden;
-        localStorage.setItem('hideCompleted', isCompletedHidden);
-        updateView(isCompletedHidden);
     });
 });
 </script>

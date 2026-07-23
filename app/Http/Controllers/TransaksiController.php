@@ -93,6 +93,13 @@ class TransaksiController extends Controller
         // NOTE: $cardQuery will be redefined for Kasir to ensure "Do Not Sync" logic
         $cardQuery = clone $query; 
 
+        // === SERVER SIDE FILTER FOR 'SEMBUNYIKAN SELESAI' ===
+        // This fixes the pagination bug by filtering DB results before fetching
+        if ($request->input('hide_completed') == '1') {
+            $listQuery->where('process_status', '!=', 'Selesai');
+        }
+        // ====================================================
+
         $filterLabel = ""; 
 
         // 3. Role-Based Date Logic
@@ -176,6 +183,8 @@ class TransaksiController extends Controller
         }
 
         // 4. Calculate Card Stats (Using the specialized $cardQuery)
+        // Note: Card stats show financial overview, so usually we don't hide 'Selesai' from these cards
+        // unless explicitly requested to match the list exactly. For now, kept independent.
         $unpaidFull = (clone $cardQuery)->where('status', 'belum dibayar')->sum('total_price');
         $dpRemaining = (clone $cardQuery)->where('status', 'dp')->sum(DB::raw('total_price - COALESCE(dp_amount, 0)'));
         
@@ -249,7 +258,7 @@ class TransaksiController extends Controller
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
-            'payment_type'   => ['nullable', 'string', 'in:Cash,Transfer/Qris'], // Validation for new field
+            'payment_type'   => ['nullable', 'string', 'in:Cash,Transfer/Qris'], 
             'note'           => ['nullable', 'string'],
             'url_images'     => ['nullable', 'string', 'url'],
             'url_photos_result' => ['nullable', 'string', 'url'],
@@ -294,7 +303,7 @@ class TransaksiController extends Controller
                 'receipt_code'    => 'TEMP-' . uniqid(),
                 'total_price'     => max(0, $totalPrice),
                 'dp_amount'       => $validatedData['status'] === 'dp' ? $validatedData['dp_amount'] : null,
-                'payment_type'    => $paymentType, // Assign payment type
+                'payment_type'    => $paymentType, 
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'url_images'      => $validatedData['url_images'] ?? null,
@@ -355,7 +364,7 @@ class TransaksiController extends Controller
             'additionals.*.price'    => ['required', 'numeric', 'min:0'],
             'discount'       => ['nullable', 'numeric', 'min:0'],
             'dp_amount'      => ['nullable', 'numeric', 'min:0', 'required_if:status,dp'],
-            'payment_type'   => ['nullable', 'string', 'in:Cash,Transfer/Qris'], // Validation
+            'payment_type'   => ['nullable', 'string', 'in:Cash,Transfer/Qris'], 
             'note'           => ['nullable', 'string'],
             'url_images'     => ['nullable', 'string', 'url'],
             'url_photos_result' => ['nullable', 'string', 'url'],
@@ -426,7 +435,7 @@ class TransaksiController extends Controller
                 'packet_id'       => $validatedData['packet_id'],
                 'total_price'     => max(0, $totalPrice),
                 'dp_amount'       => $newDpAmount,
-                'payment_type'    => $newPaymentType, // Update payment type
+                'payment_type'    => $newPaymentType,
                 'discount'        => $discount,
                 'note'            => $validatedData['note'],
                 'url_images'      => $validatedData['url_images'] ?? null,
@@ -489,8 +498,7 @@ class TransaksiController extends Controller
                  $transaksi->payment_type = 'none'; 
              }
              
-             // 2. Handle Payment Type (New Feature)
-             // If the modal sent a payment_type, update it. 
+             // 2. Handle Payment Type
              if ($request->filled('payment_type')) {
                  $transaksi->payment_type = $request->input('payment_type');
              }
@@ -576,8 +584,6 @@ class TransaksiController extends Controller
         return back()->with('success', 'Deleted');
     }
 
-    // ... [Other methods unchanged] ...
-    
     public function viewSelectForEdit(Transaksi $transaksi)
     {
         try {
@@ -631,16 +637,13 @@ class TransaksiController extends Controller
         $description = "Billed To:\nName: {$transaksi->customer_name}\nPhone: {$transaksi->phone_number}\nInvoice Details:\nTransaction Date: " . $transaksi->created_at->format('d-m-Y');
         $categoryId = ExpenseCategory::where('name', 'Transaction')->first()->id ?? 1;
         
-        // Ambil data Balance (Asumsi hanya ada 1 baris data di tabel balance)
         $balance = Balance::first();
 
-        // Cek apakah income sudah pernah dicatat sebelumnya
         $existingExpense = Expense::where('name', $transaksi->receipt_code)
                                   ->where('type', 'income')
                                   ->first();
 
         if ($existingExpense) {
-            // Jika sudah ada, hitung selisih harga (jika ada perubahan harga paket/additional)
             $difference = $transaksi->total_price - $existingExpense->amount;
             
             if ($difference != 0 && $balance) {
@@ -648,7 +651,6 @@ class TransaksiController extends Controller
                 $balance->save();
             }
 
-            // Update data expense
             $existingExpense->update([
                 'description' => $description,
                 'amount' => $transaksi->total_price,
@@ -657,7 +659,6 @@ class TransaksiController extends Controller
                 'expense_date' => now(),
             ]);
         } else {
-            // Jika belum ada (transaksi baru lunas), buat expense baru dan tambah Balance
             Expense::create([
                 'name' => $transaksi->receipt_code, 
                 'type' => 'income',
@@ -670,7 +671,6 @@ class TransaksiController extends Controller
                 'is_paid' => true,
             ]);
 
-            // Tambah Balance
             if ($balance) {
                 $balance->amount += $transaksi->total_price;
                 $balance->save();
@@ -680,7 +680,6 @@ class TransaksiController extends Controller
 
     private function deleteIncome(Transaksi $transaksi)
     {
-        // Cari dan hapus expense yang terhubung dengan kode resi transaksi ini
         $expense = Expense::where('name', $transaksi->receipt_code)
                ->where('type', 'income')
                ->first();
