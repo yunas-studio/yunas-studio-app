@@ -18,37 +18,49 @@
     .advanced-filter-toggler { text-decoration: none; font-size: 0.9em; }
     .error-container { position: fixed; top: 20px; right: 20px; z-index: 1100; max-width: 400px; }
     .error-message { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s ease; }
-    .amount-container {
-        position: relative;
-        display: inline-block;
+    
+    /* --- MODIFIKASI STYLE UNTUK HARGA --- */
+    .price-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* Jarak antara teks harga dan ikon mata */
     }
+    
+    .amount-value {
+        display: inline-block;
+        position: relative;
+        min-width: 60px; /* Menjaga layout tidak bergeser drastis */
+    }
+
     .amount-hidden {
         visibility: hidden;
-        position: relative;
     }
+    
     .amount-hidden::after {
         content: '*******';
         visibility: visible;
         position: absolute;
         top: 0;
         left: 0;
+        color: #999;
+        letter-spacing: 2px;
     }
+
     .toggle-amount-visibility {
-        position: relative;
-        z-index: 2;
         cursor: pointer;
-        margin-left: 20px;
         color: #556ee6;
+        font-size: 1.2em;
+        transition: color 0.2s;
     }
     .toggle-amount-visibility:hover {
-        color: #4458b8;
+        color: #344079;
     }
 </style>
 @endsection
 
 @php
     $paymentStatusConfig = ['belum dibayar' => ['icon' => '🟡', 'class' => 'bg-warning-subtle text-warning-emphasis'],'dp' => ['icon' => '🔵', 'class' => 'bg-info-subtle text-info-emphasis'],'sudah dibayar' => ['icon' => '🟢', 'class' => 'bg-success-subtle text-success-emphasis'],];
-    $processStatusConfig = ['Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit' => ['icon' => '✏️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit' => ['icon' => '✏️⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai Editing' => ['icon' => '✏️✅','class' => 'bg-success-subtle text-success-emphasis'],'Siap Cetak' => ['icon' => '🖨️⚪️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Cetak' => ['icon' => '🖨️⚙️','class' => 'bg-secondary-subtle text-secondary-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
+    $processStatusConfig = ['Pelanggan Belum Foto' => ['icon' => '📷❌','class' => 'bg-light text-dark'],'Pelanggan Pilih Foto' => ['icon' => '🖼️','class' => 'bg-info-subtle text-info-emphasis'],'Siap Edit dan Cetak' => ['icon' => '✏️🖨️','class' => 'bg-primary-subtle text-primary-emphasis'],'Proses Edit dan Cetak' => ['icon' => '⚙️','class' => 'bg-warning-subtle text-warning-emphasis'],'Selesai' => ['icon' => '✅','class' => 'bg-success-subtle text-success-emphasis']];
 @endphp
 
 @section('content')
@@ -105,44 +117,59 @@
                                             <small class="text-muted">{{ $transaksi->packet->product->name }}</small>
                                         @endif
                                     </td>
+                                    
+                                    {{-- KOLOM HARGA --}}
                                     <td class="fw-bold">
-                                        <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
-                                            <span class="amount-container" data-amount="Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}">
+                                        <div class="price-wrapper">
+                                            <a href="javascript:void(0);" class="clickable-price" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">
                                                 <span class="amount-value">Rp {{ number_format($transaksi->total_price, 0, ',', '.') }}</span>
-                                                <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
-                                            </span>
-                                        </a>
+                                            </a>
+                                            <i class="bx bx-show-alt toggle-amount-visibility" title="Show/Hide Amount"></i>
+                                        </div>
                                     </td>
+
                                     <td>{{ $transaksi->created_at->format('d M Y, H:i') }}</td>
                                     <td><span class="badge {{ $paymentStatusConfig[$transaksi->status]['class'] ?? '' }}">{{ $paymentStatusConfig[$transaksi->status]['icon'] ?? '' }} {{ ucwords($transaksi->status) }}</span></td>
                                     <td><span class="badge {{ $processStatusConfig[$transaksi->process_status]['class'] ?? '' }}">{{ $processStatusConfig[$transaksi->process_status]['icon'] ?? '' }} {{ $transaksi->process_status }}</span></td>
                                     <td><button type="button" class="btn btn-primary btn-sm btn-rounded" data-bs-toggle="modal" data-bs-target="#detailModal{{ $transaksi->transaction_id }}">View</button></td>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
-                                            @if (in_array($transaksi->process_status, ['Pilih Foto', 'Siap Edit']))
-                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="Select photos for editing and printing">
+                                            {{-- Link ke Galeri Foto External --}}
+                                            @php
+                                                $showResultButton = in_array($transaksi->process_status, ['Proses Edit dan Cetak', 'Selesai']);
+                                                $hasResultUrl = !empty($transaksi->url_photos_result);
+                                                $iconClass = "uil uil-image-search";
+                                            @endphp
+                                            
+
+                                            {{-- RAW PHOTOS --}}
+                                            @if($transaksi->url_images && !in_array($transaksi->process_status, ['Pelanggan Belum Foto', 'Pelanggan Pilih Foto']))
+                                                <a href="{{ $transaksi->url_images }}" target="_blank" class="text-primary" data-bs-toggle="tooltip" title="Lihat Foto Mentah">
+                                                    <i class="{{ $iconClass }} font-size-18"></i>
+                                                </a>
+                                            @endif
+
+                                            {{-- RESULT PHOTOS --}}
+                                            @if($showResultButton)
+                                                @if($hasResultUrl)
+                                                    <a href="{{ $transaksi->url_photos_result }}" target="_blank" class="text-success" data-bs-toggle="tooltip" title="Lihat Hasil Foto">
+                                                        <i class="uil uil-check-circle font-size-18"></i>
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted" data-bs-toggle="tooltip" title="Hasil foto belum diupload" style="cursor: not-allowed;">
+                                                        <i class="uil uil-check-circle font-size-18"></i>
+                                                    </span>
+                                                @endif
+                                            @endif
+
+                                            {{-- Link Pilih Foto --}}
+                                            @if (in_array($transaksi->process_status, ['Pelanggan Pilih Foto', 'Siap Edit dan Cetak']))
+                                                <a href="{{ route('transaksi.view-select-for-edit', $transaksi) }}" class="text-warning" data-bs-toggle="tooltip" title="Pilih foto untuk diedit/dicetak">
                                                     <i class="uil uil-edit-alt font-size-18"></i>
                                                 </a>
                                             @endif
                                             
-                                            @if (in_array($transaksi->process_status, ['Selesai Editing', 'Siap Cetak', 'Proses Cetak', 'Selesai']))
-                                                @if ($transaksi->status === 'sudah dibayar')
-                                                    <a href="{{ route('transaksi.view-result-photos', $transaksi) }}" class="text-success" data-bs-toggle="tooltip" title="View and download your final photos">
-                                                        <i class="uil uil-camera font-size-18"></i>
-                                                    </a>
-                                                @else
-                                                    @php
-                                                        $remaining = $transaksi->total_price - ($transaksi->dp_amount ?? 0);
-                                                    @endphp
-                                                    <a href="javascript:void(0);" 
-                                                       class="text-muted" 
-                                                       data-bs-toggle="tooltip" 
-                                                       title="Please complete your payment to view final photos" 
-                                                       onclick="showPaymentAlertModal('Rp {{ number_format($remaining, 0, ',', '.') }}')">
-                                                        <i class="uil uil-camera font-size-18"></i>
-                                                    </a>
-                                                @endif
-                                            @endif
+
                                         </div>
                                     </td>
                                 </tr>
@@ -163,6 +190,7 @@
                                     @foreach (request()->except(['per_page', 'page']) as $key => $value)
                                         <input type="hidden" name="{{ $key }}" value="{{ is_array($value) ? http_build_query($value) : $value }}">
                                     @endforeach
+                                    
                                     <label for="per_page" class="form-label me-2 mb-0">Show:</label>
                                     <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: 70px;" onchange="this.form.submit()">
                                         @foreach($perPageOptions as $option)
@@ -198,9 +226,57 @@
                                     <table class="table table-nowrap">
                                         <thead class="table-light"><tr><th style="width: 70px;">No.</th><th>Item</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr></thead>
                                         <tbody>
-                                            @if($transaksi->packet)<tr><td>1</td><td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td><td class="text-center">1</td><td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td></tr>@endif
-                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Included Items:</strong></td></tr>@foreach($transaksi->packet->additionalDefaults as $default)<tr><td><i class="mdi mdi-circle-small text-muted"></i></td><td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td></tr>@endforeach @endif
-                                            @if($transaksi->additionals->isNotEmpty())<tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted">Extra Items:</strong></td></tr>@foreach($transaksi->additionals as $additional)<tr><td><i class="mdi mdi-circle-small text-muted"></td><td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td><td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td><td class="text-center">{{ $additional->pivot->quantity }}</td><td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td></tr>@endforeach @endif
+                                            <!-- 1. Main Packet -->
+                                            @if($transaksi->packet)
+                                                <tr>
+                                                    <td>1</td>
+                                                    <td><h5 class="font-size-15 mb-0">{{ $transaksi->packet->name }}</h5><span class="text-muted">{{ $transaksi->packet->product->name ?? '' }}</span></td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                    <td class="text-center">1</td>
+                                                    <td class="text-end">Rp {{ number_format($transaksi->packet->price, 0, ',', '.') }}</td>
+                                                </tr>
+                                            @endif
+
+                                            <!-- 2. INCLUDED PRINTS -->
+                                            @if($transaksi->packet && $transaksi->packet->printOptions->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Prints:</strong></td></tr>
+                                                @foreach($transaksi->packet->printOptions as $printOption)
+                                                    <tr class="bg-light">
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td>
+                                                            <span class="text-dark">Include Cetak {{ $printOption->name }}</span>
+                                                        </td>
+                                                        <td class="text-end text-muted small">(Included)</td>
+                                                        <td class="text-center">{{ $printOption->pivot->quantity }}</td>
+                                                        <td class="text-end">-</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+
+                                            <!-- 3. Included Extras -->
+                                            @if($transaksi->packet && $transaksi->packet->additionalDefaults->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Included Extras:</strong></td></tr>
+                                                @foreach($transaksi->packet->additionalDefaults as $default)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></i></td>
+                                                        <td colspan="4">{{ $default->quantity }}x {{ $default->additional->name }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
+
+                                            <!-- 4. Extra Items -->
+                                            @if($transaksi->additionals->isNotEmpty())
+                                                <tr><td colspan="5" class="pt-3 pb-0"><strong class="text-muted small">Extra Items:</strong></td></tr>
+                                                @foreach($transaksi->additionals as $additional)
+                                                    <tr>
+                                                        <td><i class="mdi mdi-circle-small text-muted"></td>
+                                                        <td><h5 class="font-size-15 mb-0">{{ $additional->name }}</h5><span class="text-muted">Additional Item</span></td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price, 0, ',', '.') }}</td>
+                                                        <td class="text-center">{{ $additional->pivot->quantity }}</td>
+                                                        <td class="text-end">Rp {{ number_format($additional->pivot->price * $additional->pivot->quantity, 0, ',', '.') }}</td>
+                                                    </tr>
+                                                @endforeach 
+                                            @endif
                                         </tbody>
                                     </table>
                                 </div>
@@ -229,39 +305,12 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        @if($transaksi->status == "sudah dibayar")
-                            <a href="{{ route('transaksi.download-invoice', $transaksi) }}"
-                               class="btn btn-primary"
-                               target="_blank">
-                                <i class="mdi mdi-file-pdf-box me-1"></i> Download PDF
-                            </a>
-                        @endif
                     </div>
                 </div>
             </div>
         </div>
     @endforeach
 
-    <!-- Payment Alert Modal -->
-    <div class="modal fade" id="paymentAlertModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="paymentAlertModalLabel">Payment Required</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center">
-                        <i class="bx bx-lock-alt bx-lg text-warning mb-2"></i>
-                        <p id="alertModalBody"></p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('script')
@@ -270,29 +319,29 @@
             $('[data-bs-toggle="tooltip"]').tooltip();
         });
 
-        let paymentAlertModal;
         document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('paymentAlertModal')) {
-                paymentAlertModal = new bootstrap.Modal(document.getElementById('paymentAlertModal'));
-            }
             
             // Handle amount visibility toggle
             document.querySelectorAll('.toggle-amount-visibility').forEach(toggle => {
                 toggle.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Prevent event bubbling
-                    const amountContainer = this.closest('.amount-container');
-                    const amountValue = amountContainer.querySelector('.amount-value');
+                    // Hentikan event bubbling agar tidak memicu trigger modal di elemen parent
+                    e.preventDefault();
+                    e.stopPropagation(); 
+
+                    // Cari container terdekat
+                    const container = this.closest('.price-wrapper');
+                    const amountValue = container.querySelector('.amount-value');
                     
                     if (amountValue.classList.contains('amount-hidden')) {
                         // Show amount
                         amountValue.classList.remove('amount-hidden');
-                        this.classList.remove('bx-hide');
-                        this.classList.add('bx-show-alt');
+                        this.classList.remove('bx-show-alt');
+                        this.classList.add('bx-hide');
                     } else {
                         // Hide amount
                         amountValue.classList.add('amount-hidden');
-                        this.classList.remove('bx-show-alt');
-                        this.classList.add('bx-hide');
+                        this.classList.remove('bx-hide');
+                        this.classList.add('bx-show-alt');
                     }
                 });
             });
@@ -301,20 +350,12 @@
             document.querySelectorAll('.amount-value').forEach(el => {
                 el.classList.add('amount-hidden');
             });
+            
+            // Set initial icon state
             document.querySelectorAll('.toggle-amount-visibility').forEach(el => {
-                el.classList.remove('bx-show-alt');
-                el.classList.add('bx-hide');
+                el.classList.add('bx-show-alt');
+                el.classList.remove('bx-hide');
             });
         });
-
-        function showPaymentAlertModal(remainingAmount) {
-            const modalBody = document.getElementById('alertModalBody');
-            if (modalBody) {
-                modalBody.textContent = `You must complete your remaining payment of ${remainingAmount} to access your final photos. Please contact us to complete your payment.`;
-            }
-            if (paymentAlertModal) {
-                paymentAlertModal.show();
-            }
-        }
     </script>
 @endsection

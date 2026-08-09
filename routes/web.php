@@ -16,11 +16,6 @@ use App\Http\Controllers\AdditionalDefaultController;
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
 */
 
 Auth::routes();
@@ -61,12 +56,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('transaksi/{transaksi}')->name('transaksi.')->group(function () {
         Route::get('/select-for-edit', [TransaksiController::class, 'viewSelectForEdit'])->name('view-select-for-edit');
-        Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEdit'])->name('handle-select-for-edit');
+        Route::post('/handle-select-for-edit', [TransaksiController::class, 'handleSelectForEditUser'])->name('handle-select-for-edit');
         Route::get('/select-for-print', [TransaksiController::class, 'viewSelectForPrint'])->name('view-select-for-print');
         Route::post('/handle-select-for-print', [TransaksiController::class, 'handleSelectForPrint'])->name('handle-select-for-print');
         Route::get('/result-photos', [TransaksiController::class, 'viewResultPhotos'])->name('view-result-photos');
         Route::get('/download-invoice', [TransaksiController::class, 'downloadInvoice'])->name('download-invoice');
+        
+        // Route View Selections lama (tetap ada jika dibutuhkan via URL, tapi button dihapus di view)
         Route::get('/view-selections', [TransaksiController::class, 'viewSelectionsForAdmin'])->name('view-selections');
+        
+        // Route BARU untuk update inputan manual dari WA
+        Route::put('/update-selections', [TransaksiController::class, 'updateSelections'])->name('update-selections');
+
         Route::get('/print-invoice', [TransaksiController::class, 'printInvoice'])->name('print-invoice');
         Route::get('/download-all', [TransaksiController::class, 'downloadAllPhotosAsZip'])->name('downloadAll');
         Route::get('/download-selected', [TransaksiController::class, 'downloadSelectedPhotosAsZip'])->name('downloadSelected');

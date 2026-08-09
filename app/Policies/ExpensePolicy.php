@@ -13,7 +13,7 @@ class ExpensePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -21,7 +21,7 @@ class ExpensePolicy
      */
     public function view(User $user, Expense $expense): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -29,7 +29,7 @@ class ExpensePolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -37,7 +37,7 @@ class ExpensePolicy
      */
     public function update(User $user, Expense $expense): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -45,7 +45,7 @@ class ExpensePolicy
      */
     public function delete(User $user, Expense $expense): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -53,6 +53,6 @@ class ExpensePolicy
      */
     public function restore(User $user, Expense $expense): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 }

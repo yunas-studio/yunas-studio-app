@@ -19,11 +19,16 @@ class Transaksi extends Model
         'packet_id',
         'status',
         'process_status',
+        'payment_type',
         'receipt_code',
         'total_price',
         'dp_amount',
         'discount',
         'note',
+        'url_images',
+        'url_photos_result',
+        'select_edit_photo',
+        'select_print_photo',
     ];
 
     public function user()

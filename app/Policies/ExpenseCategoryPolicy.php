@@ -13,7 +13,7 @@ class ExpenseCategoryPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -21,7 +21,7 @@ class ExpenseCategoryPolicy
      */
     public function view(User $user, ExpenseCategory $expenseCategory): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -29,7 +29,7 @@ class ExpenseCategoryPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -37,7 +37,7 @@ class ExpenseCategoryPolicy
      */
     public function update(User $user, ExpenseCategory $expenseCategory): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -45,7 +45,7 @@ class ExpenseCategoryPolicy
      */
     public function delete(User $user, ExpenseCategory $expenseCategory): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 
     /**
@@ -53,7 +53,7 @@ class ExpenseCategoryPolicy
      */
     public function restore(User $user, ExpenseCategory $expenseCategory): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
     
     /**
@@ -61,6 +61,6 @@ class ExpenseCategoryPolicy
      */
     public function toggleMonthlyDefault(User $user, ExpenseCategory $expenseCategory): bool
     {
-        return $user->isAdmin() || $user->isKasir();
+        return $user->isAdmin();
     }
 }
